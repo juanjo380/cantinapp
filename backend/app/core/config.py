@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     db_max_overflow: int = 5
     db_echo: bool = False
 
+    # JWT (RF-02). En produccion define JWT_SECRET por variable de entorno.
+    jwt_secret: str = "dev-secret-change-me"  # shortcut: default de desarrollo, cambiar en prod
+    jwt_expire_minutes: int = 720
+
+    # Reglas de negocio (doc 1 / RNF-04)
+    min_history_days: int = 30
+    default_forecast_days: int = 30
+
+    cors_origins: list[str] = ["*"]
+
 
 @lru_cache
 def get_settings() -> Settings:

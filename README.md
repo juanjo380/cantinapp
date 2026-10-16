@@ -130,6 +130,10 @@ DB_USE_TRANSACTION_POOLER=false
 DB_POOL_SIZE=5
 DB_MAX_OVERFLOW=5
 DB_ECHO=false
+
+JWT_SECRET=cambia-este-secreto-en-produccion
+JWT_EXPIRE_MINUTES=720
+CORS_ORIGINS=["http://localhost:5173"]
 ```
 
 El esquema de la base de datos está en [`../db/schema.sql`](../db/schema.sql). Ejecútalo en el **SQL Editor de Supabase** antes de iniciar la API.
