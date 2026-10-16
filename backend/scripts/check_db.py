@@ -5,7 +5,7 @@ import asyncio
 
 from sqlalchemy import text
 
-from app.infrastructure.database import engine
+from app.shared.infrastructure.database import engine
 
 EXPECTED = {
     "businesses", "users", "categories", "suppliers", "products", "sales_imports", "sales",
