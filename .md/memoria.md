@@ -3,8 +3,8 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización: backend MVP v0.1 completo (9 módulos) y **desplegado en
-Render** (ver sección 9).
+Última actualización: backend MVP v0.1 desplegado en Render (sección 9) y
+**frontend MVP v0.1** construido sobre esa API (sección 11).
 
 ---
 
@@ -16,8 +16,8 @@ datos de su negocio. Alcance v0.1 (doc `MinimoReq.md`): login, productos,
 ventas (manual + CSV), inventario, análisis, predicción, recomendación
 (MUST) + dashboard y alertas (SHOULD).
 
-- **Este repositorio es backend-only por ahora.** El frontend React se
-  construirá sobre esta API (puede vivir en el mismo repo, en `frontend/`).
+- **Monorepo:** `backend/` (API FastAPI) y `frontend/` (SPA React) conviven en el
+  mismo repositorio; el frontend consume esta API desplegada (ver sección 11).
 - Fuente de verdad del esquema: `db/schema.sql`.
 
 ---
@@ -454,3 +454,131 @@ cantinapp/
     body: JSON.stringify({ business_name, email, password, full_name }),
   });
   ```
+
+---
+
+## 11. Frontend (estado y decisiones)
+
+SPA construida sobre la API desplegada. Vive en `frontend/` y **no modifica la API**.
+
+### 11.1 Stack
+
+| Capa | Tecnología |
+|---|---|
+| Framework | React 19 + Vite 8 (`@vitejs/plugin-react`) |
+| Rutas | React Router 7 (`react-router-dom`) |
+| UI | Material UI 9 (`@mui/material`, `@mui/icons-material`) + `@mui/x-charts` (gráficas) |
+| Estilos | Tailwind CSS v4 (`@tailwindcss/vite`) + Emotion (base de MUI) |
+| Lint | ESLint 10 (`eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`) |
+
+```
+frontend/
+  src/
+    api/        client.js (fetch + Bearer + 401), helper.js (un método por recurso)
+    auth/       context.js, ProtectedRoute.jsx
+    components/ layout/AppLayout.jsx · ui/{States,Stamp,PageHeader}.jsx · auth/AuthShell.jsx
+    hooks/      useApi.js, useDebounced.js
+    pages/      Login, Register, Dashboard, Products, Inventory, Sales, Analytics,
+                Replenishment, Alerts, NotFound
+    theme/      color-mode.js (claro/oscuro)
+    theme.js    tema MUI (refleja los tokens)
+    index.css   ÚNICA hoja de estilos (tokens + clases de superficie)
+  .env / .env.example   VITE_API_URL
+```
+
+### 11.2 Arranque y configuración
+
+```powershell
+# desde frontend/
+npm install
+npm run dev      # http://localhost:5173
+npm run lint
+npm run build
+```
+
+- `VITE_API_URL=https://cantinapp.onrender.com` (nunca fija en el código).
+- Auth: JWT en `Authorization: Bearer`; token y usuario en `localStorage`. Un `401`
+  limpia la sesión y redirige a `/login` (evento `cantinapp:unauthorized`).
+- Cold start de Render: `States.Loading` avisa "El servidor está despertando…"
+  tras 5 s; no se trata como error con un timeout corto.
+- Nunca se envía `business_id`: lo deduce el backend del token.
+
+### 11.3 Rutas
+
+| Ruta | Pantalla | Endpoints |
+|---|---|---|
+| `/login`, `/registro` | Acceso | `POST /api/auth/{register,login,logout}`, `GET /api/auth/me` |
+| `/` | Dashboard | `GET /api/dashboard` |
+| `/productos` | Productos + CSV | `/api/products`, `POST /api/products/import` |
+| `/inventario` | Inventario + movimientos | `/api/inventory`, `POST /api/inventory/movements` |
+| `/ventas` | Venta manual + import CSV | `/api/sales`, `POST /api/sales/import` |
+| `/analisis` | Analítica | `GET /api/analytics/{sales,top-products}` |
+| `/reabastecimiento` | Predicción + recomendación | `POST /api/forecasting`, `/api/recommendations` |
+| `/alertas` | Alertas | `/api/alerts`, `/generate`, `PATCH /{id}/review` |
+
+- Productos: "Desactivar" = borrado lógico; **editar no cambia stock**.
+- Inventario: el stock solo cambia por movimientos (PURCHASE > 0, ADJUSTMENT ≠ 0).
+- Ventas: `422` por stock insuficiente se muestra en contexto; el CSV lleva
+  `affects_inventory` (por defecto apagado) y muestra errores por fila.
+- Reabastecimiento: un `422` (< 30 días de historial) muestra un estado explicativo
+  con enlace a `/ventas`.
+- `GET /api/dashboard` **no** devuelve predicción (brecha de HU08): el Dashboard
+  enlaza a `/reabastecimiento`.
+
+### 11.4 Sistema de diseño
+
+- Mundo visual **«Kraft y sello»** (`DESIGN.md`): verde de mercado, fondos cálidos,
+  cifras tabulares en COP y sellos de estado con texto + icono (nunca solo color).
+- Claro y oscuro (sistema + `data-theme`), con conmutador manual en el riel.
+- Tipografía Chivo / Chivo Mono (Google Fonts cargadas en `index.html`).
+- Fuente de verdad de tokens: `src/index.css` (`@theme` + variables `:root` /
+  `data-theme`); `src/theme.js` solo refleja lo que MUI necesita.
+- Layout con Tailwind y componentes complejos con MUI. Clases de superficie
+  reutilizables (`.surface`, `.surface-inset`, `.filter-row`) en `index.css`. Sin
+  CSS por componente ni por pantalla.
+
+### 11.5 Integración MUI + Tailwind v4 (causa raíz de defectos)
+
+MUI y Tailwind v4 compiten por el orden de capas CSS. Patrón correcto en Vite:
+
+1. `src/index.css`: declarar `@layer theme, base, mui, components, utilities;`
+   **antes** de `@import "tailwindcss";`.
+2. `src/App.jsx`: `<StyledEngineProvider enableCssLayer>` con
+   `<GlobalStyles styles="@layer theme, base, mui, components, utilities;" />` como
+   **primer hijo**.
+
+Sin el `GlobalStyles`, Emotion inyecta `@layer mui {}` antes de que se fije el orden
+y el preflight de Tailwind termina pisando a MUI: etiquetas flotantes montadas sobre
+el texto, botones sin fondo ni relleno, inputs sin borde y checkbox con el azul del
+navegador. **No** usar `CssBaseline`: el reset base lo aporta el preflight de Tailwind.
+
+### 11.6 Controles unificados (`theme.js`)
+
+- Un solo aspecto para TextField, Select, Checkbox, Switch, Button (contained /
+  outlined / text), IconButton, ToggleButton y Tabs: altura mínima ~44 px, radio
+  único, borde sutil, anillo de foco del color primario y estados hover / disabled /
+  error. El texto de ayuda va siempre **debajo** del campo.
+- Tablas con filas cómodas y cabecera discreta; jerarquía por tamaño y peso moderado.
+- `States.jsx`: skeletons en vez de spinner suelto; estados vacío y error con icono,
+  título y acción.
+
+### 11.7 Verificación
+
+- `npm run lint` y `npm run build` en verde; rutas con carga diferida (`React.lazy`).
+- El contrato de la API se verificó contra
+  `https://cantinapp.onrender.com/openapi.json` (campos y parámetros coinciden).
+- Regla ESLint `react-hooks/set-state-in-effect` desactivada en `eslint.config.js`:
+  los hooks de carga y el arranque de sesión usan `setState` dentro de un efecto de
+  forma intencional.
+- Rama `feature/juan.ruiz/FrontendV0.1`; commit "Frontend MVP v0.1: SPA React + Vite
+  + MUI sobre la API desplegada…". El PR lo abre el autor.
+
+### 11.8 Pendientes
+
+- **CORS en Render:** añadir el origen del frontend a `CORS_ORIGINS` (es la causa más
+  probable de que las peticiones fallen en local).
+- Prueba manual en navegador: responsive (1366 / 390), teclado y foco, contraste en
+  modo oscuro.
+- `DESIGN.md` quedó desincronizado en radios y pesos tras la modernización visual
+  (conviene re-ejecutar `/impeccable document`).
+- El Dashboard no recibe predicción del backend (ver 11.3).
