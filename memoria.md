@@ -3,7 +3,8 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización: backend MVP v0.1 completo (9 módulos).
+Última actualización: backend MVP v0.1 completo (9 módulos) y **desplegado en
+Render** (ver sección 9).
 
 ---
 
@@ -15,8 +16,8 @@ datos de su negocio. Alcance v0.1 (doc `MinimoReq.md`): login, productos,
 ventas (manual + CSV), inventario, análisis, predicción, recomendación
 (MUST) + dashboard y alertas (SHOULD).
 
-- **Este repositorio es backend-only.** El frontend React se construirá aparte
-  sobre esta API.
+- **Este repositorio es backend-only por ahora.** El frontend React se
+  construirá sobre esta API (puede vivir en el mismo repo, en `frontend/`).
 - Fuente de verdad del esquema: `db/schema.sql`.
 
 ---
@@ -25,12 +26,13 @@ ventas (manual + CSV), inventario, análisis, predicción, recomendación
 
 | Capa | Tecnología |
 |---|---|
-| Lenguaje | Python 3.12 |
+| Lenguaje | Python 3.12 en local; **3.11.9 en Render** (`PYTHON_VERSION`) |
 | API | FastAPI (async) + Uvicorn |
 | Validación / DTO | Pydantic v2 + pydantic-settings |
 | ORM / acceso | SQLAlchemy 2.0 async (`async_sessionmaker`) |
 | Driver BD | asyncpg |
 | Base de datos | PostgreSQL 15+ en **Supabase** |
+| Hosting backend | **Render** (Web Service, plan gratuito) |
 | Archivos CSV | `python-multipart` (upload) + módulo `csv` estándar |
 | Auth | JWT HS256 + PBKDF2-SHA256, **solo librería estándar** (sin PyJWT) |
 | Modelos predictivos | Python puro (sin numpy) |
@@ -41,7 +43,8 @@ Dependencias: `backend/requirements.txt` (runtime) y
 
 **Nota de entorno:** crear el venv **fuera de OneDrive** (OneDrive bloquea
 archivos y rompe `pip`). El directorio `backend/venv` que existe está roto
-(apunta a otra máquina).
+(apunta a otra máquina). El `venv/`, `node_modules/` y `__pycache__/` no deben
+estar en el repo (ver `.gitignore`, sección 9).
 
 ---
 
@@ -53,9 +56,9 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 |---|---|
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Datos de Supabase |
 | `DB_SSL` | `true` en Supabase (conexión cifrada) |
-| `DB_USE_TRANSACTION_POOLER` | `true` si se usa el pooler pgbouncer (puerto 6543): desactiva prepared statements y usa `NullPool` |
+| `DB_USE_TRANSACTION_POOLER` | `true` si se usa el pooler pgbouncer en modo transacción (puerto 6543): desactiva prepared statements y usa `NullPool` |
 | `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `DB_ECHO` | Pool / logging |
-| `JWT_SECRET` | Clave de firma JWT (`dev-secret-change-me` por defecto, cambiar en prod) |
+| `JWT_SECRET` | Clave de firma JWT (`dev-secret-change-me` por defecto, **cambiar en prod**) |
 | `JWT_EXPIRE_MINUTES` | Expiración del token (720 por defecto) |
 | `CORS_ORIGINS` | Orígenes permitidos (lista JSON; por defecto `["*"]`) |
 
@@ -66,6 +69,9 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 - Al arrancar, `main.py` ejecuta `SELECT 1` (**fail-fast** si la BD no responde)
   y libera el motor al apagar.
 - Comprobación manual: `python -m scripts.check_db` (desde `backend/`).
+- **En producción (Render)** se usa el **pooler de Supabase en modo sesión**
+  (host `aws-0-us-east-1.pooler.supabase.com`, puerto `5432`), con
+  `DB_USE_TRANSACTION_POOLER=false`. Ver sección 9.
 
 ---
 
@@ -159,6 +165,8 @@ Authorization: Bearer <token>
 ## 7. Endpoints
 
 Base local: `http://127.0.0.1:8000`. Prefijo `/api`. Swagger: `/docs`.
+**Base en producción: `https://cantinapp.onrender.com`** (Swagger en
+`https://cantinapp.onrender.com/docs`, esquema en `/openapi.json`).
 
 Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
@@ -166,7 +174,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| GET | `/health` | 🔓 | Ping de la API |
+| GET | `/health` | 🔓 | Ping de la API (lo usa Render como health check) |
 | GET | `/health/db` | 🔓 | Estado de conexión a BD (503 si falla) |
 
 ### Autenticación — `/api/auth`
@@ -181,6 +189,8 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 - **AuthResponse:** `{ token, token_type:"bearer", user{ id, business_id, email, full_name }, business_id, business_name }`
 - **UserOut:** `{ id, business_id, email, full_name }`
 - Email único global (sin distinguir mayúsculas). Registro con email repetido → 409.
+- Abrir `/api/auth/register` en el navegador devuelve `405 Method Not Allowed`
+  (el navegador hace GET; la ruta solo acepta POST). Es normal: significa que la ruta existe.
 
 ### Productos — `/api/products` (🔒)
 
@@ -315,6 +325,8 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 ## 9. Cómo levantar
 
+### Local
+
 ```powershell
 # desde backend/, con venv fuera de OneDrive
 pip install -r requirements.txt
@@ -326,11 +338,104 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - Swagger: `http://127.0.0.1:8000/docs`.
 - Tests: `python -m pytest` (no requieren BD).
 
+### Producción — Render (plan gratuito)
+
+**URL pública:** `https://cantinapp.onrender.com`
+**Repositorio:** `https://github.com/juanjo380/cantinapp` (rama `main`).
+
+**Servicio:** tipo **Web Service** en Render, conectado al repo de GitHub.
+
+| Campo | Valor |
+|---|---|
+| Language | Python 3 |
+| Root Directory | `backend` (sin `/app` ni barra final) |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Instance Type | Free |
+| Health Check Path | `/health` |
+| Auto-Deploy | Activo: cada push a `main` redespliega (solo si cambian archivos dentro de `backend/`) |
+
+**Variables de entorno en Render** (se cargan en el panel *Environment*, no se
+sube el `.env`):
+
+| Variable | Valor en producción |
+|---|---|
+| `DB_HOST` | `aws-0-us-east-1.pooler.supabase.com` (pooler de Supabase) |
+| `DB_PORT` | `5432` (pooler en modo sesión) |
+| `DB_NAME` | `postgres` |
+| `DB_USER` | `postgres.<project-ref>` |
+| `DB_PASSWORD` | contraseña de la BD (secreto, no se documenta aquí) |
+| `DB_USE_TRANSACTION_POOLER` | `false` |
+| `DB_SSL` | `true` |
+| `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `5` / `5` |
+| `DB_ECHO` | `false` |
+| `PYTHON_VERSION` | `3.11.9` |
+| `JWT_SECRET` | **Pendiente de definir** (valor largo y aleatorio) |
+| `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
+
+**Verificación del despliegue:** el log muestra `Application startup complete`
+(el `SELECT 1` del lifespan pasó, o sea que conecta con Supabase) y
+`Your service is live`. Comprobar con:
+- `https://cantinapp.onrender.com/health`
+- `https://cantinapp.onrender.com/health/db`
+- `https://cantinapp.onrender.com/docs`
+
+Los `404` en `GET /` y `HEAD /` de los logs son normales: la app no define ruta raíz.
+
+**Limitaciones del plan gratuito:**
+- El servicio se **duerme tras 15 minutos sin tráfico**; la primera petición
+  después tarda entre 30 y 60 segundos (cold start). El frontend debe mostrar
+  estado de carga y no tratarlo como error.
+- Los límites de los planes gratuitos cambian: confirmar en la página de
+  precios de Render.
+- El plan gratuito de Supabase también puede pausar proyectos tras un periodo
+  largo sin actividad.
+
+**Archivos que no deben estar en el repo** (`.gitignore` en la raíz):
+```
+venv/
+.venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+.env
+```
+Si ya se subieron, quitarlos del índice con `git rm -r --cached <ruta>`.
+
+**Estructura prevista del repo (monorepo):**
+```
+cantinapp/
+├── backend/     # Render: Root Directory = backend
+├── frontend/    # Vercel/Netlify: Root Directory = frontend
+├── db/
+└── README.md
+```
+
+### Pendientes de seguridad
+
+- **Rotar la contraseña de la BD en Supabase** y actualizar `DB_PASSWORD` en
+  Render y en el `.env` local (se compartió en texto plano durante la
+  configuración y podría estar en el historial de GitHub si el `.env` se subió).
+- **Definir `JWT_SECRET` en Render.** Si no se define, se usa el valor por
+  defecto `dev-secret-change-me`, que es público en el código y permitiría
+  falsificar tokens.
+- **Restringir `CORS_ORIGINS`** al origen real del frontend (el valor por
+  defecto `["*"]` permite cualquier origen). `allow_credentials` está en
+  `False`, coherente con autenticación por header Bearer.
+- `/health/db` es público y expone nombre de la BD, versión del servidor y
+  número de tablas; protegerlo o retirarlo antes de usar datos reales.
+- `scripts/check_db.py` importa `app.infrastructure.database` (ruta antigua);
+  la correcta es `app.shared.infrastructure.database`. No afecta al despliegue.
+
 ---
 
 ## 10. Notas para el frontend
 
+- **URL base de la API:** `https://cantinapp.onrender.com` (guardarla en una
+  variable de entorno del frontend, ej. `VITE_API_URL`, nunca fija en el código).
+- Usar siempre `https://` (un frontend en HTTPS no puede llamar a un backend HTTP).
 - Autenticación Bearer; guardar el token y enviarlo en `Authorization`.
+- Las rutas llevan prefijo `/api` (ej. `POST /api/auth/register`).
 - Todo el aislamiento lo garantiza el backend: no enviar `business_id`.
 - Fechas en ISO `YYYY-MM-DD`.
 - El stock no se edita directo: usar `POST /api/inventory/movements`.
@@ -338,4 +443,14 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
   histórico).
 - Recomendación y alertas dependen de que exista una predicción; la recomendación
   la genera sola, las alertas requieren `POST /api/alerts/generate`.
-- CORS configurable vía `CORS_ORIGINS` (añadir el origen del frontend).
+- CORS configurable vía `CORS_ORIGINS` en Render (añadir el origen exacto del
+  frontend: esquema + dominio + puerto, sin barra final).
+- Ejemplo de llamada:
+  ```js
+  const API_URL = import.meta.env.VITE_API_URL;
+  const res = await fetch(`${API_URL}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ business_name, email, password, full_name }),
+  });
+  ```

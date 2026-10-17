@@ -1,41 +1,57 @@
-# Entornos virtuales
+# ============================================================
+# CantinAPP — lo que NO se versiona (nada de esto hace falta
+# para ejecutar el código; se regenera o es local de tu máquina)
+# ============================================================
+
+# --- Dependencias ---
+node_modules/
 venv/
 .venv/
 env/
 ENV/
 
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
-build/
-dist/
-
-# Variables de entorno (mantener los .example)
-.env
-.env.*
-!.env.example
-
-# Tests / cobertura
 .pytest_cache/
 .coverage
 htmlcov/
 .ruff_cache/
 .mypy_cache/
 
-# Node (package.json de Supabase JS, sin fuentes)
-node_modules/
+# --- Builds / artefactos (se regeneran con npm run build) ---
+build/
+dist/
+dist-ssr/
 
-# Editores / IDE
+# --- Variables de entorno (se conservan las plantillas .example) ---
+.env
+.env.*
+!.env.example
+
+# --- Herramientas locales del agente (no hacen falta para ejecutar la app) ---
+.opencode/
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Editores / IDE ---
 .idea/
 .vscode/
 *.swp
 *.swo
+*.suo
+*.njsproj
+*.sln
 
-# Sistema operativo
+# --- Sistema operativo ---
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
