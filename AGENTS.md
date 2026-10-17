@@ -1,35 +1,58 @@
 # AGENTS.md
 
-CantinAPP: backend-only (no frontend). FastAPI + async SQLAlchemy on Supabase PostgreSQL.
+CantinAPP: SaaS for small businesses (inventory + demand forecasting). Monorepo:
+- `backend/`: FastAPI + async SQLAlchemy on Supabase PostgreSQL. MVP v0.1 complete (9 modules). Deployed on Render at `https://cantinapp.onrender.com`.
+- `frontend/`: React + Vite + React Router + Material UI. Being built on top of the deployed API.
+- `db/schema.sql`: source of truth for the database schema.
 
-## Current state (read before assuming anything)
-- Early scaffold. Only these Python files contain code:
-  - `backend/app/main.py` (app + `/health`, `/health/db`)
-  - `backend/app/core/config.py` (pydantic-settings)
-  - `backend/app/shared/infrastructure/database.py` (engine/session)
-- Every file under `backend/app/modules/<name>/` and most of `backend/app/shared/` is an **empty stub**. Do not assume endpoints, entities, or CQRS handlers exist.
-- No tests/lint/typecheck are configured: `pyproject.toml`, `requirements-dev.txt`, `tests/conftest.py` are empty; pytest is not installed. Don't invent commands.
-- `backend/package.json` pulls Supabase JS SDKs but there is **no JS/TS source** in the repo; it is unrelated to the Python backend.
+## Read first
+- `memoria.md` is the project's technical memory. Before touching the API contract, read section 7 (endpoints, request/response shapes) and section 10 (notes for the frontend). Do not guess endpoint names, fields or status codes.
+- `PRODUCT.md` and `DESIGN.md` (created by `/impeccable init`) define product context and visual direction. Read them before any UI work.
 
-## Commands (Windows PowerShell)
-Run from `backend/`:
+## Backend (run from `backend/`)
 ```powershell
-py -m venv venv                         # README says .venv; actual dir is venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate.ps1        # create the venv outside OneDrive if pip fails
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 - Must run from `backend/`: `Settings` loads `.env` from the current working directory.
-- Health checks: `http://127.0.0.1:8000/health` and `/health/db`. Swagger at `/docs`.
+- Requires a reachable Supabase PostgreSQL; `app.main` runs `SELECT 1` at startup and fails fast if it is unreachable.
+- Architecture: hexagonal + CQRS, one folder per bounded context under `backend/app/modules/<name>/` with `domain/`, `application/`, `infrastructure/`, `api/`. `get_db` yields one `AsyncSession` per request and does **not** auto-commit; handlers must call `await session.commit()`.
+- Multitenancy: every business endpoint filters by the `business_id` of the authenticated user. Never accept `business_id` from the client.
+- Stock is a cache of `inventory_movements`; it is never edited directly.
+- Do not edit secrets or `.env` files. Never print or commit credentials.
 
-## Setup requirements / gotchas
-- Requires a reachable Supabase PostgreSQL. Run `db/schema.sql` in the Supabase SQL Editor first.
-- `app.main` lifespan runs `SELECT 1` at startup and **fails fast** if the DB is unreachable.
-- Create `backend/.env` from the template in the root `README.md` (`.env.example` is empty). `db_*` fields are required except those with defaults.
-- `backend/scripts/check_db.py` is **broken**: it imports `app.infrastructure.database`, but the real module is `app.shared.infrastructure.database`.
-- `db/schema.sql` is the source of truth for the schema: multitenancy via `business_id` + composite FKs, `products.stock_quantity` is a cache changed only through `inventory_movements`, inventory status is a view (`v_inventory`), products use soft delete (`is_active`).
+## Frontend (run from `frontend/`)
+```powershell
+npm install
+npm run dev      # http://localhost:5173
+npm run lint
+npm run build
+```
+- API base URL comes from `VITE_API_URL` (`frontend/.env`), never hardcoded. All routes are under `/api`.
+- Auth: JWT sent as `Authorization: Bearer <token>`. On a `401`, clear the session and redirect to `/login`.
+- The first request after inactivity can take 30-60 seconds (Render free tier cold start). Always show a loading state; do not treat it as an error with a short timeout.
+- Stack is fixed: React, Vite, React Router, Material UI. Do not add other UI libraries. Add any dependency only with a clear benefit.
 
-## Architecture intent
-- Hexagonal + CQRS, one folder per bounded context under `backend/app/modules/<name>/` with `domain/`, `application/`, `infrastructure/`, `api/`. Shared base pieces live in `backend/app/shared/`.
-- Modules: `auth, products, inventory, sales, forecasting, recommendations, dashboard, analytics, alerts`.
-- `get_db` yields one `AsyncSession` per request and does **not** auto-commit; application handlers must call `await session.commit()` explicitly.
+## Design
+- Establish a distinctive visual direction before coding, following `DESIGN.md`, frontend-design and Impeccable.
+- All visual decisions go through a single MUI theme (`src/theme.js`): palette, typography, shape, spacing and component overrides. No loose colors, fonts or border radii inside components.
+- Avoid generic AI-generated layouts and repetitive card grids. Do not default to purple gradients, glassmorphism or oversized rounded cards.
+- Use intentional typography, spacing, hierarchy and a coherent color system. Override MUI's default look (Roboto, default blue, heavy elevation).
+- Every data view must cover loading, empty and error states.
+- Layouts must be responsive and accessible (semantic HTML, keyboard support, contrast, `prefers-reduced-motion`).
+- Preserve the existing design system when modifying existing screens.
+
+## React
+- Reuse existing components before creating new ones. Keep components focused.
+- Avoid unnecessary state, effects, re-renders and abstractions (follow Ponytail for logic).
+- Prefer lightweight CSS and browser-native capabilities. Lazy-load non-critical code and images.
+- Never sacrifice accessibility or correctness for a smaller bundle.
+
+## Workflow
+1. Inspect the existing project before editing.
+2. Establish the design direction and a short implementation plan.
+3. Implement the smallest complete solution.
+4. Run `npm run lint` and `npm run build` (frontend) or `python -m pytest` (backend) when relevant.
+5. Check responsive layout, accessibility and performance.
+6. Report what changed and any remaining issues.
