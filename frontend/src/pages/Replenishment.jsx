@@ -37,17 +37,17 @@ export default function Replenishment() {
     ;(async () => {
       try {
         const forecast = await forecastingApi.create({
-          product_id: Number(productId),
+          product_id: productId,
           forecast_days: Number(forecastDays),
           model,
         })
         const [recommendation, history] = await Promise.all([
           recommendationsApi.create({
-            product_id: Number(productId),
+            product_id: productId,
             forecast_days: Number(forecastDays),
           }),
           analyticsApi.sales({
-            product_id: Number(productId),
+            product_id: productId,
             period: 'daily',
             date_from: daysAgoISO(Math.min(365, (forecast.history_days || 30) + 5)),
             date_to: todayISO(),

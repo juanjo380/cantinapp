@@ -194,7 +194,7 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
     setServerError('')
     try {
       await salesApi.create({
-        product_id: Number(form.product_id),
+        product_id: form.product_id,
         sale_date: form.sale_date,
         quantity: Number(form.quantity),
         unit_price: form.unit_price === '' ? undefined : Number(form.unit_price),
