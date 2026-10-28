@@ -12,8 +12,8 @@ function qs(params = {}) {
 }
 
 export const authApi = {
-  register: (body) => request('/auth/register', { method: 'POST', body }),
-  login: (body) => request('/auth/login', { method: 'POST', body }),
+  register: (body) => request('/auth/register', { method: 'POST', body, auth: false }),
+  login: (body) => request('/auth/login', { method: 'POST', body, auth: false }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
 }

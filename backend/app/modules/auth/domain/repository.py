@@ -10,7 +10,9 @@ class UserRepository(Protocol):
 
     async def get_by_id(self, user_id: UUID) -> User | None: ...
 
-    async def get_password_hash(self, email: str) -> str | None: ...
+    async def get_credentials(self, email: str) -> tuple[User, str] | None:
+        """Usuario y hash de contraseña en una sola consulta (login)."""
+        ...
 
     async def add(
         self, *, business_id: UUID, email: str, password_hash: str, full_name: str | None

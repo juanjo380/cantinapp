@@ -71,6 +71,8 @@ def decode_access_token(token: str) -> dict:
     if not hmac.compare_digest(expected, _b64url_decode(signature_seg)):
         raise ValueError("firma inválida")
     payload = json.loads(_b64url_decode(payload_seg))
+    if not isinstance(payload, dict) or not payload.get("sub"):
+        raise ValueError("token sin sujeto")
     if int(payload.get("exp", 0)) < int(time.time()):
         raise ValueError("token expirado")
     return payload

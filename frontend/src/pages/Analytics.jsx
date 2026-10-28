@@ -1,14 +1,15 @@
 import { LineChart } from '@mui/x-charts/LineChart'
 import { useTheme } from '@mui/material/styles'
-import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { useState } from 'react'
-import { analyticsApi, productsApi } from '../api/helper'
+import { analyticsApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
+import SelectField from '../components/ui/SelectField'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
+import { useProductOptions } from '../hooks/useProductOptions'
 import { daysAgoISO, formatCOP, formatNumber, todayISO } from '../utils/format'
 
 const PERIODS = [
@@ -26,7 +27,7 @@ export default function Analytics() {
   const [productId, setProductId] = useState('')
   const [metric, setMetric] = useState('units')
 
-  const products = useApi(() => productsApi.list({ active_only: true, limit: 200, sort: 'name' }), [])
+  const products = useProductOptions()
   const series = useApi(
     () =>
       analyticsApi.sales({
@@ -50,30 +51,23 @@ export default function Analytics() {
   const values = (series.data?.series ?? []).map((point) =>
     metric === 'units' ? point.units : point.revenue,
   )
-  const productOptions = products.data?.items ?? []
 
   return (
     <>
       <PageHeader title="Análisis" subtitle="Cómo se mueven tus ventas en el período." />
 
       <div className="filter-row items-end">
-        <TextField size="small" select label="Período" value={period} onChange={(e) => setPeriod(e.target.value)} className="min-w-36">
-          {PERIODS.map(([value, label]) => (
-            <MenuItem key={value} value={value}>
-              {label}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-        <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-        <TextField size="small" select label="Producto" value={productId} onChange={(e) => setProductId(e.target.value)} className="min-w-48">
-          <MenuItem value="">Todos</MenuItem>
-          {productOptions.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        <SelectField size="small" label="Período" options={PERIODS} value={period} onChange={setPeriod} className="min-w-36" />
+        <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => setDateTo(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <SelectField
+          size="small"
+          label="Producto"
+          options={[['', 'Todos'], ...products.items.map((p) => [p.id, p.name])]}
+          value={productId}
+          onChange={setProductId}
+          className="min-w-48"
+        />
         <ToggleButtonGroup
           size="small"
           exclusive

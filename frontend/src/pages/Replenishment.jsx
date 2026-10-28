@@ -1,15 +1,16 @@
 import Button from '@mui/material/Button'
-import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { useTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { analyticsApi, forecastingApi, productsApi, recommendationsApi } from '../api/helper'
+import { analyticsApi, forecastingApi, recommendationsApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
+import SelectField from '../components/ui/SelectField'
+import StatCard from '../components/ui/StatCard'
 import { ProvenanceStamp, UrgencyStamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
-import { useApi } from '../hooks/useApi'
+import { useProductOptions } from '../hooks/useProductOptions'
 import { daysAgoISO, formatPercent, todayISO } from '../utils/format'
 
 const MODELS = [
@@ -24,8 +25,8 @@ export default function Replenishment() {
   const [model, setModel] = useState('MOVING_AVERAGE')
   const [result, setResult] = useState({ status: 'idle' })
 
-  const products = useApi(() => productsApi.list({ active_only: true, limit: 200, sort: 'name' }), [])
-  const productOptions = products.data?.items ?? []
+  const products = useProductOptions()
+  const productOptions = products.items
 
   useEffect(() => {
     if (!productId) {
@@ -72,38 +73,24 @@ export default function Replenishment() {
       />
 
       <div className="filter-row items-end">
-        <TextField
+        <SelectField
           size="small"
-          select
           label="Producto"
+          options={[['', 'Elige un producto'], ...productOptions.map((p) => [p.id, p.name])]}
           value={productId}
-          onChange={(e) => setProductId(e.target.value)}
+          onChange={setProductId}
           className="min-w-56"
-        >
-          <MenuItem value="">Elige un producto</MenuItem>
-          {productOptions.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        />
         <TextField
           size="small"
           type="number"
           label="Días a predecir"
           value={forecastDays}
           onChange={(e) => setForecastDays(e.target.value)}
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 365 } }}
           className="w-36"
-          inputProps={{ min: 1, max: 365 }}
         />
-        <TextField size="small" select label="Modelo" value={model} onChange={(e) => setModel(e.target.value)} className="min-w-44">
-          {MODELS.map(([value, label]) => (
-            <MenuItem key={value} value={value}>
-              {label}
-            </MenuItem>
-          ))}
-        </TextField>
+        <SelectField size="small" label="Modelo" options={MODELS} value={model} onChange={setModel} className="min-w-44" />
       </div>
 
       {products.loading && <Loading label="Cargando productos…" />}
@@ -194,9 +181,9 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
       </section>
 
       <section aria-label="Predicción" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Metric label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
-        <Metric label="Historial usado" value={`${forecast.history_days} días`} hint="Base de la predicción" />
-        <Metric label="Confianza" value={formatPercent(forecast.confidence)} hint="0 % a 100 %" />
+        <StatCard variant="inset" label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
+        <StatCard variant="inset" label="Historial usado" value={`${forecast.history_days} días`} hint="Base de la predicción" />
+        <StatCard variant="inset" label="Confianza" value={formatPercent(forecast.confidence)} hint="0 % a 100 %" />
       </section>
 
       <section aria-label="Recomendación de compra" className="surface p-5">
@@ -208,10 +195,10 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
         <p className="mb-4 text-sm text-ink-soft">{recommendation.justification}</p>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Metric label="Comprar" value={`${recommendation.suggested_quantity} u.`} strong />
-          <Metric label="Cobertura" value={`${recommendation.coverage_days} días`} />
-          <Metric label="Stock actual" value={`${recommendation.current_stock} u.`} />
-          <Metric label="Stock mínimo" value={`${recommendation.min_stock} u.`} />
+          <StatCard variant="inset" label="Comprar" value={`${recommendation.suggested_quantity} u.`} strong />
+          <StatCard variant="inset" label="Cobertura" value={`${recommendation.coverage_days} días`} />
+          <StatCard variant="inset" label="Stock actual" value={`${recommendation.current_stock} u.`} />
+          <StatCard variant="inset" label="Stock mínimo" value={`${recommendation.min_stock} u.`} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -221,18 +208,6 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
           <ProvenanceStamp date={recommendation.created_at} />
         </div>
       </section>
-    </div>
-  )
-}
-
-function Metric({ label, value, hint, strong }) {
-  return (
-    <div className="surface-inset p-4">
-      <p className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">{label}</p>
-      <p className={`mt-1 font-mono ${strong ? 'text-2xl font-bold text-brand' : 'text-lg font-semibold text-ink'}`}>
-        {value}
-      </p>
-      {hint && <p className="text-xs text-ink-soft">{hint}</p>}
     </div>
   )
 }

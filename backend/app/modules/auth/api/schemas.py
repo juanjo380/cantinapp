@@ -26,7 +26,7 @@ class RegisterRequest(_EmailMixin):
 
 
 class LoginRequest(_EmailMixin):
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class UserOut(BaseModel):

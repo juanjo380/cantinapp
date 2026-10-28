@@ -1,157 +1,126 @@
+import AddIcon from '@mui/icons-material/Add'
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import MenuItem from '@mui/material/MenuItem'
 import Switch from '@mui/material/Switch'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TablePagination from '@mui/material/TablePagination'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { productsApi, salesApi } from '../api/helper'
+import { salesApi } from '../api/helper'
+import DataTable from '../components/ui/DataTable'
+import FormDialog from '../components/ui/FormDialog'
 import PageHeader from '../components/ui/PageHeader'
-import { Empty, ErrorView, Loading } from '../components/ui/States'
+import SelectField from '../components/ui/SelectField'
 import { Stamp } from '../components/ui/Stamp'
+import { Empty, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
+import { usePagination } from '../hooks/usePagination'
+import { useProductOptions } from '../hooks/useProductOptions'
 import { formatCOP, formatDate, todayISO } from '../utils/format'
+
+const dateLabel = { inputLabel: { shrink: true } }
+
+const SALE_COLUMNS = [
+  { key: 'sale_date', header: 'Fecha', render: (s) => formatDate(s.sale_date) },
+  { key: 'product_name', header: 'Producto' },
+  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true },
+  { key: 'unit_price', header: 'Precio unit.', align: 'right', mono: true, hideOnMobile: true, render: (s) => formatCOP(s.unit_price) },
+  { key: 'total_amount', header: 'Total', align: 'right', mono: true, render: (s) => formatCOP(s.total_amount) },
+  {
+    key: 'source',
+    header: 'Origen',
+    render: (s) => <Stamp tone={s.source === 'CSV' ? 'neutral' : 'ok'}>{s.source === 'CSV' ? 'CSV' : 'Manual'}</Stamp>,
+  },
+]
+
+const CSV_ERROR_COLUMNS = [
+  { key: 'row', header: 'Fila', mono: true },
+  { key: 'field', header: 'Campo' },
+  { key: 'message', header: 'Mensaje' },
+]
 
 export default function Sales() {
   const [productId, setProductId] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(20)
+  const pager = usePagination()
   const [dialog, setDialog] = useState(null)
   const [notice, setNotice] = useState(null)
 
-  const products = useApi(() => productsApi.list({ active_only: true, limit: 200, sort: 'name' }), [])
+  const products = useProductOptions()
   const { data, loading, error, reload } = useApi(
     () =>
       salesApi.list({
         product_id: productId || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
-        limit: rowsPerPage,
-        offset: page * rowsPerPage,
+        ...pager.params,
       }),
-    [productId, dateFrom, dateTo, page, rowsPerPage],
+    [productId, dateFrom, dateTo, pager.page, pager.rowsPerPage],
   )
 
-  const items = data?.items ?? []
-  const productOptions = products.data?.items ?? []
+  const filter = (setter) => (value) => {
+    setter(value)
+    pager.reset()
+  }
 
   return (
     <>
       <PageHeader title="Ventas" subtitle="Registra una venta o carga tu historial por CSV.">
-        <Button variant="outlined" onClick={() => setDialog('csv')}>
+        <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setDialog('csv')}>
           Cargar CSV
         </Button>
-        <Button variant="contained" onClick={() => setDialog('manual')} disabled={productOptions.length === 0}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setDialog('manual')}
+          disabled={products.items.length === 0}
+        >
           Registrar venta
         </Button>
       </PageHeader>
 
-      {products.data && productOptions.length === 0 && (
+      {products.data && products.items.length === 0 && (
         <Alert severity="info" className="mb-4">
           Registra productos primero para poder registrar ventas.
         </Alert>
       )}
 
       <div className="filter-row">
-        <TextField size="small" select label="Producto" value={productId} onChange={(e) => { setProductId(e.target.value); setPage(0) }} className="min-w-56">
-          <MenuItem value="">Todos</MenuItem>
-          {productOptions.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(0) }} InputLabelProps={{ shrink: true }} />
-        <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(0) }} InputLabelProps={{ shrink: true }} />
+        <SelectField
+          size="small"
+          label="Producto"
+          options={[['', 'Todos'], ...products.items.map((p) => [p.id, p.name])]}
+          value={productId}
+          onChange={filter(setProductId)}
+          className="min-w-56"
+        />
+        <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => filter(setDateFrom)(e.target.value)} slotProps={dateLabel} />
+        <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => filter(setDateTo)(e.target.value)} slotProps={dateLabel} />
       </div>
 
-      {notice && (
-        <Alert severity={notice.severity} className="mb-4" onClose={() => setNotice(null)}>
-          {notice.text}
-        </Alert>
-      )}
+      <Notice notice={notice} onClose={() => setNotice(null)} />
 
-      {loading && <Loading label="Cargando ventas…" />}
-      {error && !loading && <ErrorView error={error} onRetry={reload} />}
-
-      {!loading && !error && items.length === 0 && (
-        <Empty title="Sin ventas en este rango">
-          Registra una venta o carga tu historial por CSV para ver datos aquí.
-        </Empty>
-      )}
-
-      {!loading && !error && items.length > 0 && (
-        <div className="surface overflow-hidden">
-          <TableContainer>
-            <Table size="small" aria-label="Ventas">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Producto</TableCell>
-                  <TableCell align="right">Cantidad</TableCell>
-                  <TableCell align="right">Precio unit.</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Origen</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((sale) => (
-                  <TableRow key={sale.id} hover>
-                    <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                    <TableCell>{sale.product_name}</TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {sale.quantity}
-                    </TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {formatCOP(sale.unit_price)}
-                    </TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {formatCOP(sale.total_amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Stamp tone={sale.source === 'CSV' ? 'neutral' : 'ok'}>
-                        {sale.source === 'CSV' ? 'CSV' : 'Manual'}
-                      </Stamp>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <TablePagination
-            component="div"
-            count={data.total ?? items.length}
-            page={page}
-            onPageChange={(_, next) => setPage(next)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10))
-              setPage(0)
-            }}
-            rowsPerPageOptions={[10, 20, 50]}
-            labelRowsPerPage="Filas"
-            labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-          />
-        </div>
-      )}
+      <DataTable
+        label="Ventas"
+        columns={SALE_COLUMNS}
+        rows={data?.items}
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        pagination={{ ...pager, total: data?.total }}
+        empty={
+          <Empty title="Sin ventas en este rango">
+            Registra una venta o carga tu historial por CSV para ver datos aquí.
+          </Empty>
+        }
+      />
 
       {dialog === 'manual' && (
         <ManualSaleDialog
-          products={productOptions}
+          products={products.items}
           onClose={() => setDialog(null)}
           onSaved={(text) => {
             setDialog(null)
@@ -179,7 +148,13 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
   const [serverError, setServerError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const set = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }))
+  const field = (name) => ({
+    value: form[name],
+    onChange: (event) => setForm((f) => ({ ...f, [name]: event.target.value })),
+    error: Boolean(errors[name]),
+    helperText: errors[name],
+    fullWidth: true,
+  })
 
   async function onSave() {
     const next = {}
@@ -212,62 +187,31 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Registrar venta</DialogTitle>
-      <DialogContent className="flex flex-col gap-4 pt-2">
-        {serverError && <Alert severity="error">{serverError}</Alert>}
-        <TextField
-          select
-          label="Producto"
-          value={form.product_id}
-          onChange={set('product_id')}
-          error={Boolean(errors.product_id)}
-          helperText={errors.product_id}
-          fullWidth
-          autoFocus
-        >
-          {products.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.name} · stock {p.stock_quantity}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          type="date"
-          label="Fecha"
-          value={form.sale_date}
-          onChange={set('sale_date')}
-          error={Boolean(errors.sale_date)}
-          helperText={errors.sale_date}
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-        />
-        <TextField
-          type="number"
-          label="Cantidad"
-          value={form.quantity}
-          onChange={set('quantity')}
-          error={Boolean(errors.quantity)}
-          helperText={errors.quantity}
-          fullWidth
-        />
-        <TextField
-          type="number"
-          label="Precio unitario (opcional)"
-          value={form.unit_price}
-          onChange={set('unit_price')}
-          error={Boolean(errors.unit_price)}
-          helperText={errors.unit_price || 'Si lo dejas vacío, se usa el precio del producto.'}
-          fullWidth
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" onClick={onSave} disabled={saving}>
-          {saving ? 'Guardando…' : 'Registrar'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <FormDialog
+      title="Registrar venta"
+      icon={<PointOfSaleIcon />}
+      onClose={onClose}
+      onSubmit={onSave}
+      submitLabel="Registrar"
+      submitting={saving}
+      error={serverError}
+    >
+      <SelectField
+        label="Producto"
+        options={products.map((p) => [p.id, `${p.name} · stock ${p.stock_quantity}`])}
+        {...field('product_id')}
+        onChange={(value) => setForm((f) => ({ ...f, product_id: value }))}
+        autoFocus
+      />
+      <TextField type="date" label="Fecha" {...field('sale_date')} slotProps={dateLabel} />
+      <TextField type="number" label="Cantidad" {...field('quantity')} />
+      <TextField
+        type="number"
+        label="Precio unitario (opcional)"
+        {...field('unit_price')}
+        helperText={errors.unit_price || 'Si lo dejas vacío, se usa el precio del producto.'}
+      />
+    </FormDialog>
   )
 }
 
@@ -297,75 +241,52 @@ function CsvImportDialog({ onClose, onDone }) {
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle> Cargar historial por CSV</DialogTitle>
-      <DialogContent className="flex flex-col gap-4 pt-2">
-        {error && <Alert severity="error">{error}</Alert>}
-        <div className="rounded-md border border-line bg-ground p-3.5 text-sm text-ink-soft">
-          <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
-          <p>
-            <span className="font-mono">product</span> (o{' '}
-            <span className="font-mono">product_id</span>),{' '}
-            <span className="font-mono">date</span> (YYYY-MM-DD o DD/MM/YYYY),{' '}
-            <span className="font-mono">quantity</span>, y opcional{' '}
-            <span className="font-mono">unit_price</span>.
-          </p>
-        </div>
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-sm file:border file:border-line file:bg-panel file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ink"
-        />
-        <FormControlLabel
-          control={<Switch checked={affectsInventory} onChange={(e) => setAffectsInventory(e.target.checked)} />}
-          label="Descontar del inventario"
-        />
-        <p className="text-xs text-ink-soft">
-          Por defecto está apagado: el CSV es historial y no descuenta stock. Actívalo solo si esas
-          ventas ya salieron de tu inventario.
+    <FormDialog
+      title="Cargar historial por CSV"
+      icon={<UploadFileIcon />}
+      maxWidth="md"
+      onClose={onClose}
+      onSubmit={onUpload}
+      submitLabel="Cargar CSV"
+      submittingLabel="Subiendo…"
+      submitting={loading}
+      cancelLabel={result ? 'Cerrar' : 'Cancelar'}
+      error={error}
+    >
+      <div className="rounded-md border border-line bg-ground p-3.5 text-sm text-ink-soft">
+        <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
+        <p>
+          <span className="font-mono">product</span> (o <span className="font-mono">product_id</span>),{' '}
+          <span className="font-mono">date</span> (YYYY-MM-DD o DD/MM/YYYY),{' '}
+          <span className="font-mono">quantity</span>, y opcional <span className="font-mono">unit_price</span>.
         </p>
+      </div>
+      <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} className="self-start">
+        {file ? file.name : 'Elegir archivo CSV'}
+        <input type="file" hidden accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      </Button>
+      <FormControlLabel
+        control={<Switch checked={affectsInventory} onChange={(e) => setAffectsInventory(e.target.checked)} />}
+        label="Descontar del inventario"
+      />
+      <p className="text-xs text-ink-soft">
+        Por defecto está apagado: el CSV es historial y no descuenta stock. Actívalo solo si esas ventas ya
+        salieron de tu inventario.
+      </p>
 
-        {result && (
-          <div className="flex flex-col gap-3">
-            <Alert severity={result.error_rows > 0 ? 'warning' : 'success'}>
-              {result.imported_rows} de {result.total_rows} filas importadas; {result.error_rows} con
-              error.
-            </Alert>
-            {result.errors?.length > 0 && (
-              <TableContainer className="max-h-64">
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Fila</TableCell>
-                      <TableCell>Campo</TableCell>
-                      <TableCell>Mensaje</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {result.errors.map((e, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-mono">{e.row}</TableCell>
-                        <TableCell>{e.field}</TableCell>
-                        <TableCell>{e.message}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-            <RouterLink to="/reabastecimiento" className="text-sm font-semibold text-brand underline">
-              Continuar a Reabastecimiento
-            </RouterLink>
-          </div>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{result ? 'Cerrar' : 'Cancelar'}</Button>
-        <Button variant="contained" onClick={onUpload} disabled={loading}>
-          {loading ? 'Subiendo…' : 'Cargar CSV'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      {result && (
+        <div className="flex flex-col gap-3">
+          <Alert severity={result.error_rows > 0 ? 'warning' : 'success'}>
+            {result.imported_rows} de {result.total_rows} filas importadas; {result.error_rows} con error.
+          </Alert>
+          {result.errors?.length > 0 && (
+            <DataTable label="Errores del CSV" columns={CSV_ERROR_COLUMNS} rows={result.errors} maxHeight={256} />
+          )}
+          <RouterLink to="/reabastecimiento" className="text-sm font-semibold text-brand underline">
+            Continuar a Reabastecimiento
+          </RouterLink>
+        </div>
+      )}
+    </FormDialog>
   )
 }
