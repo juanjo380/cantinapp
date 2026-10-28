@@ -91,9 +91,10 @@ function AuthProvider({ children }) {
         setUser(me)
         localStorage.setItem(USER_KEY, JSON.stringify(me))
       })
-      .catch(() => {
-        if (alive) clear()
-      })
+      // Un 401 del token vigente ya cierra la sesión vía 'cantinapp:unauthorized'. Aquí no se limpia:
+      // si /me tarda (cold start) y el usuario entra mientras tanto, borraría el token nuevo; y un fallo
+      // de red no significa que la sesión sea inválida.
+      .catch(() => {})
       .finally(() => {
         if (alive) setInitializing(false)
       })

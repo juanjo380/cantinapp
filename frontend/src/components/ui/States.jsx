@@ -1,3 +1,4 @@
+import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined'
@@ -38,6 +39,16 @@ export function Empty({ title, children, action, icon }) {
       {children && <div className="max-w-md text-sm text-ink-soft">{children}</div>}
       {action && <div className="mt-1">{action}</div>}
     </div>
+  )
+}
+
+// Aviso descartable tras una acción: notice = { severity, text } o null.
+export function Notice({ notice, onClose }) {
+  if (!notice) return null
+  return (
+    <Alert severity={notice.severity} className="mb-4" onClose={onClose}>
+      {notice.text}
+    </Alert>
   )
 }
 

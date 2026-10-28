@@ -30,9 +30,10 @@ function messageFrom(data, status) {
 }
 
 // `path` va sin el prefijo /api: se agrega aquí.
-export async function request(path, { method = 'GET', body, formData, signal } = {}) {
+// `auth: false` en login/registro: un token viejo guardado no debe viajar ni convertir un 401 de credenciales en "sesión expirada".
+export async function request(path, { method = 'GET', body, formData, signal, auth = true } = {}) {
   const headers = {}
-  const token = getToken()
+  const token = auth ? getToken() : null
   if (token) headers.Authorization = `Bearer ${token}`
   let payload
   if (formData) {
@@ -50,11 +51,6 @@ export async function request(path, { method = 'GET', body, formData, signal } =
     throw new ApiError('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.', 0, null)
   }
 
-  if (res.status === 401) {
-    setToken(null)
-    window.dispatchEvent(new Event('cantinapp:unauthorized'))
-    throw new ApiError('Tu sesión expiró. Inicia sesión de nuevo.', 401, null)
-  }
   if (res.status === 204) return null
 
   const text = await res.text()
@@ -65,6 +61,16 @@ export async function request(path, { method = 'GET', body, formData, signal } =
     } catch {
       data = text
     }
+  }
+
+  if (res.status === 401 && token) {
+    // Solo cierra la sesión si el 401 es del token vigente: un 401 tardío de un token
+    // viejo (p. ej. durante el cold start) no debe borrar un login recién hecho.
+    if (token === getToken()) {
+      setToken(null)
+      window.dispatchEvent(new Event('cantinapp:unauthorized'))
+    }
+    throw new ApiError('Tu sesión expiró. Inicia sesión de nuevo.', 401, data)
   }
   if (!res.ok) throw new ApiError(messageFrom(data, res.status), res.status, data)
   return data

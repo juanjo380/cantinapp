@@ -28,3 +28,7 @@ class ConflictError(AppError):
 
 class UnprocessableError(AppError):
     status_code = 422
+
+
+class TooManyRequestsError(AppError):
+    status_code = 429

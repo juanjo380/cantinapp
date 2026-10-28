@@ -64,12 +64,8 @@ async def health():
 @app.get("/health/db")
 async def health_db(db: AsyncSession = Depends(get_db)):
     try:
-        info = (await db.execute(text("SELECT current_database() AS db, version() AS version"))).one()
-        tables = (
-            await db.execute(
-                text("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'")
-            )
-        ).scalar_one()
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=503, detail=f"Base de datos no disponible: {exc.__class__.__name__}")
-    return {"status": "ok", "database": info.db, "public_tables": tables, "server": info.version.split(",")[0]}
+        await db.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001
+        # Endpoint público: no expone versión del servidor ni detalles del error.
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+    return {"status": "ok"}

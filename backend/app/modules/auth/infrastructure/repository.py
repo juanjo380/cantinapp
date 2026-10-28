@@ -37,12 +37,13 @@ class SqlUserRepository(UserRepository):
         record = await self.session.get(UserRecord, user_id)
         return _to_user(record) if record else None
 
-    async def get_password_hash(self, email: str) -> str | None:
-        return (
+    async def get_credentials(self, email: str) -> tuple[User, str] | None:
+        record = (
             await self.session.execute(
-                select(UserRecord.password_hash).where(func.lower(UserRecord.email) == email.lower())
+                select(UserRecord).where(func.lower(UserRecord.email) == email.lower())
             )
         ).scalar_one_or_none()
+        return (_to_user(record), record.password_hash) if record else None
 
     async def add(
         self, *, business_id: UUID, email: str, password_hash: str, full_name: str | None

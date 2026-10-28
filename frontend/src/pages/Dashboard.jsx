@@ -1,9 +1,14 @@
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
+import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined'
+import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import Button from '@mui/material/Button'
 import { useTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { Link as RouterLink } from 'react-router-dom'
 import { dashboardApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
+import StatCard from '../components/ui/StatCard'
 import { StatusStamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
@@ -27,11 +32,12 @@ export default function Dashboard() {
       {data && !loading && !error && (
         <div className="flex flex-col gap-6">
           <section aria-label="Indicadores" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Kpi label="Productos" value={formatNumber(data.total_products)} />
-            <Kpi label="Stock total" value={formatNumber(data.total_stock)} hint="Unidades" />
-            <Kpi label="Valor del inventario" value={formatCOP(data.inventory_value)} />
-            <Kpi
+            <StatCard label="Productos" icon={<Inventory2OutlinedIcon />} value={formatNumber(data.total_products)} />
+            <StatCard label="Stock total" icon={<LayersOutlinedIcon />} value={formatNumber(data.total_stock)} hint="Unidades" />
+            <StatCard label="Valor del inventario" icon={<PaidOutlinedIcon />} value={formatCOP(data.inventory_value)} />
+            <StatCard
               label="Ventas del período"
+              icon={<TrendingUpIcon />}
               value={formatCOP(data.current_period?.revenue ?? 0)}
               hint={`${formatNumber(data.current_period?.units_sold ?? 0)} unidades`}
             />
@@ -89,15 +95,5 @@ export default function Dashboard() {
         </div>
       )}
     </>
-  )
-}
-
-function Kpi({ label, value, hint }) {
-  return (
-    <div className="surface p-5">
-      <p className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
-      {hint && <p className="text-xs text-ink-soft">{hint}</p>}
-    </div>
   )
 }

@@ -50,8 +50,12 @@ async def import_sales(
     )
 
     imported = 0
+    resolved: dict[tuple[str | None, str | None], object] = {}  # un CSV repite productos: una consulta por producto
     for row in parsed:
-        product = await _resolve_product(products, command.business_id, row)
+        key = (row.product_id, row.product_name)
+        if key not in resolved:
+            resolved[key] = await _resolve_product(products, command.business_id, row)
+        product = resolved[key]
         if product is None:
             errors.append({"row": row.row_number, "field": "product", "message": "Producto no encontrado"})
             continue

@@ -1,7 +1,9 @@
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEV_JWT_SECRET = "dev-secret-change-me"
 
 
 class Settings(BaseSettings):
@@ -27,7 +29,7 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     # JWT (RF-02). En produccion define JWT_SECRET por variable de entorno.
-    jwt_secret: str = "dev-secret-change-me"  # shortcut: default de desarrollo, cambiar en prod
+    jwt_secret: str = _DEV_JWT_SECRET
     jwt_expire_minutes: int = 720
 
     # Reglas de negocio (doc 1 / RNF-04)
@@ -35,6 +37,15 @@ class Settings(BaseSettings):
     default_forecast_days: int = 30
 
     cors_origins: list[str] = ["*"]
+
+    @model_validator(mode="after")
+    def _require_real_secret_outside_dev(self) -> "Settings":
+        # Con el secreto por defecto cualquiera puede firmar tokens de cualquier usuario.
+        if self.environment != "development" and (
+            self.jwt_secret == _DEV_JWT_SECRET or len(self.jwt_secret) < 32
+        ):
+            raise ValueError("JWT_SECRET debe definirse (mínimo 32 caracteres) fuera de development")
+        return self
 
 
 @lru_cache

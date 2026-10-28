@@ -33,6 +33,9 @@ dist-ssr/
 
 # --- Herramientas locales del agente (no hacen falta para ejecutar la app) ---
 .opencode/
+.claude/
+# Grafo de graphify: caché AST, graph.json, cost.json, etc. Se regenera con /graphify.
+graphify-out/
 
 # --- Logs ---
 logs/

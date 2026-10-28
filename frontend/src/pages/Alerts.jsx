@@ -1,19 +1,17 @@
-import Alert from '@mui/material/Alert'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined'
+import NotificationsOffOutlinedIcon from '@mui/icons-material/NotificationsOffOutlined'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import Button from '@mui/material/Button'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import { useState } from 'react'
-import { alertsApi, productsApi } from '../api/helper'
+import { alertsApi } from '../api/helper'
+import DataTable, { RowAction } from '../components/ui/DataTable'
 import PageHeader from '../components/ui/PageHeader'
 import { Stamp } from '../components/ui/Stamp'
-import { Empty, ErrorView, Loading } from '../components/ui/States'
+import { Empty, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
+import { useProductOptions } from '../hooks/useProductOptions'
 import { formatDateTime, formatNumber } from '../utils/format'
 
 export default function Alerts() {
@@ -21,11 +19,11 @@ export default function Alerts() {
   const [notice, setNotice] = useState(null)
   const [generating, setGenerating] = useState(false)
 
-  const products = useApi(() => productsApi.list({ active_only: false, limit: 200, sort: 'name' }), [])
+  const products = useProductOptions({ activeOnly: false })
   const { data, loading, error, reload } = useApi(() => alertsApi.list({ status, limit: 50 }), [status])
 
-  const nameById = new Map((products.data?.items ?? []).map((p) => [p.id, p.name]))
-  const items = data?.items ?? []
+  const nameById = new Map(products.items.map((p) => [p.id, p.name]))
+  const isPending = status === 'PENDING'
 
   async function onGenerate() {
     setGenerating(true)
@@ -58,22 +56,52 @@ export default function Alerts() {
     }
   }
 
+  const columns = [
+    { key: 'product_id', header: 'Producto', render: (a) => nameById.get(a.product_id) ?? (products.loading ? '…' : 'Producto desconocido') },
+    { key: 'stock', header: 'Stock / mín.', align: 'right', mono: true, render: (a) => `${a.current_stock} / ${a.min_stock}` },
+    {
+      key: 'estimated_demand',
+      header: 'Demanda est.',
+      align: 'right',
+      mono: true,
+      hideOnMobile: true,
+      render: (a) => (a.estimated_demand != null ? formatNumber(a.estimated_demand) : '—'),
+    },
+    {
+      key: 'recommended_quantity',
+      header: 'Sugerido',
+      align: 'right',
+      mono: true,
+      render: (a) => (a.recommended_quantity != null ? `${a.recommended_quantity} u.` : '—'),
+    },
+    { key: 'created_at', header: 'Generada', hideOnMobile: true, render: (a) => formatDateTime(a.created_at) },
+    {
+      key: 'action',
+      header: isPending ? 'Acción' : 'Estado',
+      align: 'right',
+      render: (a) =>
+        isPending ? (
+          <RowAction
+            title="Marcar revisada"
+            color="success"
+            icon={<CheckCircleOutlineIcon fontSize="small" />}
+            onClick={() => onReview(a.id)}
+          />
+        ) : (
+          <Stamp tone="ok">Revisada</Stamp>
+        ),
+    },
+  ]
+
   return (
     <>
-      <PageHeader
-        title="Alertas"
-        subtitle="El Sistema no vigila solo: genera las alertas cuando tú lo pides."
-      >
-        <Button variant="contained" onClick={onGenerate} disabled={generating}>
+      <PageHeader title="Alertas" subtitle="El Sistema no vigila solo: genera las alertas cuando tú lo pides.">
+        <Button variant="contained" startIcon={<RefreshIcon />} onClick={onGenerate} disabled={generating}>
           {generating ? 'Actualizando…' : 'Actualizar alertas'}
         </Button>
       </PageHeader>
 
-      {notice && (
-        <Alert severity={notice.severity} className="mb-4" onClose={() => setNotice(null)}>
-          {notice.text}
-        </Alert>
-      )}
+      <Notice notice={notice} onClose={() => setNotice(null)} />
 
       <Tabs
         value={status}
@@ -85,64 +113,24 @@ export default function Alerts() {
         <Tab value="REVIEWED" label="Revisadas" />
       </Tabs>
 
-      {loading && <Loading label="Cargando alertas…" />}
-      {error && !loading && <ErrorView error={error} onRetry={reload} />}
-
-      {!loading && !error && items.length === 0 && (
-        <Empty title={status === 'PENDING' ? 'No hay alertas pendientes' : 'Todavía no has revisado alertas'}>
-          {status === 'PENDING'
-            ? 'Pulsa "Actualizar alertas" para revisar el stock y crear alertas de los productos bajos.'
-            : 'Las alertas que marques como revisadas aparecerán aquí.'}
-        </Empty>
-      )}
-
-      {!loading && !error && items.length > 0 && (
-        <div className="surface overflow-hidden">
-          <TableContainer>
-            <Table size="small" aria-label="Alertas">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Producto</TableCell>
-                  <TableCell align="right">Stock / mín.</TableCell>
-                  <TableCell align="right">Demanda est.</TableCell>
-                  <TableCell align="right">Sugerido</TableCell>
-                  <TableCell>Generada</TableCell>
-                  {status === 'PENDING' && <TableCell align="right">Acción</TableCell>}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((alert) => (
-                  <TableRow key={alert.id} hover>
-                    <TableCell>{nameById.get(alert.product_id) ?? `Producto #${alert.product_id}`}</TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {alert.current_stock} / {alert.min_stock}
-                    </TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {alert.estimated_demand != null ? formatNumber(alert.estimated_demand) : '—'}
-                    </TableCell>
-                    <TableCell align="right" className="font-mono">
-                      {alert.recommended_quantity != null ? `${alert.recommended_quantity} u.` : '—'}
-                    </TableCell>
-                    <TableCell>{formatDateTime(alert.created_at)}</TableCell>
-                    {status === 'PENDING' && (
-                      <TableCell align="right">
-                        <Button size="small" onClick={() => onReview(alert.id)}>
-                          Marcar revisada
-                        </Button>
-                      </TableCell>
-                    )}
-                    {status === 'REVIEWED' && (
-                      <TableCell align="right">
-                        <Stamp tone="ok">Revisada</Stamp>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </div>
-      )}
+      <DataTable
+        label="Alertas"
+        columns={columns}
+        rows={data?.items}
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        empty={
+          <Empty
+            icon={<NotificationsOffOutlinedIcon />}
+            title={isPending ? 'No hay alertas pendientes' : 'Todavía no has revisado alertas'}
+          >
+            {isPending
+              ? 'Pulsa "Actualizar alertas" para revisar el stock y crear alertas de los productos bajos.'
+              : 'Las alertas que marques como revisadas aparecerán aquí.'}
+          </Empty>
+        }
+      />
     </>
   )
 }
