@@ -1,10 +1,15 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import LockIcon from '@mui/icons-material/LockOutlined'
+import MailIcon from '@mui/icons-material/MailOutlined'
+import PersonIcon from '@mui/icons-material/PersonOutlined'
+import StoreIcon from '@mui/icons-material/StorefrontOutlined'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import AuthShell from '../components/auth/AuthShell'
+import IconField, { PasswordField } from '../components/ui/IconField'
 
 export default function Register() {
   const { register } = useAuth()
@@ -52,7 +57,7 @@ export default function Register() {
       footer={
         <>
           ¿Ya tienes cuenta?{' '}
-          <RouterLink to="/login" className="font-semibold text-brand underline underline-offset-2">
+          <RouterLink to="/login" className="sketch-link">
             Inicia sesión
           </RouterLink>
         </>
@@ -60,7 +65,8 @@ export default function Register() {
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {serverError && <Alert severity="error">{serverError}</Alert>}
-        <TextField
+        <IconField
+          icon={<StoreIcon fontSize="small" />}
           label="Nombre del negocio"
           value={form.business_name}
           onChange={set('business_name')}
@@ -69,14 +75,16 @@ export default function Register() {
           autoComplete="organization"
           fullWidth
         />
-        <TextField
+        <IconField
+          icon={<PersonIcon fontSize="small" />}
           label="Tu nombre (opcional)"
           value={form.full_name}
           onChange={set('full_name')}
           autoComplete="name"
           fullWidth
         />
-        <TextField
+        <IconField
+          icon={<MailIcon fontSize="small" />}
           label="Correo"
           type="email"
           value={form.email}
@@ -86,9 +94,9 @@ export default function Register() {
           autoComplete="email"
           fullWidth
         />
-        <TextField
+        <PasswordField
+          icon={<LockIcon fontSize="small" />}
           label="Contraseña"
-          type="password"
           value={form.password}
           onChange={set('password')}
           error={Boolean(errors.password)}
@@ -96,7 +104,7 @@ export default function Register() {
           autoComplete="new-password"
           fullWidth
         />
-        <Button type="submit" variant="contained" size="large" disabled={loading}>
+        <Button type="submit" variant="contained" size="large" disabled={loading} endIcon={<ArrowForwardIcon />}>
           {loading ? 'Creando…' : 'Crear cuenta'}
         </Button>
       </form>

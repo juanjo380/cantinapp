@@ -1,6 +1,7 @@
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import Button from '@mui/material/Button'
 import { useTheme } from '@mui/material/styles'
@@ -8,6 +9,7 @@ import { LineChart } from '@mui/x-charts/LineChart'
 import { Link as RouterLink } from 'react-router-dom'
 import { dashboardApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
+import Section from '../components/ui/Section'
 import StatCard from '../components/ui/StatCard'
 import { StatusStamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
@@ -21,7 +23,7 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader title="Dashboard" subtitle="El estado de tu negocio y tus ventas del período.">
-        <Button component={RouterLink} to="/reabastecimiento" variant="outlined">
+        <Button component={RouterLink} to="/reabastecimiento" variant="contained" endIcon={<AutoAwesomeIcon />}>
           Ver recomendaciones
         </Button>
       </PageHeader>
@@ -30,8 +32,8 @@ export default function Dashboard() {
       {error && !loading && <ErrorView error={error} onRetry={reload} />}
 
       {data && !loading && !error && (
-        <div className="flex flex-col gap-6">
-          <section aria-label="Indicadores" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="flex flex-col gap-8">
+          <section aria-label="Indicadores" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Productos" icon={<Inventory2OutlinedIcon />} value={formatNumber(data.total_products)} />
             <StatCard label="Stock total" icon={<LayersOutlinedIcon />} value={formatNumber(data.total_stock)} hint="Unidades" />
             <StatCard label="Valor del inventario" icon={<PaidOutlinedIcon />} value={formatCOP(data.inventory_value)} />
@@ -43,8 +45,7 @@ export default function Dashboard() {
             />
           </section>
 
-          <section aria-label="Tendencia de ventas" className="surface p-5">
-            <h2 className="mb-3 text-base font-semibold text-ink">Tendencia (últimos 30 días)</h2>
+          <Section title="Tendencia (últimos 30 días)" label="Tendencia de ventas">
             {data.trend?.length ? (
               <LineChart
                 height={300}
@@ -63,15 +64,17 @@ export default function Dashboard() {
             ) : (
               <p className="py-10 text-center text-sm text-ink-soft">Sin ventas registradas todavía.</p>
             )}
-          </section>
+          </Section>
 
-          <section aria-label="Productos con bajo stock" className="surface p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-ink">Productos que requieren abastecimiento</h2>
-              <Button size="small" component={RouterLink} to="/inventario">
+          <Section
+            title="Productos que requieren abastecimiento"
+            label="Productos con bajo stock"
+            actions={
+              <RouterLink to="/inventario" className="sketch-link text-sm">
                 Ver inventario
-              </Button>
-            </div>
+              </RouterLink>
+            }
+          >
             {data.low_stock_products?.length ? (
               <ul className="flex flex-col divide-y divide-line">
                 {data.low_stock_products.map((product) => (
@@ -91,7 +94,7 @@ export default function Dashboard() {
                 Ningún producto está por debajo de su stock mínimo.
               </Empty>
             )}
-          </section>
+          </Section>
         </div>
       )}
     </>

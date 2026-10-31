@@ -1,10 +1,13 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import LockIcon from '@mui/icons-material/LockOutlined'
+import MailIcon from '@mui/icons-material/MailOutlined'
 import { useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import AuthShell from '../components/auth/AuthShell'
+import IconField, { PasswordField } from '../components/ui/IconField'
 
 export default function Login() {
   const { login } = useAuth()
@@ -44,7 +47,7 @@ export default function Login() {
       footer={
         <>
           ¿No tienes cuenta?{' '}
-          <RouterLink to="/registro" className="font-semibold text-brand underline underline-offset-2">
+          <RouterLink to="/registro" className="sketch-link">
             Crea tu negocio
           </RouterLink>
         </>
@@ -52,7 +55,8 @@ export default function Login() {
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {serverError && <Alert severity="error">{serverError}</Alert>}
-        <TextField
+        <IconField
+          icon={<MailIcon fontSize="small" />}
           label="Correo"
           type="email"
           value={email}
@@ -62,9 +66,9 @@ export default function Login() {
           autoComplete="email"
           fullWidth
         />
-        <TextField
+        <PasswordField
+          icon={<LockIcon fontSize="small" />}
           label="Contraseña"
-          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={Boolean(errors.password)}
@@ -72,7 +76,7 @@ export default function Login() {
           autoComplete="current-password"
           fullWidth
         />
-        <Button type="submit" variant="contained" size="large" disabled={loading}>
+        <Button type="submit" variant="contained" size="large" disabled={loading} endIcon={<ArrowForwardIcon />}>
           {loading ? 'Entrando…' : 'Entrar'}
         </Button>
       </form>

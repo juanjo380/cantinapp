@@ -59,6 +59,8 @@ export const forecastingApi = {
 export const recommendationsApi = {
   create: (body) => request('/recommendations', { method: 'POST', body }),
   list: (params) => request(`/recommendations${qs(params)}`),
+  cooccurrence: (params) => request(`/recommendations/cooccurrence${qs(params)}`),
+  recomputeCooccurrence: () => request('/recommendations/cooccurrence/recompute', { method: 'POST' }),
 }
 
 export const dashboardApi = {
