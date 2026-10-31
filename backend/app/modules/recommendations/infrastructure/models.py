@@ -25,3 +25,15 @@ class RecommendationRecord(Base):
     urgency: Mapped[str]
     justification: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class CoOccurrenceRecord(Base):
+    __tablename__ = "product_cooccurrences"
+
+    business_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    product_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    related_product_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    peaks: Mapped[int]
+    hits: Mapped[int]
+    score: Mapped[Decimal] = mapped_column(Numeric(5, 4))
+    computed_at: Mapped[datetime] = mapped_column(server_default=func.now())

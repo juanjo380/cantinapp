@@ -9,7 +9,7 @@ from app.shared.infrastructure.database import engine
 
 EXPECTED = {
     "businesses", "users", "categories", "suppliers", "products", "sales_imports", "sales",
-    "inventory_movements", "forecasts", "recommendations", "alerts",
+    "inventory_movements", "forecasts", "recommendations", "product_cooccurrences", "alerts",
 }
 
 

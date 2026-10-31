@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     min_history_days: int = 30
     default_forecast_days: int = 30
 
+    # Co-ocurrencia temporal de picos (recomendaciones Fase 1)
+    cooccurrence_window_days: int = 14
+    cooccurrence_sigma: float = 2.0
+    cooccurrence_max_lag_days: int = 3
+    cooccurrence_min_hits: int = 3
+
     cors_origins: list[str] = ["*"]
 
     @model_validator(mode="after")

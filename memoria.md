@@ -280,6 +280,23 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
   < 2×lead time o stock < stock mínimo → MEDIO; resto → BAJO.
 - Cantidad sugerida = `max(0, demanda_diaria × lead_time + stock_mínimo − stock_actual)`.
 
+#### Co-ocurrencia temporal de picos (Fase 1, sin IA)
+
+| Método | Ruta | Parámetros | Respuesta |
+|---|---|---|---|
+| GET | `/cooccurrence` | `product_id` (requerido) | CoOccurrenceListOut |
+| POST | `/cooccurrence/recompute` | — | 202 (calcula en segundo plano) |
+
+- **CoOccurrenceListOut:** `{ product_id, items[{ related_product_id, related_product_name, score (0-1), hits, peaks, computed_at }] }`, ordenado por score desc.
+- Tabla `product_cooccurrences` (migración `db/migrations/001_product_cooccurrences.sql`). Cada recálculo reemplaza los pares del negocio.
+- **Algoritmo** (`recommendations/domain/cooccurrence.py`): serie diaria densa (0 sin ventas, máx. 365 días).
+  Pico de A = venta > media de los 14 días anteriores y ≥ media + 2σ. B "sube" si en el día +1..+3
+  vende más que su propia media de 14 días. `score = coincidencias / picos de A`; se descartan pares con < 3 coincidencias.
+- Umbrales por entorno: `COOCCURRENCE_WINDOW_DAYS`, `COOCCURRENCE_SIGMA`, `COOCCURRENCE_MAX_LAG_DAYS`, `COOCCURRENCE_MIN_HITS`.
+- Requiere ≥ 30 días de historial (negocio para recalcular, producto para consultar) → si no, **422**.
+- Tarea programada: `python -m scripts.recompute_cooccurrence [--business-id <uuid>]` (Render Cron Job, diario).
+- Limitación: no descuenta subidas generales del negocio (quincena, festivos).
+
 ### Dashboard — `/api/dashboard` (🔒)
 
 | Método | Ruta | Parámetros | Respuesta |

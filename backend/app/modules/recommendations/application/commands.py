@@ -11,3 +11,8 @@ class CreateRecommendationCommand(Command):
     product_id: UUID
     forecast_days: int | None
     created_by: UUID
+
+
+@dataclass
+class RecomputeCoOccurrenceCommand(Command):
+    business_id: UUID

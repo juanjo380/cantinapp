@@ -80,12 +80,23 @@ class SqlAnalyticsRepository(AnalyticsRepository):
         ).all()
         return [(r[0], r[1]) for r in rows]
 
-    async def first_sale_date(self, business_id: UUID, product_id: UUID) -> date | None:
-        return (
+    async def business_daily_series(self, business_id: UUID, *, days: int) -> list[tuple[UUID, date, int]]:
+        rows = (
             await self.session.execute(
                 text(
-                    "SELECT MIN(sale_date) FROM sales WHERE business_id = :business_id AND product_id = :product_id"
+                    "SELECT product_id, sale_date, units_sold::int FROM v_daily_sales "
+                    "WHERE business_id = :business_id AND sale_date >= CURRENT_DATE - CAST(:days AS int)"
                 ),
-                {"business_id": business_id, "product_id": product_id},
+                {"business_id": business_id, "days": days},
+            )
+        ).all()
+        return [(r[0], r[1], r[2]) for r in rows]
+
+    async def first_sale_date(self, business_id: UUID, product_id: UUID | None = None) -> date | None:
+        condition = "AND product_id = :product_id" if product_id else ""
+        return (
+            await self.session.execute(
+                text(f"SELECT MIN(sale_date) FROM sales WHERE business_id = :business_id {condition}"),
+                {"business_id": business_id, **({"product_id": product_id} if product_id else {})},
             )
         ).scalar_one_or_none()
