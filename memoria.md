@@ -3,8 +3,13 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización: backend MVP v0.1 desplegado en Render (sección 9) y
-**frontend MVP v0.1** construido sobre esa API (sección 11).
+Última actualización (2026-10-31): motor de recomendaciones por **co-ocurrencia
+temporal de picos** (sección 7) y **rediseño visual estilo boceto** del frontend
+(sección 11). Bitácora y pendientes de la sesión en la **sección 12**.
+
+> ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar
+> `db/migrations/001_product_cooccurrences.sql` en el SQL Editor de Supabase
+> (ver sección 4). Sin esa tabla, los endpoints de co-ocurrencia responden 500.
 
 ---
 
@@ -81,7 +86,16 @@ Ejecutar `db/schema.sql` en el SQL Editor de Supabase **antes** de levantar la A
 
 **Tablas:** `businesses`, `users`, `categories`, `suppliers`, `products`,
 `sales_imports`, `sales`, `inventory_movements`, `forecasts`,
-`recommendations`, `alerts`.
+`recommendations`, `product_cooccurrences`, `alerts`.
+
+**Migraciones** (`db/migrations/`, se ejecutan a mano en el SQL Editor sobre una BD
+que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nuevas):
+
+| Archivo | Qué hace | Producción |
+|---|---|---|
+| `001_product_cooccurrences.sql` | Tabla de pares A→B (`peaks`, `hits`, `score`), FK compuestas, RLS y `REVOKE` a `anon`/`authenticated` | **PENDIENTE de ejecutar** |
+
+Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
 **Vistas:** `v_inventory` (estado NORMAL/BAJO/AGOTADO calculado),
 `v_daily_sales` (ventas agregadas por día).
@@ -391,8 +405,10 @@ sube el `.env`):
 | `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
 
 **Verificación del despliegue:** el log muestra `Application startup complete`
-(el `SELECT 1` del lifespan pasó, o sea que conecta con Supabase) y
-`Your service is live`. Comprobar con:
+y `Your service is live`. El `SELECT 1` del lifespan tiene límite de 15 s y **ya no
+bloquea el arranque** (Render mataba el servicio si no veía el puerto): si la BD no
+responde, solo deja un error en el log, así que confirma la conexión con `/health/db`.
+Las conexiones nuevas a asyncpg tienen `timeout` de 10 s. Comprobar con:
 - `https://cantinapp.onrender.com/health`
 - `https://cantinapp.onrender.com/health/db`
 - `https://cantinapp.onrender.com/docs`
@@ -493,7 +509,8 @@ frontend/
   src/
     api/        client.js (fetch + Bearer + 401), helper.js (un método por recurso)
     auth/       context.js, ProtectedRoute.jsx
-    components/ layout/AppLayout.jsx · ui/{States,Stamp,PageHeader}.jsx · auth/AuthShell.jsx
+    components/ layout/AppLayout.jsx · auth/AuthShell.jsx · ui/{States,Stamp,PageHeader,
+                Section,StatCard,DataTable,FormDialog,Logo,IconField,SearchField,SelectField}.jsx
     hooks/      useApi.js, useDebounced.js
     pages/      Login, Register, Dashboard, Products, Inventory, Sales, Analytics,
                 Replenishment, Alerts, NotFound
@@ -530,7 +547,7 @@ npm run build
 | `/inventario` | Inventario + movimientos | `/api/inventory`, `POST /api/inventory/movements` |
 | `/ventas` | Venta manual + import CSV | `/api/sales`, `POST /api/sales/import` |
 | `/analisis` | Analítica | `GET /api/analytics/{sales,top-products}` |
-| `/reabastecimiento` | Predicción + recomendación | `POST /api/forecasting`, `/api/recommendations` |
+| `/reabastecimiento` | Predicción + recomendación + co-ocurrencia | `POST /api/forecasting`, `/api/recommendations`, `GET /api/recommendations/cooccurrence`, `POST .../cooccurrence/recompute` |
 | `/alertas` | Alertas | `/api/alerts`, `/generate`, `PATCH /{id}/review` |
 
 - Productos: "Desactivar" = borrado lógico; **editar no cambia stock**.
@@ -544,10 +561,25 @@ npm run build
 
 ### 11.4 Sistema de diseño
 
-- Mundo visual **«Kraft y sello»** (`DESIGN.md`): verde de mercado, fondos cálidos,
-  cifras tabulares en COP y sellos de estado con texto + icono (nunca solo color).
-- Claro y oscuro (sistema + `data-theme`), con conmutador manual en el riel.
-- Tipografía Chivo / Chivo Mono (Google Fonts cargadas en `index.html`).
+- Mundo visual **«boceto a mano / naive»** (desde 2026-10-31; reemplaza a «Kraft y
+  sello»). Referencias: `cantinapp-login.html` y `cantinapp-dashboard.html` en la raíz
+  (no versionadas).
+  - Claro: fondo `#fdfbf7`, tinta `#1c1917`, acento `#f97316` (hover `#ea580c`),
+    acento suave `#ffedd5`.
+  - Oscuro: «pizarra con tiza»: fondo `#1a1612`, bordes crema `#d6cdbf`, acento
+    `#fb923c`.
+  - Bordes de 2 px con radios irregulares (`--radius-sketch`, `-alt`, `-sm`); al pasar
+    el ratón cambia el radio y aparece una sombra desplazada.
+- **Accesibilidad:** el texto sobre botones naranjas es tinta oscura (el blanco sobre
+  `#f97316` da 2,8:1). El naranja como texto sobre claro usa `--brand-ink` `#c2410c`.
+- Claro y oscuro (sistema + `data-theme`), con conmutador en la barra lateral.
+- Tipografía: **Comic Neue** (h1–h3, `font-display`) + **Inter** (texto y cifras con
+  `tabular-nums`; `font-mono` apunta a Inter).
+- Logo: `public/logo.webp` (192 px, 9 KB) y `public/favicon.png`, generados desde
+  `DarioGomez.png` (1,4 MB, no versionado).
+- Componentes base: `Section` (bloque con título y acciones), `Logo`,
+  `IconField` / `PasswordField` (campo con icono y botón para ver la contraseña),
+  `StatCard` (KPI con `surface-lift`).
 - Fuente de verdad de tokens: `src/index.css` (`@theme` + variables `:root` /
   `data-theme`); `src/theme.js` solo refleja lo que MUI necesita.
 - Layout con Tailwind y componentes complejos con MUI. Clases de superficie
@@ -596,6 +628,67 @@ navegador. **No** usar `CssBaseline`: el reset base lo aporta el preflight de Ta
   probable de que las peticiones fallen en local).
 - Prueba manual en navegador: responsive (1366 / 390), teclado y foco, contraste en
   modo oscuro.
-- `DESIGN.md` quedó desincronizado en radios y pesos tras la modernización visual
-  (conviene re-ejecutar `/impeccable document`).
+- `DESIGN.md` describe el estilo anterior («Kraft y sello»): está **obsoleto** tras el
+  rediseño de 2026-10-31.
 - El Dashboard no recibe predicción del backend (ver 11.3).
+
+---
+
+## 12. Bitácora de sesiones
+
+### 2026-10-31 — Co-ocurrencia (Fase 1) + rediseño visual
+
+Rama `feature/juan.ruiz/MotorPredictorCo-Ocurrencia`, publicada en GitHub (sale de
+`FrontendV0.1`). **El merge a `main` lo hace el autor.**
+
+| Commit | Contenido |
+|---|---|
+| `ddc4597` | Arranque tolerante a una BD lenta: `timeout` de asyncpg (10 s) y `SELECT 1` del lifespan con límite de 15 s sin bloquear el arranque |
+| `2253331` | Motor de co-ocurrencia: dominio puro, repositorios, endpoints, script de cron, migración 001, 6 tests (25 en verde) |
+| `660ea87` | Rediseño visual estilo boceto, componentes base y pantalla «Productos que suben después» en Reabastecimiento |
+
+**Despliegue, en este orden:**
+1. **BD (pendiente):** ejecutar `db/migrations/001_product_cooccurrences.sql` en Supabase.
+2. **Backend:** merge a `main` y Render redespliega solo. Sin dependencias nuevas ni
+   variables obligatorias; las `COOCCURRENCE_*` son opcionales.
+3. **Frontend:** el mismo merge; Vercel reconstruye solo (`VITE_API_URL` ya configurada).
+4. **Opcional:** Render Cron Job (de pago) con
+   `python -m scripts.recompute_cooccurrence`, Root Directory `backend`, mismas
+   variables `DB_*`. Sin él, se usa el botón **Recalcular**.
+
+**Decisiones del algoritmo** (detalle en la sección 7):
+- Días sin ventas = 0.
+- Media y desviación de los 14 días previos, sin incluir el día evaluado.
+- Con desviación 0, cualquier subida sobre la media cuenta como pico (caso «flores en
+  San Valentín»).
+- B «sube» si supera su propia media en +1..+3; cuenta una vez por pico de A.
+- Score = coincidencias / picos de A; se descartan pares con menos de 3 coincidencias.
+
+**Limitaciones conocidas:**
+- No descuenta subidas generales del negocio (quincena, festivos).
+- Coste O(productos²): con cientos de productos el recálculo tarda segundos.
+- El botón Recalcular recarga a los 4 s sin saber si el cálculo terminó (`shortcut:`
+  en `Replenishment.jsx`).
+
+**Verificación hecha:** pytest (25 tests), `npm run lint` y `npm run build` en verde.
+Capturas de `/login` en claro y oscuro y de `/registro` en móvil. **No** se probaron en
+navegador las pantallas internas (requieren sesión) ni la co-ocurrencia contra la BD real.
+
+### Próxima sesión — pendientes
+
+1. **Ajustar detalles UX/UI del rediseño** en las pantallas internas: Dashboard,
+   Productos, Inventario, Ventas, Análisis, Reabastecimiento y Alertas. Revisar con
+   sesión real: tablas con bordes irregulares, diálogos, gráficas, sellos, estados
+   vacíos y contraste en oscuro. El plugin `frontend-design` ya está instalado.
+2. **Responsive para móviles** (390 px y 768 px):
+   - barra lateral y drawer;
+   - tablas anchas (columnas ocultables o vista de tarjetas);
+   - filas de filtros;
+   - diálogos a pantalla completa;
+   - tamaño de los KPIs;
+   - gráficas;
+   - objetivos táctiles de al menos 44 px.
+3. Ejecutar la migración 001 en Supabase si aún no se hizo y validar
+   `GET /api/recommendations/cooccurrence` con datos reales.
+4. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.
+5. Siguen abiertos de antes: `JWT_SECRET` y `CORS_ORIGINS` en Render.
