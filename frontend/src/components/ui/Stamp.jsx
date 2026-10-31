@@ -16,7 +16,7 @@ const iconStyle = { fontSize: "1.05rem" };
 export function Stamp({ tone = "neutral", icon, children }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-stamp tracking-stamp uppercase ${TONES[tone]}`}
+      className={`inline-flex items-center gap-1.5 border-2 px-2.5 py-1 font-mono text-stamp font-bold tracking-stamp uppercase [border-radius:var(--radius-sketch-sm)] ${TONES[tone]}`}
     >
       {icon}
       {children}

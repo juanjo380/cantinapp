@@ -28,7 +28,7 @@ def build_database_url(settings: Settings) -> URL:
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
-    connect_args: dict = {}
+    connect_args: dict = {"timeout": 10}  # segundos para abrir conexión; sin esto asyncpg puede colgarse
     if settings.db_ssl:
         connect_args["ssl"] = "require"  # Supabase exige conexiones cifradas
 

@@ -31,11 +31,11 @@ export function Loading({ label = 'Cargando…', rows = 4 }) {
 
 export function Empty({ title, children, action, icon }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-line bg-panel px-6 py-14 text-center">
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-ground text-ink-soft" aria-hidden="true">
+    <div className="surface-inset flex flex-col items-center gap-3 bg-panel px-6 py-12 text-center">
+      <span className="grid h-12 w-12 place-items-center text-ink-soft opacity-70 [&_svg]:!text-5xl" aria-hidden="true">
         {icon ?? <InboxOutlinedIcon />}
       </span>
-      <p className="text-lg font-semibold text-ink">{title}</p>
+      <p className="font-display text-xl font-bold text-ink">{title}</p>
       {children && <div className="max-w-md text-sm text-ink-soft">{children}</div>}
       {action && <div className="mt-1">{action}</div>}
     </div>
@@ -56,12 +56,12 @@ export function ErrorView({ error, onRetry }) {
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-3 rounded-lg border border-crit bg-crit-tint px-6 py-12 text-center"
+      className="flex flex-col items-center gap-3 border-2 border-crit bg-crit-tint px-6 py-12 text-center [border-radius:var(--radius-sketch-sm)]"
     >
       <span className="grid h-12 w-12 place-items-center rounded-full bg-panel text-crit" aria-hidden="true">
         <ErrorOutlinedIcon />
       </span>
-      <p className="text-lg font-semibold text-crit">No se pudo cargar</p>
+      <p className="font-display text-xl font-bold text-crit">No se pudo cargar</p>
       <p className="max-w-md text-sm text-ink">{error?.message || 'Ocurrió un error inesperado.'}</p>
       {onRetry && (
         <Button variant="outlined" color="error" onClick={onRetry} className="mt-1">

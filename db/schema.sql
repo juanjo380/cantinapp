@@ -212,6 +212,21 @@ CREATE TABLE recommendations (                    -- [Modulo Recomendacion]
 );
 CREATE INDEX ix_recommendations_product_date ON recommendations (business_id, product_id, created_at DESC);
 
+-- Co-ocurrencia temporal de picos (migracion 001)
+CREATE TABLE product_cooccurrences (              -- [Modulo Recomendacion]
+    business_id        uuid         NOT NULL REFERENCES businesses (id),
+    product_id         uuid         NOT NULL,     -- A: producto con el pico
+    related_product_id uuid         NOT NULL,     -- B: producto que sube en los dias siguientes
+    peaks              integer      NOT NULL CHECK (peaks > 0),
+    hits               integer      NOT NULL CHECK (hits > 0),
+    score              numeric(5,4) NOT NULL CHECK (score BETWEEN 0 AND 1),   -- hits / peaks
+    computed_at        timestamptz  NOT NULL DEFAULT now(),
+    PRIMARY KEY (business_id, product_id, related_product_id),
+    FOREIGN KEY (business_id, product_id)         REFERENCES products (business_id, id),
+    FOREIGN KEY (business_id, related_product_id) REFERENCES products (business_id, id),
+    CHECK (product_id <> related_product_id)
+);
+
 CREATE TABLE alerts (                             -- [Modulo Alertas]
     id                    uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id           uuid          NOT NULL REFERENCES businesses (id),

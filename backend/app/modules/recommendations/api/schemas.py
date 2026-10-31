@@ -28,3 +28,21 @@ class RecommendationOut(BaseModel):
 
 class RecommendationListOut(BaseModel):
     items: list[RecommendationOut]
+
+
+class CoOccurrenceOut(BaseModel):
+    related_product_id: UUID
+    related_product_name: str
+    score: float
+    hits: int
+    peaks: int
+    computed_at: datetime | None
+
+
+class CoOccurrenceListOut(BaseModel):
+    product_id: UUID
+    items: list[CoOccurrenceOut]
+
+
+class RecomputeAcceptedOut(BaseModel):
+    detail: str

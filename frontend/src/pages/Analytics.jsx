@@ -6,6 +6,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { useState } from 'react'
 import { analyticsApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
+import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
@@ -80,7 +81,7 @@ export default function Analytics() {
         </ToggleButtonGroup>
       </div>
 
-      <section aria-label="Tendencia de ventas" className="surface p-5">
+      <Section label="Tendencia de ventas">
         {series.loading && <Loading label="Calculando tendencia…" />}
         {series.error && !series.loading && <ErrorView error={series.error} onRetry={series.reload} />}
         {!series.loading && !series.error && labels.length === 0 && (
@@ -106,7 +107,7 @@ export default function Analytics() {
             margin={{ left: 70, right: 16, top: 24, bottom: 40 }}
           />
         )}
-      </section>
+      </Section>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Ranking title="Más vendidos" query={top} />
@@ -119,8 +120,7 @@ export default function Analytics() {
 function Ranking({ title, query }) {
   const items = query.data?.items ?? []
   return (
-    <section aria-label={title} className="surface p-5">
-      <h2 className="mb-3 text-base font-semibold text-ink">{title}</h2>
+    <Section title={title}>
       {query.loading && <Loading label="Cargando ranking…" />}
       {query.error && !query.loading && <ErrorView error={query.error} onRetry={query.reload} />}
       {!query.loading && !query.error && items.length === 0 && (
@@ -138,6 +138,6 @@ function Ranking({ title, query }) {
           ))}
         </ol>
       )}
-    </section>
+    </Section>
   )
 }

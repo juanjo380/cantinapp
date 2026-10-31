@@ -26,3 +26,13 @@ class Recommendation:
     urgency: str
     justification: str
     created_at: datetime | None = None
+
+
+@dataclass
+class CoOccurrence:
+    related_product_id: UUID
+    related_product_name: str
+    peaks: int
+    hits: int
+    score: float
+    computed_at: datetime | None = None

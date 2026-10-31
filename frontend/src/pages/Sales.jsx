@@ -253,7 +253,7 @@ function CsvImportDialog({ onClose, onDone }) {
       cancelLabel={result ? 'Cerrar' : 'Cancelar'}
       error={error}
     >
-      <div className="rounded-md border border-line bg-ground p-3.5 text-sm text-ink-soft">
+      <div className="surface-inset p-3.5 text-sm text-ink-soft">
         <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
         <p>
           <span className="font-mono">product</span> (o <span className="font-mono">product_id</span>),{' '}
@@ -282,7 +282,7 @@ function CsvImportDialog({ onClose, onDone }) {
           {result.errors?.length > 0 && (
             <DataTable label="Errores del CSV" columns={CSV_ERROR_COLUMNS} rows={result.errors} maxHeight={256} />
           )}
-          <RouterLink to="/reabastecimiento" className="text-sm font-semibold text-brand underline">
+          <RouterLink to="/reabastecimiento" className="sketch-link self-start text-sm">
             Continuar a Reabastecimiento
           </RouterLink>
         </div>

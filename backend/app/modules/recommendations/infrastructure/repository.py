@@ -3,13 +3,15 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.recommendations.domain.entities import Recommendation
+from app.modules.products.infrastructure.models import ProductRecord
+from app.modules.recommendations.domain.cooccurrence import PairScore
+from app.modules.recommendations.domain.entities import CoOccurrence, Recommendation
 from app.modules.recommendations.domain.policy import RecommendationDraft
-from app.modules.recommendations.domain.repository import RecommendationRepository
-from app.modules.recommendations.infrastructure.models import RecommendationRecord
+from app.modules.recommendations.domain.repository import CoOccurrenceRepository, RecommendationRepository
+from app.modules.recommendations.infrastructure.models import CoOccurrenceRecord, RecommendationRecord
 
 
 def _to_recommendation(record: RecommendationRecord) -> Recommendation:
@@ -81,3 +83,56 @@ class SqlRecommendationRepository(RecommendationRepository):
             )
         ).scalars().all()
         return [_to_recommendation(record) for record in records]
+
+
+class SqlCoOccurrenceRepository(CoOccurrenceRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def replace(self, business_id: UUID, pairs: list[PairScore]) -> None:
+        """Sustituye todos los pares del negocio; el commit lo decide la capa Application."""
+        await self.session.execute(delete(CoOccurrenceRecord).where(CoOccurrenceRecord.business_id == business_id))
+        if pairs:
+            await self.session.execute(
+                insert(CoOccurrenceRecord),
+                [
+                    {
+                        "business_id": business_id,
+                        "product_id": pair.product_id,
+                        "related_product_id": pair.related_product_id,
+                        "peaks": pair.peaks,
+                        "hits": pair.hits,
+                        "score": pair.score,
+                    }
+                    for pair in pairs
+                ],
+            )
+
+    async def list(self, business_id: UUID, product_id: UUID) -> list[CoOccurrence]:
+        rows = (
+            await self.session.execute(
+                select(CoOccurrenceRecord, ProductRecord.name)
+                .join(
+                    ProductRecord,
+                    (ProductRecord.business_id == CoOccurrenceRecord.business_id)
+                    & (ProductRecord.id == CoOccurrenceRecord.related_product_id),
+                )
+                .where(
+                    CoOccurrenceRecord.business_id == business_id,
+                    CoOccurrenceRecord.product_id == product_id,
+                    ProductRecord.is_active.is_(True),
+                )
+                .order_by(CoOccurrenceRecord.score.desc(), CoOccurrenceRecord.hits.desc())
+            )
+        ).all()
+        return [
+            CoOccurrence(
+                related_product_id=record.related_product_id,
+                related_product_name=name,
+                peaks=record.peaks,
+                hits=record.hits,
+                score=float(record.score),
+                computed_at=record.computed_at,
+            )
+            for record, name in rows
+        ]

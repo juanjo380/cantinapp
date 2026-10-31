@@ -1,3 +1,4 @@
+import RefreshIcon from '@mui/icons-material/Refresh'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import { useTheme } from '@mui/material/styles'
@@ -5,11 +6,14 @@ import { LineChart } from '@mui/x-charts/LineChart'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { analyticsApi, forecastingApi, recommendationsApi } from '../api/helper'
+import DataTable from '../components/ui/DataTable'
 import PageHeader from '../components/ui/PageHeader'
+import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
 import StatCard from '../components/ui/StatCard'
 import { ProvenanceStamp, UrgencyStamp } from '../components/ui/Stamp'
-import { Empty, ErrorView, Loading } from '../components/ui/States'
+import { Empty, ErrorView, Loading, Notice } from '../components/ui/States'
+import { useApi } from '../hooks/useApi'
 import { useProductOptions } from '../hooks/useProductOptions'
 import { daysAgoISO, formatPercent, todayISO } from '../utils/format'
 
@@ -132,13 +136,16 @@ export default function Replenishment() {
       )}
 
       {result.status === 'ready' && (
-        <ForecastView
-          forecast={result.forecast}
-          recommendation={result.recommendation}
-          history={result.history}
-          color={theme.palette.primary.main}
-          accent={theme.palette.warning.main}
-        />
+        <div className="flex flex-col gap-6">
+          <ForecastView
+            forecast={result.forecast}
+            recommendation={result.recommendation}
+            history={result.history}
+            color={theme.palette.primary.main}
+            accent={theme.palette.warning.main}
+          />
+          <CoOccurrenceView productId={productId} />
+        </div>
       )}
     </>
   )
@@ -155,16 +162,16 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Histórico contra predicción" className="surface p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-ink">Histórico vs. predicción</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
-              Modelo: {forecast.model_type === 'LINEAR_REGRESSION' ? 'Regresión lineal' : 'Promedio móvil'} ·
-              Confianza {formatPercent(forecast.confidence)}
-            </span>
-          </div>
-        </div>
+      <Section
+        title="Histórico vs. predicción"
+        label="Histórico contra predicción"
+        actions={
+          <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
+            Modelo: {forecast.model_type === 'LINEAR_REGRESSION' ? 'Regresión lineal' : 'Promedio móvil'} ·
+            Confianza {formatPercent(forecast.confidence)}
+          </span>
+        }
+      >
         {labels.length === 0 ? (
           <Empty title="Sin datos para graficar">No hay serie diaria disponible.</Empty>
         ) : (
@@ -178,7 +185,7 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
             margin={{ left: 56, right: 16, top: 24, bottom: 40 }}
           />
         )}
-      </section>
+      </Section>
 
       <section aria-label="Predicción" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard variant="inset" label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
@@ -186,11 +193,7 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
         <StatCard variant="inset" label="Confianza" value={formatPercent(forecast.confidence)} hint="0 % a 100 %" />
       </section>
 
-      <section aria-label="Recomendación de compra" className="surface p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-ink">Recomendación de compra</h2>
-          <UrgencyStamp urgency={recommendation.urgency} />
-        </div>
+      <Section title="Recomendación de compra" actions={<UrgencyStamp urgency={recommendation.urgency} />}>
 
         <p className="mb-4 text-sm text-ink-soft">{recommendation.justification}</p>
 
@@ -207,7 +210,82 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
           </span>
           <ProvenanceStamp date={recommendation.created_at} />
         </div>
-      </section>
+      </Section>
     </div>
+  )
+}
+
+const COOCCURRENCE_COLUMNS = [
+  { key: 'related_product_name', header: 'Producto' },
+  { key: 'score', header: 'Probabilidad', align: 'right', mono: true, render: (row) => formatPercent(row.score) },
+  {
+    key: 'hits',
+    header: 'Coincidencias',
+    align: 'right',
+    mono: true,
+    hideOnMobile: true,
+    render: (row) => `${row.hits} de ${row.peaks} picos`,
+  },
+]
+
+function CoOccurrenceView({ productId }) {
+  const [notice, setNotice] = useState(null)
+  const [recomputing, setRecomputing] = useState(false)
+  const { data, loading, error, reload } = useApi(
+    () => recommendationsApi.cooccurrence({ product_id: productId }),
+    [productId],
+  )
+  const items = data?.items ?? []
+
+  async function onRecompute() {
+    setRecomputing(true)
+    setNotice(null)
+    try {
+      await recommendationsApi.recomputeCooccurrence()
+      setNotice({ severity: 'info', text: 'Recalculando con todo tu historial. Los resultados se actualizan en unos segundos.' })
+      // shortcut: el recálculo corre en segundo plano sin estado consultable; si tarda más, pasar a polling
+      setTimeout(reload, 4000)
+    } catch (err) {
+      setNotice({ severity: 'error', text: err.message })
+    } finally {
+      setRecomputing(false)
+    }
+  }
+
+  return (
+    <Section
+      title="Productos que suben después"
+      label="Productos asociados por co-ocurrencia"
+      actions={
+        <>
+          {items.length > 0 && <ProvenanceStamp date={items[0].computed_at} />}
+          <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={onRecompute} disabled={recomputing}>
+            {recomputing ? 'Recalculando…' : 'Recalcular'}
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm text-ink-soft">
+        Cuando este producto tiene un pico de ventas, estos productos suelen vender más de lo normal en los 3 días
+        siguientes. Considera reforzar su stock.
+      </p>
+      <Notice notice={notice} onClose={() => setNotice(null)} />
+      <DataTable
+        bare
+        label="Productos asociados"
+        columns={COOCCURRENCE_COLUMNS}
+        rows={items}
+        rowKey="related_product_id"
+        loading={loading}
+        error={error}
+        onRetry={reload}
+        empty={
+          <Empty title="Sin productos asociados">
+            Ningún producto sube de forma consistente tras los picos de este, o aún no se ha calculado. Pulsa
+            Recalcular para analizar tu historial.
+          </Empty>
+        }
+      />
+    </Section>
   )
 }

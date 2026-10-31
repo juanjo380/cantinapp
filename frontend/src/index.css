@@ -1,8 +1,7 @@
 /*
  * CantinAPP — única hoja de estilos del proyecto.
- * Los tokens del mundo «Kraft y sello» viven aquí (ver DESIGN.md en la raíz).
- * Fase 1 añade el plugin de Tailwind y consume estos tokens como utilidades;
- * theme.js solo refleja lo que MUI necesita.
+ * Mundo «boceto a mano»: tinta oscura, papel crema, acento naranja y bordes irregulares.
+ * Los tokens viven aquí; theme.js solo refleja lo que MUI necesita.
  */
 
 @layer theme, base, mui, components, utilities;
@@ -12,12 +11,17 @@
 @theme inline {
   --color-ground: var(--ground);
   --color-panel: var(--panel);
+  --color-field: var(--field);
   --color-line: var(--line);
+  --color-edge: var(--edge);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
   --color-brand-contrast: var(--brand-contrast);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-ink: var(--brand-ink);
+  --color-sun: var(--sun);
   --color-ok: var(--ok);
   --color-ok-tint: var(--ok-tint);
   --color-warn: var(--warn);
@@ -27,8 +31,10 @@
   --color-stamp: var(--stamp);
   --color-focus: var(--focus);
 
-  --font-sans: "Chivo", system-ui, "Segoe UI", sans-serif;
-  --font-mono: "Chivo Mono", ui-monospace, "Cascadia Mono", monospace;
+  --font-sans: "Inter", system-ui, "Segoe UI", sans-serif;
+  --font-display: "Comic Neue", "Comic Sans MS", cursive, sans-serif;
+  /* Sin fuente monoespaciada en este estilo: las cifras usan Inter con números tabulares. */
+  --font-mono: "Inter", system-ui, "Segoe UI", sans-serif;
 
   --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
@@ -37,85 +43,138 @@
 
   --text-stamp: 0.6875rem;
   --text-stamp--line-height: 1.2;
-  --tracking-stamp: 0.08em;
+  --tracking-stamp: 0.1em;
 
   --spacing: 0.25rem;
 }
 
 :root {
   color-scheme: light;
-  --ground: #f4eee1;
-  --panel: #fffdf8;
-  --line: #e6dcc8;
-  --ink: #201a11;
-  --ink-soft: #6a5c46;
-  --brand: #1f5c3d;
-  --brand-deep: #164430;
-  --brand-contrast: #fbf7ec;
-  --ok: #1f7a4a;
-  --ok-tint: #e4f0e6;
-  --warn: #946118;
-  --warn-tint: #f8edd2;
-  --crit: #b23a17;
-  --crit-tint: #f8e1d8;
-  --stamp: #8a5a2b;
-  --focus: #1f5c3d;
+  --ground: #fdfbf7;
+  --panel: #ffffff;
+  --field: #fffdf8;
+  --line: #e7e5e4;
+  --edge: #1c1917;
+  --ink: #1c1917;
+  --ink-soft: #57534e;
+  --brand: #f97316;
+  --brand-deep: #ea580c;
+  --brand-contrast: #1c1917;
+  --brand-tint: #ffedd5;
+  --brand-ink: #c2410c;
+  --sun: #fde047;
+  --ok: #15803d;
+  --ok-tint: #dcfce7;
+  --warn: #a16207;
+  --warn-tint: #fef3c7;
+  --crit: #dc2626;
+  --crit-tint: #fee2e2;
+  --stamp: #78716c;
+  --focus: #ea580c;
+  --sketch-shadow: rgba(28, 25, 23, 0.15);
+
+  /* Bordes irregulares del boceto (mismos radios que el diseño de referencia) */
+  --radius-sketch: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --radius-sketch-alt: 15px 225px 15px 255px / 255px 15px 225px 15px;
+  --radius-sketch-sm: 18px 6px 16px 6px / 6px 16px 6px 18px;
 }
 
+/* Tema oscuro: pizarra cálida con trazo de tiza; el naranja se aclara para mantener contraste. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --ground: #15120b;
-    --panel: #201b13;
-    --line: #37301f;
-    --ink: #f2eadb;
-    --ink-soft: #b4a684;
-    --brand: #62b98a;
-    --brand-deep: #489a6c;
-    --brand-contrast: #14110b;
-    --ok: #74c79c;
-    --ok-tint: #17281f;
-    --warn: #e7b44c;
-    --warn-tint: #2a2313;
-    --crit: #f0795a;
-    --crit-tint: #2e1a13;
-    --stamp: #c79a6a;
-    --focus: #62b98a;
+    --ground: #1a1612;
+    --panel: #24201b;
+    --field: #2b2620;
+    --line: #3d362e;
+    --edge: #d6cdbf;
+    --ink: #f5efe6;
+    --ink-soft: #b5aca1;
+    --brand: #fb923c;
+    --brand-deep: #f97316;
+    --brand-contrast: #1c1917;
+    --brand-tint: #3d2614;
+    --brand-ink: #fdba74;
+    --sun: #facc15;
+    --ok: #4ade80;
+    --ok-tint: #14291b;
+    --warn: #fbbf24;
+    --warn-tint: #2e2410;
+    --crit: #f87171;
+    --crit-tint: #33191a;
+    --stamp: #a8a29e;
+    --focus: #fdba74;
+    --sketch-shadow: rgba(0, 0, 0, 0.45);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ground: #15120b;
-  --panel: #201b13;
-  --line: #37301f;
-  --ink: #f2eadb;
-  --ink-soft: #b4a684;
-  --brand: #62b98a;
-  --brand-deep: #489a6c;
-  --brand-contrast: #14110b;
-  --ok: #74c79c;
-  --ok-tint: #17281f;
-  --warn: #e7b44c;
-  --warn-tint: #2a2313;
-  --crit: #f0795a;
-  --crit-tint: #2e1a13;
-  --stamp: #c79a6a;
-  --focus: #62b98a;
+  --ground: #1a1612;
+  --panel: #24201b;
+  --field: #2b2620;
+  --line: #3d362e;
+  --edge: #d6cdbf;
+  --ink: #f5efe6;
+  --ink-soft: #b5aca1;
+  --brand: #fb923c;
+  --brand-deep: #f97316;
+  --brand-contrast: #1c1917;
+  --brand-tint: #3d2614;
+  --brand-ink: #fdba74;
+  --sun: #facc15;
+  --ok: #4ade80;
+  --ok-tint: #14291b;
+  --warn: #fbbf24;
+  --warn-tint: #2e2410;
+  --crit: #f87171;
+  --crit-tint: #33191a;
+  --stamp: #a8a29e;
+  --focus: #fdba74;
+  --sketch-shadow: rgba(0, 0, 0, 0.45);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
 }
 
 @layer components {
-  /* Superficie de tarjeta: una sola forma para todo lo que es panel. */
+  /* Superficie de tarjeta: papel con borde de boceto. */
   .surface {
     background-color: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border: 2px solid var(--edge);
+    border-radius: var(--radius-sketch);
+  }
+  /* Tarjeta que «se mueve» al pasar el ratón (KPIs, accesos). */
+  .surface-lift {
+    transition: border-radius 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .surface-lift:hover {
+    border-radius: var(--radius-sketch-alt);
+    transform: translateY(-2px);
+    box-shadow: 4px 6px 0 var(--sketch-shadow);
   }
   /* Superficie hundida: métricas y bloques dentro de una tarjeta. */
   .surface-inset {
     background-color: var(--ground);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
+    border: 2px dashed var(--line);
+    border-radius: var(--radius-sketch-sm);
+  }
+  /* Enlace subrayado a trazos. */
+  .sketch-link {
+    color: var(--ink);
+    font-weight: 700;
+    border-bottom: 2px dashed var(--brand);
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+  .sketch-link:hover {
+    color: var(--brand-ink);
+    border-bottom-color: var(--brand-deep);
   }
   /* Franja de filtros: una fila que envuelve, siempre con el mismo ritmo. */
   .filter-row {
@@ -124,6 +183,37 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 1.5rem;
+  }
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Decoraciones animadas de la pantalla de acceso */
+  .float-slow {
+    animation: floaty 7s ease-in-out infinite;
+  }
+  .float-fast {
+    animation: floaty 5s ease-in-out infinite reverse;
+  }
+  .spin-slow {
+    animation: spin 40s linear infinite;
+    transform-origin: center;
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(4deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
