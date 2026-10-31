@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -19,13 +21,19 @@ from app.shared.api.error_handlers import register_error_handlers
 from app.shared.infrastructure.database import engine, get_db
 
 settings = get_settings()
+logger = logging.getLogger("uvicorn.error")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Falla rapido al arrancar si la BD no es alcanzable
-    async with engine.connect() as conn:
-        await conn.execute(text("SELECT 1"))
+    # Comprueba la BD con límite de tiempo, pero no bloquea el arranque: uvicorn no abre
+    # el puerto hasta que esto termina y Render mata el servicio si no ve puerto.
+    try:
+        async with asyncio.timeout(15):
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        logger.error("La base de datos no responde al arrancar (%s); revisa /health/db", exc.__class__.__name__)
     yield
     await engine.dispose()
 
