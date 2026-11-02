@@ -1,5 +1,7 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import LockIcon from '@mui/icons-material/LockOutlined'
 import MailIcon from '@mui/icons-material/MailOutlined'
@@ -9,12 +11,23 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import AuthShell from '../components/auth/AuthShell'
+import LegalDialog from '../components/auth/LegalDialog'
 import IconField, { PasswordField } from '../components/ui/IconField'
+
+// [clave, texto antes, texto del enlace, texto después, obligatorio]
+const CONSENTS = [
+  ['terms', 'Acepto los', 'Términos y condiciones', '', true],
+  ['privacy', 'Autorizo el tratamiento de mis datos según la', 'Política de privacidad', '', true],
+  ['cookies', 'He leído la', 'Política de cookies', '', true],
+  ['ml', 'Autorizo el', 'uso anónimo de los datos de mi negocio', ' para mejorar las predicciones (opcional)', false],
+]
 
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ business_name: '', full_name: '', email: '', password: '' })
+  const [form, setForm] = useState({ business_name: '', full_name: '', email: '', password: '', confirm: '' })
+  const [consent, setConsent] = useState({ terms: false, privacy: false, cookies: false, ml: false })
+  const [legal, setLegal] = useState(null)
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,6 +41,9 @@ export default function Register() {
     if (!form.email.trim()) next.email = 'Escribe tu correo.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = 'Correo no válido.'
     if (form.password.length < 8) next.password = 'La contraseña debe tener 8 caracteres o más.'
+    if (form.confirm !== form.password) next.confirm = 'Las contraseñas no coinciden.'
+    if (CONSENTS.some(([key, , , , required]) => required && !consent[key]))
+      next.consent = 'Debes aceptar los términos, la política de privacidad y la de cookies.'
     setErrors(next)
     if (Object.keys(next).length) return
 
@@ -39,6 +55,10 @@ export default function Register() {
         full_name: form.full_name.trim() || undefined,
         email: form.email.trim(),
         password: form.password,
+        accept_terms: consent.terms,
+        accept_privacy: consent.privacy,
+        accept_cookies: consent.cookies,
+        allow_ml_data: consent.ml,
       })
       navigate('/', { replace: true })
     } catch (err) {
@@ -104,10 +124,67 @@ export default function Register() {
           autoComplete="new-password"
           fullWidth
         />
+        <PasswordField
+          icon={<LockIcon fontSize="small" />}
+          label="Confirmar contraseña"
+          value={form.confirm}
+          onChange={set('confirm')}
+          error={Boolean(errors.confirm)}
+          helperText={errors.confirm}
+          autoComplete="new-password"
+          fullWidth
+        />
+        <fieldset className="flex flex-col gap-1">
+          <legend className="sr-only">Términos y autorizaciones</legend>
+          {CONSENTS.map(([key, before, link, after, required]) => (
+            <FormControlLabel
+              key={key}
+              className="items-start"
+              control={
+                <Checkbox
+                  checked={consent[key]}
+                  required={required}
+                  onChange={(e) => setConsent((c) => ({ ...c, [key]: e.target.checked }))}
+                />
+              }
+              label={
+                <span className="mt-2 block">
+                  {before}{' '}
+                  <button
+                    type="button"
+                    className="sketch-link cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault() // abrir el documento no debe marcar la casilla
+                      setLegal(key)
+                    }}
+                  >
+                    {link}
+                  </button>
+                  {after}
+                </span>
+              }
+            />
+          ))}
+          {errors.consent && (
+            <p role="alert" className="text-xs font-medium text-crit">
+              {errors.consent}
+            </p>
+          )}
+        </fieldset>
         <Button type="submit" variant="contained" size="large" disabled={loading} endIcon={<ArrowForwardIcon />}>
           {loading ? 'Creando…' : 'Crear cuenta'}
         </Button>
       </form>
+      {legal && (
+        <LegalDialog
+          doc={legal}
+          onClose={() => setLegal(null)}
+          onAccept={() => {
+            setConsent((c) => ({ ...c, [legal]: true }))
+            setLegal(null)
+          }}
+        />
+      )}
     </AuthShell>
   )
 }

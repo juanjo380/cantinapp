@@ -1,4 +1,4 @@
-"""Modelos ORM de autenticación (tablas businesses y users)."""
+"""Modelos ORM de autenticación (tablas businesses, users y user_consents)."""
 import uuid
 from datetime import datetime
 
@@ -29,3 +29,15 @@ class UserRecord(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class ConsentRecord(Base):
+    __tablename__ = "user_consents"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    business_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    document: Mapped[str]
+    version: Mapped[str]
+    granted: Mapped[bool]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())

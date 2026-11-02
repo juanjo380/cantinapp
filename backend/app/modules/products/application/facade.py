@@ -1,6 +1,10 @@
 """Fachada de aplicación de productos."""
 from app.modules.products.application import handlers
-from app.modules.products.application.commands import CreateProductCommand, UpdateProductCommand
+from app.modules.products.application.commands import (
+    CreateProductCommand,
+    ImportProductsCommand,
+    UpdateProductCommand,
+)
 from app.modules.products.application.queries import GetProductQuery, ListProductsQuery
 from app.modules.products.infrastructure.repository import SqlProductRepository
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
@@ -15,6 +19,11 @@ class ProductsFacade:
         product = await handlers.create_product(self.products, command)
         await self.uow.commit()
         return product
+
+    async def import_csv(self, command: ImportProductsCommand):
+        summary = await handlers.import_products(self.products, self.uow.session, command)
+        await self.uow.commit()
+        return summary
 
     async def update(self, command: UpdateProductCommand):
         product = await handlers.update_product(self.products, command)

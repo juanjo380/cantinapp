@@ -3,11 +3,16 @@ import asyncio
 import time
 from functools import cache
 
-from app.core.exceptions import ConflictError, TooManyRequestsError, UnauthorizedError
+from app.core.exceptions import ConflictError, TooManyRequestsError, UnauthorizedError, UnprocessableError
 from app.core.security import hash_password, verify_password
 from app.modules.auth.application.commands import LoginCommand, RegisterCommand
 from app.modules.auth.domain.entities import Business, User
 from app.modules.auth.domain.repository import BusinessRepository, UserRepository
+
+# Debe coincidir con la fecha `UPDATED` de frontend/src/components/auth/LegalDialog.jsx.
+LEGAL_VERSION = "2026-11-01"
+REQUIRED_CONSENTS = ("TERMS", "PRIVACY", "COOKIES")
+OPTIONAL_CONSENTS = ("ML_ANONYMOUS",)
 
 _MAX_FAILED_LOGINS = 5
 _LOCKOUT_SECONDS = 15 * 60
@@ -39,7 +44,11 @@ def _register_failure(email: str) -> None:
 async def register_user(
     users: UserRepository, businesses: BusinessRepository, command: RegisterCommand
 ) -> tuple[User, Business]:
-    """RF-01: crea negocio + usuario admin con email único."""
+    """RF-01: crea negocio + usuario admin con email único y guarda sus autorizaciones."""
+    if not all(command.consents.get(doc) for doc in REQUIRED_CONSENTS):
+        raise UnprocessableError(
+            "Debes aceptar los términos y condiciones, la política de privacidad y la de cookies"
+        )
     if await users.get_by_email(command.email) is not None:
         raise ConflictError("El email ya está registrado")
     # PBKDF2 es CPU puro: en un hilo para no bloquear el event loop.
@@ -50,6 +59,12 @@ async def register_user(
         email=command.email.strip().lower(),
         password_hash=password_hash,
         full_name=command.full_name,
+    )
+    await users.add_consents(
+        business_id=business.id,
+        user_id=user.id,
+        version=LEGAL_VERSION,
+        consents={doc: bool(command.consents.get(doc)) for doc in REQUIRED_CONSENTS + OPTIONAL_CONSENTS},
     )
     return user, business
 

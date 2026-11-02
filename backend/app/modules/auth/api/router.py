@@ -22,6 +22,12 @@ async def register(body: RegisterRequest, uow: SqlAlchemyUnitOfWork = Depends(ge
             email=body.email,
             password=body.password,
             full_name=body.full_name,
+            consents={
+                "TERMS": body.accept_terms,
+                "PRIVACY": body.accept_privacy,
+                "COOKIES": body.accept_cookies,
+                "ML_ANONYMOUS": body.allow_ml_data,
+            },
         )
     )
     return AuthResponse(

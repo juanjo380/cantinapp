@@ -41,3 +41,18 @@ class ProductListOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ProductImportErrorOut(BaseModel):
+    row: int
+    field: str
+    message: str
+
+
+class ProductImportOut(BaseModel):
+    file_name: str
+    total_rows: int
+    imported_rows: int
+    error_rows: int
+    status: str
+    errors: list[ProductImportErrorOut] = []

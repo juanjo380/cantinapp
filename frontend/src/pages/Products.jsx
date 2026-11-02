@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add'
 import BlockIcon from '@mui/icons-material/Block'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -8,6 +9,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import { useState } from 'react'
 import { productsApi } from '../api/helper'
+import CsvImportDialog from '../components/ui/CsvImportDialog'
 import DataTable, { RowAction } from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
 import PageHeader from '../components/ui/PageHeader'
@@ -37,6 +39,7 @@ export default function Products() {
   const [activeOnly, setActiveOnly] = useState(true)
   const pager = usePagination()
   const [editing, setEditing] = useState(null)
+  const [importing, setImporting] = useState(false)
   const [notice, setNotice] = useState(null)
 
   const { data, loading, error, reload } = useApi(
@@ -109,6 +112,9 @@ export default function Products() {
   return (
     <>
       <PageHeader title="Productos" subtitle="Tu catálogo. Edita los datos; el stock se mueve en Inventario.">
+        <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setImporting(true)}>
+          Cargar CSV
+        </Button>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
           Nuevo producto
         </Button>
@@ -170,6 +176,34 @@ export default function Products() {
           </Empty>
         }
       />
+
+      {importing && (
+        <CsvImportDialog
+          title="Cargar productos por CSV"
+          upload={productsApi.importCsv}
+          onClose={() => setImporting(false)}
+          onDone={(result) => {
+            if (result.imported_rows > 0) {
+              setNotice({ severity: 'success', text: `Se crearon ${result.imported_rows} productos desde el CSV.` })
+              reload()
+            }
+          }}
+        >
+          <div className="surface-inset p-3.5 text-sm text-ink-soft">
+            <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
+            <p>
+              Obligatorias: <span className="font-mono">nombre</span> y <span className="font-mono">precio</span>.
+              Opcionales: <span className="font-mono">categoria</span>, <span className="font-mono">proveedor</span>,{' '}
+              <span className="font-mono">stock_inicial</span>, <span className="font-mono">stock_minimo</span> y{' '}
+              <span className="font-mono">dias_abastecimiento</span> (enteros; vacíos cuentan como 0). También en inglés:{' '}
+              <span className="font-mono">name, price, category, supplier, quantity, min_stock, lead_time_days</span>.
+            </p>
+          </div>
+          <p className="text-xs text-ink-soft">
+            Los productos que ya existen (mismo nombre) no se modifican: se reportan como error de esa fila.
+          </p>
+        </CsvImportDialog>
+      )}
 
       {editing && (
         <ProductDialog

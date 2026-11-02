@@ -94,6 +94,7 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | Archivo | Qué hace | Producción |
 |---|---|---|
 | `001_product_cooccurrences.sql` | Tabla de pares A→B (`peaks`, `hits`, `score`), FK compuestas, RLS y `REVOKE` a `anon`/`authenticated` | **PENDIENTE de ejecutar** |
+| `002_user_consents.sql` | Bitácora de autorizaciones del registro (términos, privacidad, cookies, uso anónimo para ML) con versión y fecha; RLS | **PENDIENTE de ejecutar** (antes de desplegar el backend: sin ella `/register` da 500) |
 
 Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
@@ -215,6 +216,10 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | GET | `/{product_id}` | — | ProductOut |
 | PUT | `/{product_id}` | body ProductUpdate (parcial) | ProductOut |
 | DELETE | `/{product_id}` | — | 204 (borrado lógico: `is_active=false`) |
+| POST | `/import` | `multipart/form-data` (campo `file`) | 201 ProductImportOut `{ file_name, total_rows, imported_rows, error_rows, status, errors[] }` |
+
+- **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
+- **Ambos CSV (productos y ventas):** separador `,` o `;`, UTF-8 o Windows-1252 (Excel), coma decimal (`2500,50`), máximo 5 MB. Utilidades en `shared/application/csv_utils.py` y `shared/api/uploads.py`.
 
 - **ProductCreate:** `{ name, category?, supplier?, price>=0, quantity>=0 (stock inicial), min_stock>=0, lead_time_days>=0 }`
 - **ProductUpdate:** todos opcionales (`name`, `category`, `supplier`, `price`, `min_stock`, `lead_time_days`). **No** cambia stock (para eso, movimientos de inventario).

@@ -23,6 +23,11 @@ class RegisterRequest(_EmailMixin):
     business_name: str = Field(min_length=1, max_length=150)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=150)
+    # Autorizaciones del formulario de registro (las tres primeras son obligatorias; se valida en el handler).
+    accept_terms: bool = False
+    accept_privacy: bool = False
+    accept_cookies: bool = False
+    allow_ml_data: bool = False
 
 
 class LoginRequest(_EmailMixin):

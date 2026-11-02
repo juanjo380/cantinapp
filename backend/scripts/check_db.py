@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.shared.infrastructure.database import engine
 
 EXPECTED = {
-    "businesses", "users", "categories", "suppliers", "products", "sales_imports", "sales",
+    "businesses", "users", "user_consents", "categories", "suppliers", "products", "sales_imports", "sales",
     "inventory_movements", "forecasts", "recommendations", "product_cooccurrences", "alerts",
 }
 

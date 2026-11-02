@@ -15,30 +15,54 @@ function Decorations() {
         </g>
       </svg>
 
-      <svg className="float-slow absolute top-10 right-10 hidden h-28 w-28 md:block" viewBox="0 0 120 120" aria-hidden="true">
-        <g className="spin-slow">
-          <path d="M60 8 L66 30 M60 112 L66 90 M8 60 L30 54 M112 60 L90 66 M22 22 L38 38 M98 98 L82 82 M98 22 L82 38 M22 98 L38 82" stroke="var(--brand)" strokeWidth="4" strokeLinecap="round" fill="none" />
-        </g>
-        <circle cx="60" cy="60" r="26" fill="var(--sun)" stroke={ink} strokeWidth="2.5" />
-        <circle cx="52" cy="56" r="2.5" fill="#1c1917" />
-        <circle cx="68" cy="56" r="2.5" fill="#1c1917" />
-        <path d="M50 66 Q60 74 70 66" fill="none" stroke="#1c1917" strokeWidth="2.5" strokeLinecap="round" />
-      </svg>
-
-      <svg className="float-fast absolute top-24 left-10 hidden h-20 w-36 md:block" viewBox="0 0 160 80" aria-hidden="true">
-        <path d="M30 60 Q10 60 14 44 Q18 30 36 34 Q40 16 62 20 Q78 6 96 22 Q120 16 124 38 Q146 38 142 56 Q138 62 120 62 Z" fill="var(--panel)" stroke={ink} strokeWidth="2.5" strokeLinejoin="round" />
-      </svg>
-
-      <svg className="float-slow absolute bottom-20 left-8 hidden h-28 w-20 lg:block" viewBox="0 0 80 110" aria-hidden="true">
-        <path d="M20 10 L60 10 L56 40 Q70 50 66 80 Q62 100 40 100 Q18 100 14 80 Q10 50 24 40 Z" fill="var(--brand-tint)" stroke={ink} strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M22 60 Q40 56 58 60 L60 74 Q40 78 20 74 Z" fill="var(--brand)" opacity="0.85" />
-        <path d="M30 20 L32 34" stroke={ink} strokeWidth="2" strokeLinecap="round" />
-      </svg>
-
-      <svg className="float-fast absolute right-12 bottom-24 hidden h-16 w-16 lg:block" viewBox="0 0 60 60" aria-hidden="true">
-        <path d="M30 4 L36 22 L55 24 L40 36 L46 56 L30 44 L14 56 L20 36 L5 24 L24 22 Z" fill="var(--sun)" stroke={ink} strokeWidth="2.5" strokeLinejoin="round" />
-      </svg>
+      <Sun className="float-slow absolute top-10 right-10 hidden h-28 w-28 md:block" />
+      <Cloud className="float-fast absolute top-24 left-10 hidden h-20 w-36 md:block" />
+      <Bottle className="float-slow absolute bottom-20 left-8 hidden h-28 w-20 lg:block" />
+      <Star className="float-fast absolute right-12 bottom-24 hidden h-16 w-16 lg:block" />
     </>
+  )
+}
+
+// Figuras sueltas: también decoran las esquinas de los modales legales del registro.
+const INK = 'var(--edge)'
+
+export function Sun({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 120 120" aria-hidden="true">
+      <g className="spin-slow">
+        <path d="M60 8 L66 30 M60 112 L66 90 M8 60 L30 54 M112 60 L90 66 M22 22 L38 38 M98 98 L82 82 M98 22 L82 38 M22 98 L38 82" stroke="var(--brand)" strokeWidth="4" strokeLinecap="round" fill="none" />
+      </g>
+      <circle cx="60" cy="60" r="26" fill="var(--sun)" stroke={INK} strokeWidth="2.5" />
+      <circle cx="52" cy="56" r="2.5" fill="#1c1917" />
+      <circle cx="68" cy="56" r="2.5" fill="#1c1917" />
+      <path d="M50 66 Q60 74 70 66" fill="none" stroke="#1c1917" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function Cloud({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 160 80" aria-hidden="true">
+      <path d="M30 60 Q10 60 14 44 Q18 30 36 34 Q40 16 62 20 Q78 6 96 22 Q120 16 124 38 Q146 38 142 56 Q138 62 120 62 Z" fill="var(--panel)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function Bottle({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 80 110" aria-hidden="true">
+      <path d="M20 10 L60 10 L56 40 Q70 50 66 80 Q62 100 40 100 Q18 100 14 80 Q10 50 24 40 Z" fill="var(--brand-tint)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+      <path d="M22 60 Q40 56 58 60 L60 74 Q40 78 20 74 Z" fill="var(--brand)" opacity="0.85" />
+      <path d="M30 20 L32 34" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function Star({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 60 60" aria-hidden="true">
+      <path d="M30 4 L36 22 L55 24 L40 36 L46 56 L30 44 L14 56 L20 36 L5 24 L24 22 Z" fill="var(--sun)" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+    </svg>
   )
 }
 

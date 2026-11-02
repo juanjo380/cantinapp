@@ -1,16 +1,17 @@
 """Parser de CSV de ventas históricas (RF-07). Usa solo la librería estándar.
 
 Columnas esperadas (encabezados sin distinguir mayúsculas):
-  product | product_name  (nombre del producto)   o   product_id
+  product | product_name | nombre | producto   o   product_id
   date | sale_date | fecha        (YYYY-MM-DD o DD/MM/YYYY)
   quantity | cantidad             (entero > 0)
-  unit_price | price | precio     (opcional, decimal >= 0)
+  unit_price | price | precio     (opcional, decimal >= 0; acepta coma decimal)
+Separador ',' o ';' (Excel en español).
 """
-import csv
-import io
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+
+from app.shared.application.csv_utils import dict_reader, header_key, parse_decimal
 
 _DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y")
 
@@ -18,6 +19,7 @@ _ALIASES = {
     "product": "product",
     "product_name": "product",
     "nombre": "product",
+    "producto": "product",
     "product_id": "product_id",
     "date": "date",
     "sale_date": "date",
@@ -53,11 +55,11 @@ def parse_csv(content: str) -> tuple[list[ParsedRow], list[dict]]:
     rows: list[ParsedRow] = []
     errors: list[dict] = []
 
-    reader = csv.DictReader(io.StringIO(content.lstrip("\ufeff")))
+    reader = dict_reader(content)
     if not reader.fieldnames:
         return rows, [{"row": 0, "field": "header", "message": "El archivo está vacío"}]
 
-    header_map = {name: _ALIASES[name.strip().lower()] for name in reader.fieldnames if name.strip().lower() in _ALIASES}
+    header_map = {name: _ALIASES[header_key(name)] for name in reader.fieldnames if header_key(name) in _ALIASES}
     if "product" not in header_map.values() and "product_id" not in header_map.values():
         return rows, [{"row": 0, "field": "header", "message": "Falta la columna 'product' o 'product_id'"}]
     if "date" not in header_map.values():
@@ -93,7 +95,7 @@ def parse_csv(content: str) -> tuple[list[ParsedRow], list[dict]]:
         raw_price = values.get("unit_price", "")
         if raw_price:
             try:
-                unit_price = Decimal(raw_price)
+                unit_price = parse_decimal(raw_price)
                 if unit_price < 0:
                     raise InvalidOperation
             except InvalidOperation:

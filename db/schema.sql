@@ -54,6 +54,18 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX ux_users_email ON users (lower(email));
 CREATE INDEX ix_users_business ON users (business_id);
 
+-- Autorizaciones del registro (migracion 002). Solo insercion: la vigente es la mas reciente.
+CREATE TABLE user_consents (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    user_id      uuid        NOT NULL REFERENCES users (id),
+    document     text        NOT NULL CHECK (document IN ('TERMS', 'PRIVACY', 'COOKIES', 'ML_ANONYMOUS')),
+    version      text        NOT NULL,
+    granted      boolean     NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_user_consents_user ON user_consents (user_id, document, created_at DESC);
+
 -- ---------------------------------------------------------------------------
 -- 2. Catalogos: categorias y proveedores  [Modulo Productos]
 -- ---------------------------------------------------------------------------

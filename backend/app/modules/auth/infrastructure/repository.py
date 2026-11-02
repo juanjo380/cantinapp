@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.domain.entities import Business, User
 from app.modules.auth.domain.repository import BusinessRepository, UserRepository
-from app.modules.auth.infrastructure.models import BusinessRecord, UserRecord
+from app.modules.auth.infrastructure.models import BusinessRecord, ConsentRecord, UserRecord
 
 
 def _to_user(record: UserRecord) -> User:
@@ -54,6 +54,17 @@ class SqlUserRepository(UserRepository):
         self.session.add(record)
         await self.session.flush()
         return _to_user(record)
+
+    async def add_consents(
+        self, *, business_id: UUID, user_id: UUID, version: str, consents: dict[str, bool]
+    ) -> None:
+        self.session.add_all(
+            ConsentRecord(
+                business_id=business_id, user_id=user_id, document=doc, version=version, granted=granted
+            )
+            for doc, granted in consents.items()
+        )
+        await self.session.flush()
 
 
 class SqlBusinessRepository(BusinessRepository):

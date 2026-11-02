@@ -81,7 +81,7 @@ class SqlSaleRepository(SaleRepository):
     async def close_import(self, *, import_id: UUID, imported_rows: int, errors: list[dict]) -> None:
         record = await self.session.get(SaleImportRecord, import_id)
         record.imported_rows = imported_rows
-        record.error_rows = len(errors)
+        record.error_rows = len({e["row"] for e in errors})
         record.error_detail = errors or None
         record.status = "COMPLETED" if imported_rows > 0 or not errors else "FAILED"
         await self.session.flush()

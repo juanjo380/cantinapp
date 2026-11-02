@@ -24,6 +24,11 @@ export const productsApi = {
   create: (body) => request('/products', { method: 'POST', body }),
   update: (id, body) => request(`/products/${id}`, { method: 'PUT', body }),
   remove: (id) => request(`/products/${id}`, { method: 'DELETE' }),
+  importCsv: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/products/import', { method: 'POST', formData: form })
+  },
 }
 
 export const inventoryApi = {

@@ -23,3 +23,10 @@ class UpdateProductCommand(Command):
     business_id: UUID
     product_id: UUID
     changes: dict
+
+
+@dataclass
+class ImportProductsCommand(Command):
+    business_id: UUID
+    file_name: str
+    content: str
