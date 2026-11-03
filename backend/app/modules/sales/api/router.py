@@ -8,6 +8,7 @@ from app.modules.sales.api.schemas import ImportOut, SaleCreate, SaleListOut, Sa
 from app.modules.sales.application.commands import CreateSaleCommand, ImportSalesCommand
 from app.modules.sales.application.facade import SalesFacade
 from app.shared.api.dependencies import CurrentUser, get_current_user
+from app.shared.api.uploads import read_csv_upload
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork, get_uow
 
 router = APIRouter(prefix="/api/sales", tags=["sales"])
@@ -39,8 +40,7 @@ async def import_sales(
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
-    raw = await file.read()
-    content = raw.decode("utf-8-sig", errors="replace")
+    content = await read_csv_upload(file)
     summary = await SalesFacade(uow).import_csv(
         ImportSalesCommand(
             business_id=user.business_id,

@@ -20,18 +20,20 @@ export default function FormDialog({
   error,
   maxWidth = 'xs',
   cancelLabel = 'Cancelar',
+  decor,
   children,
 }) {
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth={maxWidth}>
-      <DialogTitle className="flex items-center gap-2 pr-12">
+      {decor}
+      <DialogTitle className="relative flex items-center gap-2 pr-12">
         {icon && <span className="flex text-brand" aria-hidden="true">{icon}</span>}
         {title}
         <IconButton aria-label="Cerrar" onClick={onClose} size="small" sx={{ position: 'absolute', right: 12, top: 14 }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent className="flex flex-col gap-4 pt-2">
+      <DialogContent className="relative flex flex-col gap-4 pt-2">
         {error && <Alert severity="error">{error}</Alert>}
         {children}
       </DialogContent>

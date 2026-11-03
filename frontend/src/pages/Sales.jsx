@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { salesApi } from '../api/helper'
+import CsvImportDialog from '../components/ui/CsvImportDialog'
 import DataTable from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
 import PageHeader from '../components/ui/PageHeader'
@@ -24,21 +25,26 @@ const dateLabel = { inputLabel: { shrink: true } }
 
 const SALE_COLUMNS = [
   { key: 'sale_date', header: 'Fecha', render: (s) => formatDate(s.sale_date) },
-  { key: 'product_name', header: 'Producto' },
-  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true },
+  {
+    key: 'product_name',
+    header: 'Producto',
+    render: (s) => (
+      <div className="flex flex-col">
+        <span>{s.product_name}</span>
+        {/* En el teléfono la cantidad va aquí y su columna se oculta. */}
+        <span className="font-mono text-xs text-ink-soft sm:hidden">{s.quantity} u.</span>
+      </div>
+    ),
+  },
+  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true, hideOnMobile: true },
   { key: 'unit_price', header: 'Precio unit.', align: 'right', mono: true, hideOnMobile: true, render: (s) => formatCOP(s.unit_price) },
   { key: 'total_amount', header: 'Total', align: 'right', mono: true, render: (s) => formatCOP(s.total_amount) },
   {
     key: 'source',
     header: 'Origen',
+    hideOnMobile: true,
     render: (s) => <Stamp tone={s.source === 'CSV' ? 'neutral' : 'ok'}>{s.source === 'CSV' ? 'CSV' : 'Manual'}</Stamp>,
   },
-]
-
-const CSV_ERROR_COLUMNS = [
-  { key: 'row', header: 'Fila', mono: true },
-  { key: 'field', header: 'Campo' },
-  { key: 'message', header: 'Mensaje' },
 ]
 
 export default function Sales() {
@@ -130,7 +136,7 @@ export default function Sales() {
         />
       )}
       {dialog === 'csv' && (
-        <CsvImportDialog
+        <SalesCsvDialog
           onClose={() => setDialog(null)}
           onDone={() => {
             setNotice({ severity: 'success', text: 'Carga de CSV procesada.' })
@@ -215,43 +221,19 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
   )
 }
 
-function CsvImportDialog({ onClose, onDone }) {
-  const [file, setFile] = useState(null)
+function SalesCsvDialog({ onClose, onDone }) {
   const [affectsInventory, setAffectsInventory] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  async function onUpload() {
-    if (!file) {
-      setError('Elige un archivo CSV.')
-      return
-    }
-    setLoading(true)
-    setError('')
-    try {
-      const outcome = await salesApi.importCsv(file, affectsInventory)
-      setResult(outcome)
-      onDone()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
-    <FormDialog
+    <CsvImportDialog
       title="Cargar historial por CSV"
-      icon={<UploadFileIcon />}
-      maxWidth="md"
+      upload={(file) => salesApi.importCsv(file, affectsInventory)}
       onClose={onClose}
-      onSubmit={onUpload}
-      submitLabel="Cargar CSV"
-      submittingLabel="Subiendo…"
-      submitting={loading}
-      cancelLabel={result ? 'Cerrar' : 'Cancelar'}
-      error={error}
+      onDone={onDone}
+      next={
+        <RouterLink to="/reabastecimiento" className="sketch-link self-start text-sm">
+          Continuar a Reabastecimiento
+        </RouterLink>
+      }
     >
       <div className="surface-inset p-3.5 text-sm text-ink-soft">
         <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
@@ -261,10 +243,6 @@ function CsvImportDialog({ onClose, onDone }) {
           <span className="font-mono">quantity</span>, y opcional <span className="font-mono">unit_price</span>.
         </p>
       </div>
-      <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} className="self-start">
-        {file ? file.name : 'Elegir archivo CSV'}
-        <input type="file" hidden accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-      </Button>
       <FormControlLabel
         control={<Switch checked={affectsInventory} onChange={(e) => setAffectsInventory(e.target.checked)} />}
         label="Descontar del inventario"
@@ -273,20 +251,6 @@ function CsvImportDialog({ onClose, onDone }) {
         Por defecto está apagado: el CSV es historial y no descuenta stock. Actívalo solo si esas ventas ya
         salieron de tu inventario.
       </p>
-
-      {result && (
-        <div className="flex flex-col gap-3">
-          <Alert severity={result.error_rows > 0 ? 'warning' : 'success'}>
-            {result.imported_rows} de {result.total_rows} filas importadas; {result.error_rows} con error.
-          </Alert>
-          {result.errors?.length > 0 && (
-            <DataTable label="Errores del CSV" columns={CSV_ERROR_COLUMNS} rows={result.errors} maxHeight={256} />
-          )}
-          <RouterLink to="/reabastecimiento" className="sketch-link self-start text-sm">
-            Continuar a Reabastecimiento
-          </RouterLink>
-        </div>
-      )}
-    </FormDialog>
+    </CsvImportDialog>
   )
 }

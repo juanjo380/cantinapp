@@ -79,7 +79,7 @@ async def import_sales(
 
     await sales.close_import(import_id=summary.id, imported_rows=imported, errors=errors)
     summary.imported_rows = imported
-    summary.error_rows = len(errors)
+    summary.error_rows = len({e["row"] for e in errors})
     summary.errors = errors
     summary.status = "COMPLETED" if imported > 0 or not errors else "FAILED"
     return summary

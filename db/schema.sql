@@ -35,16 +35,27 @@ $$;
 CREATE TABLE businesses (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     name        text        NOT NULL CHECK (length(trim(name)) > 0),
+    -- Perfil (migracion 003)
+    legal_name    text,
+    tax_id        text,
+    business_type text,
+    phone         text,
+    email         text,
+    address       text,
+    city          text,
+    department    text,
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE users (
     id             uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    business_id    uuid        NOT NULL REFERENCES businesses (id),
+    business_id    uuid        REFERENCES businesses (id),  -- ultimo negocio usado (pertenencia: business_members)
     email          text        NOT NULL,
     password_hash  text        NOT NULL,
     full_name      text,
+    phone          text,
+    job_title      text,
     role           text        NOT NULL DEFAULT 'ADMIN' CHECK (role IN ('ADMIN')),
     is_active      boolean     NOT NULL DEFAULT true,
     created_at     timestamptz NOT NULL DEFAULT now(),
@@ -53,6 +64,44 @@ CREATE TABLE users (
 -- HU01: email unico (sin distinguir mayusculas)
 CREATE UNIQUE INDEX ux_users_email ON users (lower(email));
 CREATE INDEX ix_users_business ON users (business_id);
+
+-- Autorizaciones del registro (migracion 002). Solo insercion: la vigente es la mas reciente.
+CREATE TABLE user_consents (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    user_id      uuid        NOT NULL REFERENCES users (id),
+    document     text        NOT NULL CHECK (document IN ('TERMS', 'PRIVACY', 'COOKIES', 'ML_ANONYMOUS')),
+    version      text        NOT NULL,
+    granted      boolean     NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_user_consents_user ON user_consents (user_id, document, created_at DESC);
+
+-- Miembros (migracion 003): un usuario puede pertenecer a varios negocios
+CREATE TABLE business_members (
+    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    user_id      uuid        NOT NULL REFERENCES users (id),
+    role         text        NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'MEMBER')),
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (business_id, user_id)
+);
+CREATE INDEX ix_business_members_user ON business_members (user_id);
+CREATE UNIQUE INDEX ux_business_members_owner ON business_members (business_id) WHERE role = 'OWNER';
+
+-- Sedes (migracion 003): datos de perfil; el inventario sigue siendo del negocio
+CREATE TABLE business_locations (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    name         text        NOT NULL CHECK (length(trim(name)) > 0),
+    address      text,
+    city         text,
+    phone        text,
+    is_main      boolean     NOT NULL DEFAULT false,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (business_id, id)
+);
+CREATE UNIQUE INDEX ux_business_locations_main ON business_locations (business_id) WHERE is_main;
 
 -- ---------------------------------------------------------------------------
 -- 2. Catalogos: categorias y proveedores  [Modulo Productos]
@@ -344,6 +393,7 @@ CREATE TRIGGER trg_sales_restore_inventory
 -- 7.5 updated_at automatico
 CREATE TRIGGER trg_businesses_updated BEFORE UPDATE ON businesses FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_users_updated      BEFORE UPDATE ON users      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_business_locations_updated BEFORE UPDATE ON business_locations FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_products_updated   BEFORE UPDATE ON products   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ---------------------------------------------------------------------------

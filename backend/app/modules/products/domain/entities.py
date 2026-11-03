@@ -1,5 +1,5 @@
 """Entidad de dominio de productos."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import UUID
 
@@ -16,3 +16,13 @@ class Product:
     min_stock: int
     lead_time_days: int
     is_active: bool
+
+
+@dataclass
+class ProductImport:
+    file_name: str
+    total_rows: int
+    imported_rows: int
+    error_rows: int
+    status: str  # COMPLETED | FAILED
+    errors: list[dict] = field(default_factory=list)

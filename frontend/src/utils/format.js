@@ -44,3 +44,5 @@ export const formatPercent = (value) =>
   new Intl.NumberFormat('es-CO', { style: 'percent', maximumFractionDigits: 0 }).format(
     Number(value) || 0,
   )
+
+export const ROLE_LABELS = { OWNER: 'Dueño', ADMIN: 'Administrador', MEMBER: 'Miembro' }

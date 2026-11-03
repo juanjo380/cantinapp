@@ -4,7 +4,7 @@ import TuneIcon from '@mui/icons-material/Tune'
 import TextField from '@mui/material/TextField'
 import { useState } from 'react'
 import { inventoryApi } from '../api/helper'
-import DataTable, { RowAction } from '../components/ui/DataTable'
+import DataTable, { RowActions } from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
 import PageHeader from '../components/ui/PageHeader'
 import SearchField from '../components/ui/SearchField'
@@ -69,32 +69,33 @@ export default function Inventory() {
         <div className="flex flex-col">
           <span className="font-medium text-ink">{item.name}</span>
           <span className="text-xs text-ink-soft">{item.category || 'Sin categoría'}</span>
+          {/* En el teléfono el estado va bajo el nombre para dejar sitio a las acciones. */}
+          <span className="mt-1 sm:hidden">
+            <StatusStamp status={item.status} />
+          </span>
         </div>
       ),
     },
-    { key: 'status', header: 'Estado', render: (item) => <StatusStamp status={item.status} /> },
+    { key: 'status', header: 'Estado', hideOnMobile: true, render: (item) => <StatusStamp status={item.status} /> },
     { key: 'stock_quantity', header: 'Stock', align: 'right', mono: true },
     { key: 'min_stock', header: 'Mínimo', align: 'right', mono: true },
     { key: 'price', header: 'Precio', align: 'right', mono: true, hideOnMobile: true, render: (i) => formatCOP(i.price) },
     {
       key: 'actions',
-      header: 'Acciones',
+      header: <span className="sr-only sm:not-sr-only">Acciones</span>, // el «⋮» del teléfono no necesita título
       align: 'right',
-      className: 'whitespace-nowrap',
       render: (item) => (
-        <>
-          <RowAction
-            title="Registrar compra"
-            icon={<AddShoppingCartIcon fontSize="small" />}
-            onClick={() => setMovement({ item, mode: 'purchase' })}
-          />
-          <RowAction
-            title="Ajustar stock"
-            icon={<TuneIcon fontSize="small" />}
-            onClick={() => setMovement({ item, mode: 'adjust' })}
-          />
-          <RowAction title="Historial" icon={<HistoryIcon fontSize="small" />} onClick={() => setHistory(item)} />
-        </>
+        <RowActions
+          actions={[
+            {
+              title: 'Registrar compra',
+              icon: <AddShoppingCartIcon fontSize="small" />,
+              onClick: () => setMovement({ item, mode: 'purchase' }),
+            },
+            { title: 'Ajustar stock', icon: <TuneIcon fontSize="small" />, onClick: () => setMovement({ item, mode: 'adjust' }) },
+            { title: 'Historial', icon: <HistoryIcon fontSize="small" />, onClick: () => setHistory(item) },
+          ]}
+        />
       ),
     },
   ]

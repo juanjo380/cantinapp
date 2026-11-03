@@ -1,4 +1,9 @@
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 import IconButton from '@mui/material/IconButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import { useState } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -84,5 +89,41 @@ export function RowAction({ title, icon, onClick, color }) {
         {icon}
       </IconButton>
     </Tooltip>
+  )
+}
+
+// Varias acciones de fila: iconos en pantallas medianas; en el teléfono, un menú «⋮» para que quepa la fila.
+// actions: [{ title, icon, onClick, color }] (los valores falsos se ignoran).
+export function RowActions({ actions, label = 'Acciones' }) {
+  const [anchor, setAnchor] = useState(null)
+  const items = actions.filter(Boolean)
+  return (
+    <>
+      <span className="hidden whitespace-nowrap sm:inline-flex">
+        {items.map((a) => (
+          <RowAction key={a.title} {...a} />
+        ))}
+      </span>
+      <span className="sm:hidden">
+        <IconButton size="small" aria-label={label} aria-haspopup="menu" onClick={(e) => setAnchor(e.currentTarget)}>
+          <MoreVertIcon fontSize="small" />
+        </IconButton>
+        <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+          {items.map((a) => (
+            <MenuItem
+              key={a.title}
+              onClick={() => {
+                setAnchor(null)
+                a.onClick()
+              }}
+              className={a.color === 'error' ? 'text-crit' : undefined}
+            >
+              <ListItemIcon className={a.color === 'error' ? 'text-crit' : undefined}>{a.icon}</ListItemIcon>
+              {a.title}
+            </MenuItem>
+          ))}
+        </Menu>
+      </span>
+    </>
   )
 }

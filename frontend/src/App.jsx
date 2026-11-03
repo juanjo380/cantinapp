@@ -7,7 +7,7 @@ import { authApi } from './api/helper'
 import { AuthContext } from './auth/context'
 import ProtectedRoute from './auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
-import { Loading } from './components/ui/States'
+import { AppShellSkeleton } from './components/ui/States'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import Register from './pages/Register'
@@ -21,9 +21,10 @@ const Sales = lazy(() => import('./pages/Sales'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const Replenishment = lazy(() => import('./pages/Replenishment'))
 const Alerts = lazy(() => import('./pages/Alerts'))
+const Profile = lazy(() => import('./pages/Profile'))
 
-const USER_KEY = 'cantinapp.user'
-const BUSINESS_KEY = 'cantinapp.business'
+const SESSION_KEY = 'cantinapp.session'
+const LEGACY_KEYS = ['cantinapp.user', 'cantinapp.business'] // formato anterior a multi-negocio
 const MODE_KEY = 'cantinapp.mode'
 
 function ColorModeProvider({ children }) {
@@ -51,31 +52,36 @@ function ColorModeProvider({ children }) {
   return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>
 }
 
-function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(USER_KEY) || 'null')
-    } catch {
-      return null
-    }
-  })
-  const [businessName, setBusinessName] = useState(() => localStorage.getItem(BUSINESS_KEY) || '')
-  const [initializing, setInitializing] = useState(() => Boolean(getToken()))
+// Sesión = respuesta de /auth/me: { user, business_id, business_name, role, profile_completed, businesses }.
+function readSession() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
 
-  const persist = useCallback((session) => {
-    setToken(session.token)
-    setUser(session.user)
-    setBusinessName(session.business_name || '')
-    localStorage.setItem(USER_KEY, JSON.stringify(session.user))
-    localStorage.setItem(BUSINESS_KEY, session.business_name || '')
+function AuthProvider({ children }) {
+  const [session, setSession] = useState(readSession)
+  const [initializing, setInitializing] = useState(() => Boolean(getToken()))
+  // Tras iniciar sesión con varios negocios, el layout pide elegir con cuál entrar.
+  const [needsPick, setNeedsPick] = useState(false)
+
+  const apply = useCallback((next) => {
+    if (next.token) setToken(next.token)
+    const rest = { ...next }
+    delete rest.token
+    delete rest.token_type
+    setSession(rest)
+    localStorage.setItem(SESSION_KEY, JSON.stringify(rest))
   }, [])
 
   const clear = useCallback(() => {
     setToken(null)
-    setUser(null)
-    setBusinessName('')
-    localStorage.removeItem(USER_KEY)
-    localStorage.removeItem(BUSINESS_KEY)
+    setSession(null)
+    setNeedsPick(false)
+    localStorage.removeItem(SESSION_KEY)
+    LEGACY_KEYS.forEach((key) => localStorage.removeItem(key))
   }, [])
 
   useEffect(() => {
@@ -87,9 +93,7 @@ function AuthProvider({ children }) {
     authApi
       .me()
       .then((me) => {
-        if (!alive) return
-        setUser(me)
-        localStorage.setItem(USER_KEY, JSON.stringify(me))
+        if (alive) apply(me)
       })
       // Un 401 del token vigente ya cierra la sesión vía 'cantinapp:unauthorized'. Aquí no se limpia:
       // si /me tarda (cold start) y el usuario entra mientras tanto, borraría el token nuevo; y un fallo
@@ -101,7 +105,7 @@ function AuthProvider({ children }) {
     return () => {
       alive = false
     }
-  }, [clear])
+  }, [apply])
 
   useEffect(() => {
     const onUnauthorized = () => clear()
@@ -110,10 +114,15 @@ function AuthProvider({ children }) {
   }, [clear])
 
   const login = useCallback(
-    async (email, password) => persist(await authApi.login({ email, password })),
-    [persist],
+    async (email, password) => {
+      const result = await authApi.login({ email, password })
+      apply(result)
+      // `?.`: un backend anterior a multi-negocio no envía `businesses` (p. ej. mientras se despliega).
+      setNeedsPick((result.businesses?.length ?? 0) > 1)
+    },
+    [apply],
   )
-  const register = useCallback(async (payload) => persist(await authApi.register(payload)), [persist])
+  const register = useCallback(async (payload) => apply(await authApi.register(payload)), [apply])
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
@@ -122,10 +131,40 @@ function AuthProvider({ children }) {
     }
     clear()
   }, [clear])
+  const switchBusiness = useCallback(
+    async (businessId) => {
+      apply(await authApi.switchBusiness(businessId))
+      setNeedsPick(false)
+    },
+    [apply],
+  )
+  const createBusiness = useCallback(
+    async (name) => {
+      apply(await authApi.createBusiness(name))
+      setNeedsPick(false)
+    },
+    [apply],
+  )
+  const refresh = useCallback(async () => apply(await authApi.me()), [apply])
 
   const value = useMemo(
-    () => ({ user, businessName, initializing, login, register, logout }),
-    [user, businessName, initializing, login, register, logout],
+    () => ({
+      session,
+      user: session?.user ?? null,
+      businessName: session?.business_name ?? '',
+      isAdmin: ['OWNER', 'ADMIN'].includes(session?.role),
+      initializing,
+      needsPick,
+      setNeedsPick,
+      login,
+      register,
+      logout,
+      switchBusiness,
+      createBusiness,
+      refresh,
+      apply,
+    }),
+    [session, initializing, needsPick, login, register, logout, switchBusiness, createBusiness, refresh, apply],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -139,7 +178,7 @@ function ThemedApp() {
       <GlobalStyles styles="@layer theme, base, mui, components, utilities;" />
       <ThemeProvider theme={theme}>
         <BrowserRouter>
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<AppShellSkeleton />}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
@@ -152,6 +191,7 @@ function ThemedApp() {
                   <Route path="analisis" element={<Analytics />} />
                   <Route path="reabastecimiento" element={<Replenishment />} />
                   <Route path="alertas" element={<Alerts />} />
+                  <Route path="perfil" element={<Profile />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />

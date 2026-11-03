@@ -3,8 +3,14 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización: backend MVP v0.1 desplegado en Render (sección 9) y
-**frontend MVP v0.1** construido sobre esa API (sección 11).
+Última actualización (2026-11-02): **multi-negocio** (un usuario en varios negocios,
+roles, sedes, perfil), registro con consentimientos legales, **CSV de productos**,
+frontend **responsive** y **skeleton loaders**. Bitácora y pendientes en la **sección 12**.
+
+> ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar en el SQL Editor de Supabase,
+> en orden, `db/migrations/001_product_cooccurrences.sql`, `002_user_consents.sql` y
+> `003_business_profile_members.sql` (ver sección 4). **Sin la 003 todo el backend nuevo
+> responde 500**; el backend debe desplegarse después de las migraciones.
 
 ---
 
@@ -81,7 +87,20 @@ Ejecutar `db/schema.sql` en el SQL Editor de Supabase **antes** de levantar la A
 
 **Tablas:** `businesses`, `users`, `categories`, `suppliers`, `products`,
 `sales_imports`, `sales`, `inventory_movements`, `forecasts`,
-`recommendations`, `alerts`.
+`recommendations`, `product_cooccurrences`, `alerts`.
+
+**Migraciones** (`db/migrations/`, se ejecutan a mano en el SQL Editor sobre una BD
+que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nuevas):
+
+| Archivo | Qué hace | Producción |
+|---|---|---|
+| `001_product_cooccurrences.sql` | Tabla de pares A→B (`peaks`, `hits`, `score`), FK compuestas, RLS y `REVOKE` a `anon`/`authenticated` | **PENDIENTE de ejecutar** |
+| `002_user_consents.sql` | Bitácora de autorizaciones del registro (términos, privacidad, cookies, uso anónimo para ML) con versión y fecha; RLS | **PENDIENTE de ejecutar** (antes de desplegar el backend: sin ella `/register` da 500) |
+| `003_business_profile_members.sql` | Perfil del negocio y del usuario, `business_members` (usuario ↔ negocios con rol OWNER/ADMIN/MEMBER, backfill del usuario actual como OWNER), `business_locations` (sedes), `users.business_id` pasa a «último negocio usado» | **PENDIENTE de ejecutar** (después de 001 y 002, antes del backend: sin ella todo da 500) |
+
+**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (agregar por correo de cuenta existente, cambiar rol, quitar/salirse). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
+
+Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
 **Vistas:** `v_inventory` (estado NORMAL/BAJO/AGOTADO calculado),
 `v_daily_sales` (ventas agregadas por día).
@@ -144,16 +163,27 @@ productos e inventario; dashboard puede llamar a todos. Sin ciclos ni saltos de 
 
 ## 6. Autenticación y multitenancy
 
-- **RF-01/02:** registro crea negocio + usuario ADMIN; login devuelve JWT.
-- **JWT** (`core/security.py`): HS256, claims `sub` (id usuario), `bid` (id
-  negocio), `iat`, `exp`. Firma HMAC-SHA256 con `JWT_SECRET`.
-- **Hash de contraseña:** PBKDF2-SHA256, 260k iteraciones, sal aleatoria.
-- **Multitenancy (RNF-01):** `get_current_user` valida el token, carga el
-  usuario y expone `business_id`. **Todos** los endpoints de negocio dependen de
-  `get_current_user` y filtran por ese `business_id`. Nunca se acepta
-  `business_id` desde el cliente.
-- Errores: 401 si falta/expira/está mal el token; 404 en recursos de otro negocio
+- **RF-01/02:** registro crea negocio + usuario **dueño (OWNER)** + 3 filas de consentimiento
+  (`TERMS`, `PRIVACY` —incluye cookies— y `ML_ANONYMOUS`, versión `LEGAL_VERSION`); login devuelve JWT.
+  Términos y privacidad son obligatorios (si no, 422). La versión debe coincidir con `UPDATED`
+  de `frontend/src/components/auth/LegalDialog.jsx`.
+- **JWT** (`core/security.py`): HS256, claims `sub` (id usuario), `bid` (negocio **activo**,
+  puede ser `null`), `iat`, `exp`. Firma HMAC-SHA256 con `JWT_SECRET` (obligatorio y de ≥ 32
+  caracteres si `ENVIRONMENT` ≠ `development`: la app no arranca sin él).
+- **Hash de contraseña:** PBKDF2-SHA256, 260k iteraciones, sal aleatoria. Bloqueo temporal tras
+  5 logins fallidos (en memoria por proceso).
+- **Multi-negocio (desde 003):** un usuario pertenece a varios negocios vía `business_members`
+  con rol `OWNER` / `ADMIN` / `MEMBER` (un solo dueño). `users.business_id` = último negocio usado.
+- **Multitenancy (RNF-01):** `shared/api/dependencies.py`:
+  - `get_current_account`: valida token y usuario (perfil, cambio de negocio).
+  - `get_current_user`: además verifica **en cada request** que el usuario sea miembro del
+    negocio del token y expone `business_id` y `role`. **Todos** los endpoints de negocio lo usan
+    y filtran por ese `business_id`. Nunca se acepta `business_id` desde el cliente.
+- Errores: 401 si falta/expira/está mal el token; **403** si no hay negocio activo o ya no es
+  miembro (la sesión sigue válida: el cliente debe elegir otro); 404 en recursos de otro negocio
   (no se revela su existencia).
+- **Permisos** (módulo `business`, en los handlers): dueño y admin editan perfil, sedes y equipo;
+  el miembro solo consulta y puede salirse. Al dueño no se le cambia el rol ni se le quita.
 
 **Header obligatorio en endpoints protegidos:**
 ```
@@ -181,13 +211,32 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Auth | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|---|
-| POST | `/register` | 🔓 | `{ business_name, email, password (min 8), full_name? }` | 201 AuthResponse |
-| POST | `/login` | 🔓 | `{ email, password }` | AuthResponse |
+| POST | `/register` | 🔓 | `{ business_name, email, password (min 8), full_name?, accept_terms, accept_privacy, allow_ml_data }` | 201 AuthResponse |
+| POST | `/login` | 🔓 | `{ email, password }` | AuthResponse (abre el último negocio usado) |
 | POST | `/logout` | 🔒 | — | 204 (JWT sin estado: el cliente descarta el token) |
-| GET | `/me` | 🔒 | — | UserOut |
+| GET | `/me` | 🔒 | — | SessionOut (negocio del token; `business_id: null` si ya no es miembro) |
+| PUT | `/me` | 🔒 | `{ full_name?, phone?, job_title? }` | SessionOut |
+| PUT | `/password` | 🔒 | `{ current_password, new_password (min 8) }` | 204 (422 si la actual no coincide) |
+| POST | `/switch` | 🔒 | `{ business_id }` | AuthResponse con **token nuevo** (404 si no es miembro) |
+| POST | `/businesses` | 🔒 | `{ name }` | 201 AuthResponse: crea negocio (dueño) y lo activa |
 
-- **AuthResponse:** `{ token, token_type:"bearer", user{ id, business_id, email, full_name }, business_id, business_name }`
-- **UserOut:** `{ id, business_id, email, full_name }`
+- **SessionOut:** `{ user{ id, business_id, email, full_name, phone, job_title }, business_id, business_name, role, profile_completed, businesses[{ business_id, business_name, role, profile_completed }] }`
+- **AuthResponse:** SessionOut + `{ token, token_type:"bearer" }`.
+- `profile_completed`: el negocio tiene tipo, teléfono, dirección, ciudad y departamento, y el usuario tiene nombre.
+
+### Negocio — `/api/business` (🔒, negocio activo)
+
+| Método | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| GET / PUT | (raíz) | `{ name?, legal_name?, tax_id?, business_type?, phone?, email?, address?, city?, department? }` | BusinessOut |
+| GET / POST | `/locations` | `{ name, address?, city?, phone?, is_main }` | sedes (la primera queda principal) |
+| PUT / DELETE | `/locations/{id}` | igual que POST | LocationOut / 204 |
+| GET / POST | `/members` | `{ email, role: ADMIN\|MEMBER }` (cuenta ya registrada) | MemberOut (404 sin cuenta, 409 si ya es miembro) |
+| PATCH / DELETE | `/members/{user_id}` | `{ role }` | MemberOut / 204 (salirse uno mismo está permitido) |
+
+- `tax_id` (NIT) se normaliza y, si trae dígito de verificación, se valida (módulo 11 de la DIAN).
+- `business_type`: `TIENDA, MINIMERCADO, CANTINA_ESCOLAR, CAFETERIA, RESTAURANTE, PANADERIA, DROGUERIA, OTRO` (debe coincidir con `BUSINESS_TYPES` de `frontend/src/pages/Profile.jsx`).
+- Las sedes son **datos de perfil**: inventario y ventas siguen siendo del negocio completo.
 - Email único global (sin distinguir mayúsculas). Registro con email repetido → 409.
 - Abrir `/api/auth/register` en el navegador devuelve `405 Method Not Allowed`
   (el navegador hace GET; la ruta solo acepta POST). Es normal: significa que la ruta existe.
@@ -201,6 +250,10 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | GET | `/{product_id}` | — | ProductOut |
 | PUT | `/{product_id}` | body ProductUpdate (parcial) | ProductOut |
 | DELETE | `/{product_id}` | — | 204 (borrado lógico: `is_active=false`) |
+| POST | `/import` | `multipart/form-data` (campo `file`) | 201 ProductImportOut `{ file_name, total_rows, imported_rows, error_rows, status, errors[] }` |
+
+- **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
+- **Ambos CSV (productos y ventas):** separador `,` o `;`, UTF-8 o Windows-1252 (Excel), coma decimal (`2500,50`), máximo 5 MB. Utilidades en `shared/application/csv_utils.py` y `shared/api/uploads.py`.
 
 - **ProductCreate:** `{ name, category?, supplier?, price>=0, quantity>=0 (stock inicial), min_stock>=0, lead_time_days>=0 }`
 - **ProductUpdate:** todos opcionales (`name`, `category`, `supplier`, `price`, `min_stock`, `lead_time_days`). **No** cambia stock (para eso, movimientos de inventario).
@@ -391,8 +444,10 @@ sube el `.env`):
 | `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
 
 **Verificación del despliegue:** el log muestra `Application startup complete`
-(el `SELECT 1` del lifespan pasó, o sea que conecta con Supabase) y
-`Your service is live`. Comprobar con:
+y `Your service is live`. El `SELECT 1` del lifespan tiene límite de 15 s y **ya no
+bloquea el arranque** (Render mataba el servicio si no veía el puerto): si la BD no
+responde, solo deja un error en el log, así que confirma la conexión con `/health/db`.
+Las conexiones nuevas a asyncpg tienen `timeout` de 10 s. Comprobar con:
 - `https://cantinapp.onrender.com/health`
 - `https://cantinapp.onrender.com/health/db`
 - `https://cantinapp.onrender.com/docs`
@@ -433,16 +488,14 @@ cantinapp/
 - **Rotar la contraseña de la BD en Supabase** y actualizar `DB_PASSWORD` en
   Render y en el `.env` local (se compartió en texto plano durante la
   configuración y podría estar en el historial de GitHub si el `.env` se subió).
-- **Definir `JWT_SECRET` en Render.** Si no se define, se usa el valor por
-  defecto `dev-secret-change-me`, que es público en el código y permitiría
-  falsificar tokens.
+- **Definir `JWT_SECRET` en Render** (≥ 32 caracteres) y `ENVIRONMENT=production`.
+  Fuera de `development` la app ya no arranca con el secreto por defecto.
 - **Restringir `CORS_ORIGINS`** al origen real del frontend (el valor por
   defecto `["*"]` permite cualquier origen). `allow_credentials` está en
   `False`, coherente con autenticación por header Bearer.
-- `/health/db` es público y expone nombre de la BD, versión del servidor y
-  número de tablas; protegerlo o retirarlo antes de usar datos reales.
-- `scripts/check_db.py` importa `app.infrastructure.database` (ruta antigua);
-  la correcta es `app.shared.infrastructure.database`. No afecta al despliegue.
+- `/health/db` ya no expone detalles (solo `ok` / 503).
+- Agregar miembros por correo revela si ese correo tiene cuenta (sin servicio de
+  invitaciones no hay alternativa); solo dueño/admin pueden hacerlo.
 
 ---
 
@@ -492,11 +545,14 @@ SPA construida sobre la API desplegada. Vive en `frontend/` y **no modifica la A
 frontend/
   src/
     api/        client.js (fetch + Bearer + 401), helper.js (un método por recurso)
-    auth/       context.js, ProtectedRoute.jsx
-    components/ layout/AppLayout.jsx · ui/{States,Stamp,PageHeader}.jsx · auth/AuthShell.jsx
-    hooks/      useApi.js, useDebounced.js
+    auth/       context.js, ProtectedRoute.jsx   (AuthProvider vive en App.jsx)
+    components/ layout/{AppLayout,BusinessDialog,OnboardingDialog}.jsx
+                auth/{AuthShell,LegalDialog}.jsx
+                ui/{States,Stamp,PageHeader,Section,StatCard,DataTable,FormDialog,CsvImportDialog,
+                    Logo,IconField,SearchField,SelectField}.jsx
+    hooks/      useApi.js, useDebounced.js, usePagination.js, useProductOptions.js
     pages/      Login, Register, Dashboard, Products, Inventory, Sales, Analytics,
-                Replenishment, Alerts, NotFound
+                Replenishment, Alerts, Profile, NotFound
     theme/      color-mode.js (claro/oscuro)
     theme.js    tema MUI (refleja los tokens)
     index.css   ÚNICA hoja de estilos (tokens + clases de superficie)
@@ -514,8 +570,11 @@ npm run build
 ```
 
 - `VITE_API_URL=https://cantinapp.onrender.com` (nunca fija en el código).
-- Auth: JWT en `Authorization: Bearer`; token y usuario en `localStorage`. Un `401`
-  limpia la sesión y redirige a `/login` (evento `cantinapp:unauthorized`).
+- Auth: JWT en `Authorization: Bearer`; token en `cantinapp.token` y la sesión completa
+  (`SessionOut`) en `cantinapp.session` (`localStorage`). Al arrancar se refresca con
+  `GET /auth/me`. Un `401` limpia la sesión y redirige a `/login` (evento
+  `cantinapp:unauthorized`). Cambiar de negocio guarda el token nuevo y remonta las páginas
+  (`<Outlet key={business_id}>`).
 - Cold start de Render: `States.Loading` avisa "El servidor está despertando…"
   tras 5 s; no se trata como error con un timeout corto.
 - Nunca se envía `business_id`: lo deduce el backend del token.
@@ -530,9 +589,18 @@ npm run build
 | `/inventario` | Inventario + movimientos | `/api/inventory`, `POST /api/inventory/movements` |
 | `/ventas` | Venta manual + import CSV | `/api/sales`, `POST /api/sales/import` |
 | `/analisis` | Analítica | `GET /api/analytics/{sales,top-products}` |
-| `/reabastecimiento` | Predicción + recomendación | `POST /api/forecasting`, `/api/recommendations` |
+| `/reabastecimiento` | Predicción + recomendación + co-ocurrencia | `POST /api/forecasting`, `/api/recommendations`, `GET /api/recommendations/cooccurrence`, `POST .../cooccurrence/recompute` |
 | `/alertas` | Alertas | `/api/alerts`, `/generate`, `PATCH /{id}/review` |
+| `/perfil?tab=yo\|negocio\|sedes\|equipo` | Perfil del usuario, del negocio, sedes y equipo | `/api/auth/{me,password}`, `/api/business/*` |
 
+- **Registro:** casillas de Términos y de Política de privacidad y cookies (obligatorias) y de
+  uso anónimo para ML (opcional); cada enlace abre `LegalDialog`. Sin «tu nombre»: se pide en el
+  perfil. Tarjeta ancha (`AuthShell wide`) para caber sin scroll en ~650 px de alto.
+- **Tras registrarse:** `OnboardingDialog` con flecha rizada hacia el bloque «Negocio» de la
+  barra lateral (en móvil, al botón de menú). Ese bloque dice «Completa tu perfil →» y, con el
+  perfil completo, muestra el nombre del negocio.
+- **Selector de negocio** arriba del menú (en móvil, en el header): cambiar o crear negocio. Si al
+  iniciar sesión hay más de uno, se abre para elegir. Sin negocio activo, la página lo pide.
 - Productos: "Desactivar" = borrado lógico; **editar no cambia stock**.
 - Inventario: el stock solo cambia por movimientos (PURCHASE > 0, ADJUSTMENT ≠ 0).
 - Ventas: `422` por stock insuficiente se muestra en contexto; el CSV lleva
@@ -544,10 +612,25 @@ npm run build
 
 ### 11.4 Sistema de diseño
 
-- Mundo visual **«Kraft y sello»** (`DESIGN.md`): verde de mercado, fondos cálidos,
-  cifras tabulares en COP y sellos de estado con texto + icono (nunca solo color).
-- Claro y oscuro (sistema + `data-theme`), con conmutador manual en el riel.
-- Tipografía Chivo / Chivo Mono (Google Fonts cargadas en `index.html`).
+- Mundo visual **«boceto a mano / naive»** (desde 2026-10-31; reemplaza a «Kraft y
+  sello»). Referencias: `cantinapp-login.html` y `cantinapp-dashboard.html` en la raíz
+  (no versionadas).
+  - Claro: fondo `#fdfbf7`, tinta `#1c1917`, acento `#f97316` (hover `#ea580c`),
+    acento suave `#ffedd5`.
+  - Oscuro: «pizarra con tiza»: fondo `#1a1612`, bordes crema `#d6cdbf`, acento
+    `#fb923c`.
+  - Bordes de 2 px con radios irregulares (`--radius-sketch`, `-alt`, `-sm`); al pasar
+    el ratón cambia el radio y aparece una sombra desplazada.
+- **Accesibilidad:** el texto sobre botones naranjas es tinta oscura (el blanco sobre
+  `#f97316` da 2,8:1). El naranja como texto sobre claro usa `--brand-ink` `#c2410c`.
+- Claro y oscuro (sistema + `data-theme`), con conmutador en la barra lateral.
+- Tipografía: **Comic Neue** (h1–h3, `font-display`) + **Inter** (texto y cifras con
+  `tabular-nums`; `font-mono` apunta a Inter).
+- Logo: `public/logo.webp` (192 px, 9 KB) y `public/favicon.png`, generados desde
+  `DarioGomez.png` (1,4 MB, no versionado).
+- Componentes base: `Section` (bloque con título y acciones), `Logo`,
+  `IconField` / `PasswordField` (campo con icono y botón para ver la contraseña),
+  `StatCard` (KPI con `surface-lift`).
 - Fuente de verdad de tokens: `src/index.css` (`@theme` + variables `:root` /
   `data-theme`); `src/theme.js` solo refleja lo que MUI necesita.
 - Layout con Tailwind y componentes complejos con MUI. Clases de superficie
@@ -576,8 +659,20 @@ navegador. **No** usar `CssBaseline`: el reset base lo aporta el preflight de Ta
   único, borde sutil, anillo de foco del color primario y estados hover / disabled /
   error. El texto de ayuda va siempre **debajo** del campo.
 - Tablas con filas cómodas y cabecera discreta; jerarquía por tamaño y peso moderado.
-- `States.jsx`: skeletons en vez de spinner suelto; estados vacío y error con icono,
-  título y acción.
+- `States.jsx`: **skeleton loaders con la forma del contenido** (`Loading variant=
+  table|dashboard|chart|list|form|page`), `PageSkeleton` (fallback del `Suspense` de las páginas,
+  **dentro** de `AppLayout` para que la barra no desaparezca) y `AppShellSkeleton` (mientras se
+  verifica la sesión). Estados vacío y error con icono, título y acción.
+
+### 11.6.1 Responsive (móvil, verificado a 375 px)
+
+- `AppLayout`: **columna en móvil** (`flex-col md:flex-row`); antes el header móvil quedaba como
+  columna a la izquierda y aplastaba el contenido.
+- Tablas: `hideOnMobile` en columnas secundarias y `RowActions` (iconos en ≥ sm, menú «⋮» en
+  móvil). Inventario muestra el estado bajo el nombre; Ventas, la cantidad.
+- `.filter-row`: de a dos por fila en móvil (`flex: 1 1 10rem`). KPIs del dashboard en 2×2.
+- `theme.js`: diálogos con 16 px de margen en móvil, celdas más compactas y botones de icono de
+  44 px con `pointer: coarse`.
 
 ### 11.7 Verificación
 
@@ -594,8 +689,84 @@ navegador. **No** usar `CssBaseline`: el reset base lo aporta el preflight de Ta
 
 - **CORS en Render:** añadir el origen del frontend a `CORS_ORIGINS` (es la causa más
   probable de que las peticiones fallen en local).
-- Prueba manual en navegador: responsive (1366 / 390), teclado y foco, contraste en
-  modo oscuro.
-- `DESIGN.md` quedó desincronizado en radios y pesos tras la modernización visual
-  (conviene re-ejecutar `/impeccable document`).
+- Probar en un teléfono real: drawer abierto, menús «⋮», modales y la flecha de bienvenida
+  (las capturas automáticas no permiten clics). Teclado y foco, contraste en modo oscuro.
+- `DESIGN.md` describe el estilo anterior («Kraft y sello»): está **obsoleto** tras el
+  rediseño de 2026-10-31.
 - El Dashboard no recibe predicción del backend (ver 11.3).
+
+---
+
+## 12. Bitácora de sesiones
+
+### 2026-10-31 — Co-ocurrencia (Fase 1) + rediseño visual
+
+Rama `feature/juan.ruiz/MotorPredictorCo-Ocurrencia`, publicada en GitHub (sale de
+`FrontendV0.1`). **El merge a `main` lo hace el autor.**
+
+| Commit | Contenido |
+|---|---|
+| `ddc4597` | Arranque tolerante a una BD lenta: `timeout` de asyncpg (10 s) y `SELECT 1` del lifespan con límite de 15 s sin bloquear el arranque |
+| `2253331` | Motor de co-ocurrencia: dominio puro, repositorios, endpoints, script de cron, migración 001, 6 tests (25 en verde) |
+| `660ea87` | Rediseño visual estilo boceto, componentes base y pantalla «Productos que suben después» en Reabastecimiento |
+
+**Despliegue, en este orden:**
+1. **BD (pendiente):** ejecutar `db/migrations/001_product_cooccurrences.sql` en Supabase.
+2. **Backend:** merge a `main` y Render redespliega solo. Sin dependencias nuevas ni
+   variables obligatorias; las `COOCCURRENCE_*` son opcionales.
+3. **Frontend:** el mismo merge; Vercel reconstruye solo (`VITE_API_URL` ya configurada).
+4. **Opcional:** Render Cron Job (de pago) con
+   `python -m scripts.recompute_cooccurrence`, Root Directory `backend`, mismas
+   variables `DB_*`. Sin él, se usa el botón **Recalcular**.
+
+**Decisiones del algoritmo** (detalle en la sección 7):
+- Días sin ventas = 0.
+- Media y desviación de los 14 días previos, sin incluir el día evaluado.
+- Con desviación 0, cualquier subida sobre la media cuenta como pico (caso «flores en
+  San Valentín»).
+- B «sube» si supera su propia media en +1..+3; cuenta una vez por pico de A.
+- Score = coincidencias / picos de A; se descartan pares con menos de 3 coincidencias.
+
+**Limitaciones conocidas:**
+- No descuenta subidas generales del negocio (quincena, festivos).
+- Coste O(productos²): con cientos de productos el recálculo tarda segundos.
+- El botón Recalcular recarga a los 4 s sin saber si el cálculo terminó (`shortcut:`
+  en `Replenishment.jsx`).
+
+**Verificación hecha:** pytest (25 tests), `npm run lint` y `npm run build` en verde.
+Capturas de `/login` en claro y oscuro y de `/registro` en móvil. **No** se probaron en
+navegador las pantallas internas (requieren sesión) ni la co-ocurrencia contra la BD real.
+
+### 2026-11-01 / 02 — Registro legal, CSV de productos, multi-negocio, responsive
+
+Rama `feature/juan.ruiz/ProductosCSV&CompleteProfile`. Commit `35d2b6e` (términos y CSV de
+productos); **lo demás está sin commit** (multi-negocio, perfil, registro ajustado, responsive,
+skeletons).
+
+- **Registro:** confirmación de contraseña; casillas de Términos, Privacidad y cookies (una sola)
+  y ML anónimo (opcional); modales legales con las figuras del login. Consentimientos guardados
+  en `user_consents` (migración 002) con versión y fecha. Textos legales sin revisión de un
+  abogado (`CONTACT` en `LegalDialog.jsx`).
+- **CSV:** carga de productos (`POST /api/products/import`). Los dos CSV aceptan `;` (Excel en
+  español), Windows-1252, coma decimal y máximo 5 MB; `error_rows` cuenta filas, no errores.
+- **Multi-negocio:** migración 003, módulo `business`, endpoints de sesión en auth, selector de
+  negocio, bienvenida con flecha, página `/perfil` (sección 6, 7 y 11.3).
+- **Responsive y skeletons:** sección 11.6 y 11.6.1.
+- **Verificación:** 40 tests de pytest, `npm run lint` y `npm run build` en verde; capturas del
+  registro (1366×650, 1280×600) y de las pantallas internas a 375 px con una API falsa local.
+  **No** probado contra Supabase ni con el backend nuevo desplegado.
+- El login con el **backend anterior** desplegado daba `Cannot read properties of undefined
+  (reading 'length')`: el backend viejo no envía `businesses`. Se blindó con `?.`, pero perfil,
+  equipo y cambio de negocio necesitan el backend nuevo.
+
+### Próxima sesión — pendientes
+
+1. **Desplegar en orden:** migraciones 001 → 002 → 003 en Supabase; luego merge a `main`
+   (Render + Vercel). Validar registro, login, cambio de negocio, perfil y co-ocurrencia con
+   datos reales.
+2. Probar en un teléfono real (ver 11.8).
+3. Posibles siguientes pasos: invitaciones por correo, transferir el negocio a otro dueño,
+   inventario por sede, control de CSV de ventas duplicados (hoy se duplican), plantilla CSV
+   descargable.
+4. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.
+5. Siguen abiertos: `JWT_SECRET` (+ `ENVIRONMENT=production`) y `CORS_ORIGINS` en Render.

@@ -1,14 +1,25 @@
 """Endpoints de productos (RF-04, RF-05)."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.core.exceptions import UnprocessableError
-from app.modules.products.api.schemas import ProductCreate, ProductListOut, ProductOut, ProductUpdate
-from app.modules.products.application.commands import CreateProductCommand, UpdateProductCommand
+from app.modules.products.api.schemas import (
+    ProductCreate,
+    ProductImportOut,
+    ProductListOut,
+    ProductOut,
+    ProductUpdate,
+)
+from app.modules.products.application.commands import (
+    CreateProductCommand,
+    ImportProductsCommand,
+    UpdateProductCommand,
+)
 from app.modules.products.application.facade import ProductsFacade
 from app.modules.products.application.queries import GetProductQuery, ListProductsQuery
 from app.shared.api.dependencies import CurrentUser, get_current_user
+from app.shared.api.uploads import read_csv_upload
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork, get_uow
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -54,6 +65,21 @@ async def create_product(
         CreateProductCommand(business_id=user.business_id, **body.model_dump())
     )
     return ProductOut(**product.__dict__)
+
+
+@router.post("/import", response_model=ProductImportOut, status_code=201)
+async def import_products(
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    content = await read_csv_upload(file)
+    summary = await ProductsFacade(uow).import_csv(
+        ImportProductsCommand(
+            business_id=user.business_id, file_name=file.filename or "productos.csv", content=content
+        )
+    )
+    return ProductImportOut(**summary.__dict__)
 
 
 @router.get("/{product_id}", response_model=ProductOut)
