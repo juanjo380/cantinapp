@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField'
 import { useState } from 'react'
 import { productsApi } from '../api/helper'
 import CsvImportDialog from '../components/ui/CsvImportDialog'
-import DataTable, { RowAction } from '../components/ui/DataTable'
+import DataTable, { RowActions } from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
 import PageHeader from '../components/ui/PageHeader'
 import SearchField from '../components/ui/SearchField'
@@ -86,25 +86,25 @@ export default function Products() {
       key: 'is_active',
       header: 'Estado',
       align: 'right',
+      hideOnMobile: true, // en el teléfono manda el filtro «Solo activos»
       render: (p) => (p.is_active ? <Stamp tone="ok">Activo</Stamp> : <Stamp tone="neutral">Inactivo</Stamp>),
     },
     {
       key: 'actions',
-      header: 'Acciones',
+      header: <span className="sr-only sm:not-sr-only">Acciones</span>, // el «⋮» del teléfono no necesita título
       align: 'right',
-      className: 'whitespace-nowrap',
       render: (p) => (
-        <>
-          <RowAction title="Editar" icon={<EditOutlinedIcon fontSize="small" />} onClick={() => setEditing(p)} />
-          {p.is_active && (
-            <RowAction
-              title="Desactivar"
-              color="error"
-              icon={<BlockIcon fontSize="small" />}
-              onClick={() => onDeactivate(p)}
-            />
-          )}
-        </>
+        <RowActions
+          actions={[
+            { title: 'Editar', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => setEditing(p) },
+            p.is_active && {
+              title: 'Desactivar',
+              color: 'error',
+              icon: <BlockIcon fontSize="small" />,
+              onClick: () => onDeactivate(p),
+            },
+          ]}
+        />
       ),
     },
   ]

@@ -11,14 +11,14 @@ export default function StatCard({ label, value, hint, icon, strong, variant = '
   }
 
   return (
-    <div className="surface surface-lift relative flex min-h-36 flex-col justify-between gap-3 overflow-hidden p-5">
+    <div className="surface surface-lift relative flex min-h-28 flex-col justify-between gap-3 overflow-hidden p-4 sm:min-h-36 sm:p-5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-bold tracking-widest uppercase text-ink-soft">{label}</p>
+        <p className="text-[0.6875rem] font-bold tracking-wider uppercase text-ink-soft sm:text-xs sm:tracking-widest">{label}</p>
         {icon && <span className="flex text-brand" aria-hidden="true">{icon}</span>}
       </div>
       <div>
-        <p className="font-mono text-3xl font-bold break-words text-ink sm:text-4xl">{value}</p>
-        {hint && <p className="mt-1 text-sm font-medium text-ink-soft">{hint}</p>}
+        <p className="font-mono text-xl font-bold break-words text-ink sm:text-3xl lg:text-4xl">{value}</p>
+        {hint && <p className="mt-1 text-xs font-medium text-ink-soft sm:text-sm">{hint}</p>}
       </div>
       <svg className="pointer-events-none absolute -right-4 -bottom-4 h-16 w-16 text-line" viewBox="0 0 100 100" aria-hidden="true">
         <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="10 5" />

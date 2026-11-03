@@ -23,26 +23,35 @@ class FakeUsers:
         self.consents = (version, consents)
 
 
+class FakeMemberships:
+    def __init__(self):
+        self.added = []
+
+    async def add(self, *, business_id, user_id, role):
+        self.added.append(role)
+
+
 class FakeBusinesses:
     async def add(self, name):
         return Business(id=uuid4(), name=name)
 
 
-def register(users, consents):
+def register(users, consents, memberships=None):
     command = RegisterCommand(business_name="Tienda", email="a@b.co", password="secreta123", consents=consents)
-    return asyncio.run(handlers.register_user(users, FakeBusinesses(), command))
+    return asyncio.run(handlers.register_user(users, FakeBusinesses(), memberships or FakeMemberships(), command))
 
 
 def test_register_records_every_document_with_version():
-    users = FakeUsers()
-    register(users, {"TERMS": True, "PRIVACY": True, "COOKIES": True})
+    users, memberships = FakeUsers(), FakeMemberships()
+    register(users, {"TERMS": True, "PRIVACY": True}, memberships)
+    assert memberships.added == ["OWNER"]  # quien registra es el dueño
     version, consents = users.consents
     assert version == handlers.LEGAL_VERSION
-    assert consents == {"TERMS": True, "PRIVACY": True, "COOKIES": True, "ML_ANONYMOUS": False}
+    assert consents == {"TERMS": True, "PRIVACY": True, "ML_ANONYMOUS": False}
 
 
 def test_register_rejects_missing_required_consent_before_creating_anything():
     users = FakeUsers()
     with pytest.raises(UnprocessableError):
-        register(users, {"TERMS": True, "PRIVACY": True, "COOKIES": False, "ML_ANONYMOUS": True})
+        register(users, {"TERMS": True, "PRIVACY": False, "ML_ANONYMOUS": True})
     assert users.consents is None

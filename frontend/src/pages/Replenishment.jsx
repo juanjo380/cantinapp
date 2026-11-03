@@ -97,7 +97,7 @@ export default function Replenishment() {
         <SelectField size="small" label="Modelo" options={MODELS} value={model} onChange={setModel} className="min-w-44" />
       </div>
 
-      {products.loading && <Loading label="Cargando productos…" />}
+      {products.loading && <Loading variant="list" rows={3} label="Cargando productos…" />}
       {products.error && !products.loading && <ErrorView error={products.error} onRetry={products.reload} />}
 
       {!products.loading && !products.error && productOptions.length === 0 && (
@@ -119,7 +119,7 @@ export default function Replenishment() {
         </Empty>
       )}
 
-      {result.status === 'loading' && <Loading label="Analizando historial…" />}
+      {result.status === 'loading' && <Loading variant="dashboard" label="Analizando historial…" />}
       {result.status === 'error' && <ErrorView error={result.error} />}
       {result.status === 'insufficient' && (
         <Empty

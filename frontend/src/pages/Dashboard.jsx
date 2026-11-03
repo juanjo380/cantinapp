@@ -28,12 +28,12 @@ export default function Dashboard() {
         </Button>
       </PageHeader>
 
-      {loading && <Loading label="Cargando tu negocio…" />}
+      {loading && <Loading variant="dashboard" label="Cargando tu negocio…" />}
       {error && !loading && <ErrorView error={error} onRetry={reload} />}
 
       {data && !loading && !error && (
         <div className="flex flex-col gap-8">
-          <section aria-label="Indicadores" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <section aria-label="Indicadores" className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
             <StatCard label="Productos" icon={<Inventory2OutlinedIcon />} value={formatNumber(data.total_products)} />
             <StatCard label="Stock total" icon={<LayersOutlinedIcon />} value={formatNumber(data.total_stock)} hint="Unidades" />
             <StatCard label="Valor del inventario" icon={<PaidOutlinedIcon />} value={formatCOP(data.inventory_value)} />

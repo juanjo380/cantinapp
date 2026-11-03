@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.modules.alerts.api.router import router as alerts_router
 from app.modules.analytics.api.router import router as analytics_router
 from app.modules.auth.api.router import router as auth_router
+from app.modules.business.api.router import router as business_router
 from app.modules.dashboard.api.router import router as dashboard_router
 from app.modules.forecasting.api.router import router as forecasting_router
 from app.modules.inventory.api.router import router as inventory_router
@@ -52,6 +53,7 @@ register_error_handlers(app)
 
 for router in (
     auth_router,
+    business_router,
     products_router,
     sales_router,
     inventory_router,

@@ -82,7 +82,7 @@ export default function Analytics() {
       </div>
 
       <Section label="Tendencia de ventas">
-        {series.loading && <Loading label="Calculando tendencia…" />}
+        {series.loading && <Loading variant="chart" label="Calculando tendencia…" />}
         {series.error && !series.loading && <ErrorView error={series.error} onRetry={series.reload} />}
         {!series.loading && !series.error && labels.length === 0 && (
           <Empty title="Sin ventas en este rango">
@@ -121,7 +121,7 @@ function Ranking({ title, query }) {
   const items = query.data?.items ?? []
   return (
     <Section title={title}>
-      {query.loading && <Loading label="Cargando ranking…" />}
+      {query.loading && <Loading variant="list" rows={6} label="Cargando ranking…" />}
       {query.error && !query.loading && <ErrorView error={query.error} onRetry={query.reload} />}
       {!query.loading && !query.error && items.length === 0 && (
         <p className="py-6 text-center text-sm text-ink-soft">Sin datos en el rango.</p>

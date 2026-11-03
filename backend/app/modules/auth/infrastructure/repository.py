@@ -6,9 +6,11 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.domain.entities import Business, User
-from app.modules.auth.domain.repository import BusinessRepository, UserRepository
-from app.modules.auth.infrastructure.models import BusinessRecord, ConsentRecord, UserRecord
+from app.modules.auth.domain.entities import PROFILE_REQUIRED_FIELDS, Business, Membership, User
+from app.modules.auth.domain.repository import BusinessRepository, MembershipRepository, UserRepository
+from app.modules.auth.infrastructure.models import BusinessRecord, ConsentRecord, MembershipRecord, UserRecord
+
+USER_PROFILE_FIELDS = ("full_name", "phone", "job_title")
 
 
 def _to_user(record: UserRecord) -> User:
@@ -18,6 +20,8 @@ def _to_user(record: UserRecord) -> User:
         email=record.email,
         full_name=record.full_name,
         is_active=record.is_active,
+        phone=record.phone,
+        job_title=record.job_title,
     )
 
 
@@ -25,12 +29,13 @@ class SqlUserRepository(UserRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_email(self, email: str) -> User | None:
-        record = (
-            await self.session.execute(
-                select(UserRecord).where(func.lower(UserRecord.email) == email.lower())
-            )
+    async def _by_email(self, email: str) -> UserRecord | None:
+        return (
+            await self.session.execute(select(UserRecord).where(func.lower(UserRecord.email) == email.lower()))
         ).scalar_one_or_none()
+
+    async def get_by_email(self, email: str) -> User | None:
+        record = await self._by_email(email)
         return _to_user(record) if record else None
 
     async def get_by_id(self, user_id: UUID) -> User | None:
@@ -38,11 +43,7 @@ class SqlUserRepository(UserRepository):
         return _to_user(record) if record else None
 
     async def get_credentials(self, email: str) -> tuple[User, str] | None:
-        record = (
-            await self.session.execute(
-                select(UserRecord).where(func.lower(UserRecord.email) == email.lower())
-            )
-        ).scalar_one_or_none()
+        record = await self._by_email(email)
         return (_to_user(record), record.password_hash) if record else None
 
     async def add(
@@ -66,6 +67,24 @@ class SqlUserRepository(UserRepository):
         )
         await self.session.flush()
 
+    async def update_profile(self, user_id: UUID, changes: dict) -> User:
+        record = await self.session.get(UserRecord, user_id)
+        for name in USER_PROFILE_FIELDS:
+            if name in changes:
+                setattr(record, name, changes[name])
+        await self.session.flush()
+        return _to_user(record)
+
+    async def set_password(self, user_id: UUID, password_hash: str) -> None:
+        record = await self.session.get(UserRecord, user_id)
+        record.password_hash = password_hash
+        await self.session.flush()
+
+    async def set_last_business(self, user_id: UUID, business_id: UUID) -> None:
+        record = await self.session.get(UserRecord, user_id)
+        record.business_id = business_id
+        await self.session.flush()
+
 
 class SqlBusinessRepository(BusinessRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -76,3 +95,31 @@ class SqlBusinessRepository(BusinessRepository):
         self.session.add(record)
         await self.session.flush()
         return Business(id=record.id, name=record.name)
+
+
+class SqlMembershipRepository(MembershipRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def add(self, *, business_id: UUID, user_id: UUID, role: str) -> None:
+        self.session.add(MembershipRecord(business_id=business_id, user_id=user_id, role=role))
+        await self.session.flush()
+
+    async def list_for_user(self, user_id: UUID) -> list[Membership]:
+        rows = (
+            await self.session.execute(
+                select(MembershipRecord.role, BusinessRecord)
+                .join(BusinessRecord, BusinessRecord.id == MembershipRecord.business_id)
+                .where(MembershipRecord.user_id == user_id)
+                .order_by(func.lower(BusinessRecord.name))
+            )
+        ).all()
+        return [
+            Membership(
+                business_id=business.id,
+                business_name=business.name,
+                role=role,
+                profile_completed=all(getattr(business, f) for f in PROFILE_REQUIRED_FIELDS),
+            )
+            for role, business in rows
+        ]

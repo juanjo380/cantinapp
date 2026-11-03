@@ -25,13 +25,24 @@ const dateLabel = { inputLabel: { shrink: true } }
 
 const SALE_COLUMNS = [
   { key: 'sale_date', header: 'Fecha', render: (s) => formatDate(s.sale_date) },
-  { key: 'product_name', header: 'Producto' },
-  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true },
+  {
+    key: 'product_name',
+    header: 'Producto',
+    render: (s) => (
+      <div className="flex flex-col">
+        <span>{s.product_name}</span>
+        {/* En el teléfono la cantidad va aquí y su columna se oculta. */}
+        <span className="font-mono text-xs text-ink-soft sm:hidden">{s.quantity} u.</span>
+      </div>
+    ),
+  },
+  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true, hideOnMobile: true },
   { key: 'unit_price', header: 'Precio unit.', align: 'right', mono: true, hideOnMobile: true, render: (s) => formatCOP(s.unit_price) },
   { key: 'total_amount', header: 'Total', align: 'right', mono: true, render: (s) => formatCOP(s.total_amount) },
   {
     key: 'source',
     header: 'Origen',
+    hideOnMobile: true,
     render: (s) => <Stamp tone={s.source === 'CSV' ? 'neutral' : 'ok'}>{s.source === 'CSV' ? 'CSV' : 'Manual'}</Stamp>,
   },
 ]

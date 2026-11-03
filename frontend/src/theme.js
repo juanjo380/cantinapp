@@ -46,6 +46,8 @@ const palettes = {
 }
 
 const CONTROL_HEIGHT = 44
+const PHONE = '@media (max-width:599.95px)'
+const TOUCH = '@media (pointer: coarse)' // dedo, no ratón: objetivos de 44 px
 const CONTROL_RADIUS = 10
 const SKETCH = '255px 15px 225px 15px / 15px 225px 15px 255px'
 const SKETCH_ALT = '15px 225px 15px 255px / 255px 15px 225px 15px'
@@ -150,6 +152,7 @@ export function getTheme(mode = 'light') {
             transition: 'background-color .2s ease, color .2s ease',
             '&:hover': { backgroundColor: alpha(c.brand, isDark ? 0.16 : 0.12), color: c.ink },
             '&:focus-visible': { outline: 'none', boxShadow: ring },
+            [TOUCH]: { minWidth: 44, minHeight: 44 },
           },
         },
       },
@@ -224,6 +227,7 @@ export function getTheme(mode = 'light') {
             padding: '14px 16px',
             fontSize: '0.875rem',
             color: c.ink,
+            [PHONE]: { padding: '12px 10px' },
           },
           head: {
             ...overline,
@@ -251,15 +255,28 @@ export function getTheme(mode = 'light') {
         },
       },
       MuiDialog: {
-        styleOverrides: { paper: sketchPaper },
+        // En el teléfono el modal aprovecha casi toda la pantalla (16 px de margen en vez de 32).
+        styleOverrides: {
+          paper: { ...sketchPaper, [PHONE]: { margin: 16, maxHeight: 'calc(100% - 32px)' } },
+          paperFullWidth: { [PHONE]: { width: 'calc(100% - 32px)' } },
+        },
       },
       MuiDialogTitle: {
         styleOverrides: {
-          root: { fontFamily: DISPLAY, fontSize: '1.5rem', fontWeight: 700, padding: '20px 24px 8px' },
+          root: {
+            fontFamily: DISPLAY,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            padding: '20px 24px 8px',
+            [PHONE]: { fontSize: '1.25rem', padding: '16px 16px 8px' },
+          },
         },
       },
+      MuiDialogContent: {
+        styleOverrides: { root: { [PHONE]: { paddingLeft: 16, paddingRight: 16 } } },
+      },
       MuiDialogActions: {
-        styleOverrides: { root: { padding: '16px 24px 20px', gap: 8 } },
+        styleOverrides: { root: { padding: '16px 24px 20px', gap: 8, [PHONE]: { padding: '12px 16px 16px' } } },
       },
       MuiMenu: {
         styleOverrides: { paper: { ...sketchPaper, padding: 4 } },

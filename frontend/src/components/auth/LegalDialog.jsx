@@ -66,7 +66,7 @@ const LEGAL = {
     ),
   },
   privacy: {
-    title: 'Política de privacidad',
+    title: 'Política de privacidad y cookies',
     body: (
       <>
         <Block title="Responsable">
@@ -99,14 +99,7 @@ const LEGAL = {
             esté activa o la ley lo exija.
           </p>
         </Block>
-      </>
-    ),
-  },
-  cookies: {
-    title: 'Política de cookies',
-    body: (
-      <>
-        <Block title="Qué usamos">
+        <Block title="Cookies y almacenamiento local">
           <p>
             CantinAPP no usa cookies de publicidad ni de analítica. Solo guarda en tu navegador (almacenamiento local)
             lo necesario para funcionar:
@@ -115,17 +108,10 @@ const LEGAL = {
             <li>tu sesión (token de acceso) y los datos básicos de tu usuario;</li>
             <li>tu preferencia de tema claro u oscuro.</li>
           </ul>
-        </Block>
-        <Block title="Terceros">
           <p>
             Las tipografías se cargan desde Google Fonts, por lo que tu navegador se conecta a Google y este recibe tu
-            dirección IP.
-          </p>
-        </Block>
-        <Block title="Cómo borrarlo">
-          <p>
-            Al cerrar sesión se borra tu sesión. También puedes borrar los datos del sitio desde la configuración de
-            tu navegador; tendrás que volver a iniciar sesión.
+            dirección IP. Al cerrar sesión se borra tu sesión; también puedes borrar los datos del sitio desde la
+            configuración de tu navegador (tendrás que volver a iniciar sesión).
           </p>
         </Block>
       </>

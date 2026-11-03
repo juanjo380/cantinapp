@@ -24,7 +24,7 @@ function messageFrom(data, status) {
   const detail = data.detail
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
-    return detail.map((e) => e.message || e.msg || JSON.stringify(e)).join(' ')
+    return detail.map((e) => (e.message || e.msg || JSON.stringify(e)).replace(/^Value error, /, '')).join(' ')
   }
   return data.message || `Ocurrió un error (${status}).`
 }

@@ -66,20 +66,27 @@ export function Star({ className }) {
   )
 }
 
-export default function AuthShell({ title, subtitle, children, footer }) {
+// `wide`: tarjeta más ancha y espaciado compacto para que el registro quepa sin scroll en ~650 px de alto.
+export default function AuthShell({ title, subtitle, children, footer, wide = false }) {
   return (
-    <main className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-ground p-6">
+    <main
+      className={`relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-ground ${
+        wide ? 'px-6 py-4' : 'p-6'
+      }`}
+    >
       <Decorations />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Logo size="lg" />
+      <div className={`relative z-10 w-full ${wide ? 'max-w-xl' : 'max-w-md'}`}>
+        <div className={`flex justify-center ${wide ? 'mb-5' : 'mb-8'}`}>
+          <Logo size={wide ? 'md' : 'lg'} />
         </div>
-        <div className="surface p-8 md:p-10">
+        <div className={`surface ${wide ? 'p-6 md:p-8' : 'p-8 md:p-10'}`}>
           <h1 className="mb-2 text-3xl text-ink">{title}</h1>
           <p className="text-sm font-medium text-ink-soft">{subtitle}</p>
-          <div className="mt-6">{children}</div>
+          <div className={wide ? 'mt-5' : 'mt-6'}>{children}</div>
         </div>
-        {footer && <div className="mt-6 text-center text-sm font-medium text-ink-soft">{footer}</div>}
+        {footer && (
+          <div className={`text-center text-sm font-medium text-ink-soft ${wide ? 'mt-4' : 'mt-6'}`}>{footer}</div>
+        )}
       </div>
     </main>
   )

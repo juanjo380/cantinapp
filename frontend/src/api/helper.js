@@ -16,6 +16,23 @@ export const authApi = {
   login: (body) => request('/auth/login', { method: 'POST', body, auth: false }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  updateMe: (body) => request('/auth/me', { method: 'PUT', body }),
+  changePassword: (body) => request('/auth/password', { method: 'PUT', body }),
+  switchBusiness: (businessId) => request('/auth/switch', { method: 'POST', body: { business_id: businessId } }),
+  createBusiness: (name) => request('/auth/businesses', { method: 'POST', body: { name } }),
+}
+
+export const businessApi = {
+  get: () => request('/business'),
+  update: (body) => request('/business', { method: 'PUT', body }),
+  locations: () => request('/business/locations'),
+  createLocation: (body) => request('/business/locations', { method: 'POST', body }),
+  updateLocation: (id, body) => request(`/business/locations/${id}`, { method: 'PUT', body }),
+  removeLocation: (id) => request(`/business/locations/${id}`, { method: 'DELETE' }),
+  members: () => request('/business/members'),
+  addMember: (body) => request('/business/members', { method: 'POST', body }),
+  changeRole: (userId, role) => request(`/business/members/${userId}`, { method: 'PATCH', body: { role } }),
+  removeMember: (userId) => request(`/business/members/${userId}`, { method: 'DELETE' }),
 }
 
 export const productsApi = {

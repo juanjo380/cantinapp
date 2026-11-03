@@ -1,7 +1,7 @@
 """Hash de contraseñas y tokens JWT usando solo la librería estándar.
 
 Formato de contraseña: pbkdf2_sha256$iteraciones$salt_b64$hash_b64
-Token: JWT HS256 con claims sub (id usuario), bid (id negocio), iat, exp.
+Token: JWT HS256 con claims sub (id usuario), bid (negocio activo o null), iat, exp.
 """
 import base64
 import hashlib
@@ -41,7 +41,8 @@ def verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(derived, _b64url_decode(expected))
 
 
-def create_access_token(subject: str, business_id: str, expires_minutes: int | None = None) -> str:
+def create_access_token(subject: str, business_id: str | None, expires_minutes: int | None = None) -> str:
+    """`business_id` es el negocio activo; None si el usuario aún no pertenece a ninguno."""
     settings = get_settings()
     now = int(time.time())
     expire = now + (expires_minutes or settings.jwt_expire_minutes) * 60
