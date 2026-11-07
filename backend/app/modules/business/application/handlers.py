@@ -1,18 +1,23 @@
 """Reglas del negocio: quién puede editar el perfil, las sedes y el equipo.
 Dueño y admin administran; el miembro solo consulta (y puede salirse). Al dueño no se le toca."""
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnprocessableError
+from app.core.security import MAX_CODE_ATTEMPTS, hash_secret, new_code, new_link_token, same_secret
 from app.modules.business.application.commands import (
-    AddMemberCommand,
+    AcceptInvitationCommand,
     ChangeRoleCommand,
+    InviteMemberCommand,
     RemoveMemberCommand,
     SaveLocationCommand,
     UpdateBusinessCommand,
 )
-from app.modules.business.domain.entities import BusinessProfile, Location, Member
+from app.modules.business.domain.entities import BusinessProfile, Invitation, Location, Member
 from app.modules.business.domain.repository import BusinessProfileRepository
 from app.shared.api.dependencies import CurrentUser
+
+INVITATION_HOURS = 48
 
 
 def _require_admin(actor: CurrentUser) -> None:
@@ -43,7 +48,10 @@ async def delete_location(repo: BusinessProfileRepository, actor: CurrentUser, l
     await repo.delete_location(actor.business_id, location_id)
 
 
-async def add_member(repo: BusinessProfileRepository, command: AddMemberCommand) -> Member:
+async def invite_member(repo: BusinessProfileRepository, command: InviteMemberCommand) -> tuple[Invitation, str, str]:
+    """Crea la invitación y devuelve (invitación, token del enlace, código de seguridad).
+    El enlace va al correo invitado; el código solo lo ve quien invita y lo dicta por otro medio:
+    así aceptar exige el buzón de esa cuenta y hablar con quien invitó."""
     _require_admin(command.actor)
     business_id = command.actor.business_id
     user_id = await repo.find_user_id(command.email)
@@ -53,8 +61,60 @@ async def add_member(repo: BusinessProfileRepository, command: AddMemberCommand)
         )
     if await repo.get_member(business_id, user_id) is not None:
         raise ConflictError("Esa persona ya pertenece al negocio")
-    await repo.add_member(business_id, user_id, command.role)
-    return await repo.get_member(business_id, user_id)
+    token, code = new_link_token(), new_code()
+    invitation = await repo.add_invitation(
+        business_id=business_id,
+        email=command.email,
+        role=command.role,
+        invited_by=command.actor.user_id,
+        token_hash=hash_secret(token),
+        code_hash=hash_secret(code),
+        expires_at=datetime.now(UTC) + timedelta(hours=INVITATION_HOURS),
+    )
+    return invitation, token, code
+
+
+async def list_invitations(repo: BusinessProfileRepository, actor: CurrentUser) -> list[Invitation]:
+    _require_admin(actor)
+    return await repo.list_invitations(actor.business_id)
+
+
+async def revoke_invitation(repo: BusinessProfileRepository, actor: CurrentUser, invitation_id: UUID) -> None:
+    _require_admin(actor)
+    if not await repo.revoke_invitation(actor.business_id, invitation_id):
+        raise NotFoundError("Invitación no encontrada")
+
+
+async def find_invitation(repo: BusinessProfileRepository, email: str, token: str) -> Invitation:
+    """La invitación del enlace, si sigue vigente y es para el correo de quien la abre."""
+    invitation = await repo.find_invitation(hash_secret(token))
+    if (
+        invitation is None
+        or invitation.expires_at <= datetime.now(UTC)
+        or invitation.attempts >= MAX_CODE_ATTEMPTS
+    ):
+        raise NotFoundError("La invitación no existe, venció o ya se usó. Pide una nueva a quien te invitó")
+    if invitation.email != email.lower():
+        raise ForbiddenError("Esta invitación es para otro correo. Entra con la cuenta a la que llegó")
+    return invitation
+
+
+async def accept_invitation(repo: BusinessProfileRepository, command: AcceptInvitationCommand) -> UUID:
+    """Devuelve el negocio al que entró. El que llama confirma la transacción aunque falle
+    (guarda los intentos con código incorrecto)."""
+    invitation = await find_invitation(repo, command.email, command.token)
+    if not same_secret(command.code, invitation.code_hash):
+        await repo.count_invitation_attempt(invitation.id)
+        left = MAX_CODE_ATTEMPTS - invitation.attempts - 1
+        raise UnprocessableError(
+            f"Código incorrecto. Te quedan {left} intentos."
+            if left
+            else "Código incorrecto. La invitación quedó anulada; pide una nueva a quien te invitó."
+        )
+    if await repo.get_member(invitation.business_id, command.user_id) is None:
+        await repo.add_member(invitation.business_id, command.user_id, invitation.role)
+    await repo.accept_invitation(invitation.id)
+    return invitation.business_id
 
 
 async def _target(repo: BusinessProfileRepository, business_id: UUID, user_id: UUID) -> Member:

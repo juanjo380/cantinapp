@@ -76,6 +76,12 @@ export default function Login() {
           autoComplete="current-password"
           fullWidth
         />
+        <RouterLink
+          to={`/recuperar${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}
+          className="sketch-link self-end text-sm"
+        >
+          ¿Olvidaste tu contraseña?
+        </RouterLink>
         <Button type="submit" variant="contained" size="large" disabled={loading} endIcon={<ArrowForwardIcon />}>
           {loading ? 'Entrando…' : 'Entrar'}
         </Button>

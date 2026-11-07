@@ -62,3 +62,19 @@ class Member:
     job_title: str | None
     role: str
     created_at: datetime
+
+
+@dataclass
+class Invitation:
+    """Invitación vigente (sin aceptar ni anular). Los hashes solo los usa la aceptación."""
+
+    id: UUID
+    business_id: UUID
+    business_name: str
+    email: str
+    role: str
+    invited_by_name: str
+    expires_at: datetime
+    created_at: datetime
+    code_hash: str = ""
+    attempts: int = 0

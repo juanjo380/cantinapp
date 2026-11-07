@@ -8,12 +8,32 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 
 from app.core.config import get_settings
 
 _PBKDF2_ITERATIONS = 260_000
 _ALG = "HS256"
+MAX_CODE_ATTEMPTS = 5  # intentos por código antes de anularlo
+
+
+def new_code() -> str:
+    """Código numérico de 6 dígitos para escribir a mano."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def new_link_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_secret(value: str) -> str:
+    """HMAC con el secreto del servidor: los códigos y enlaces no se guardan en claro."""
+    return hmac.new(get_settings().jwt_secret.encode(), value.encode(), hashlib.sha256).hexdigest()
+
+
+def same_secret(value: str, stored_hash: str) -> bool:
+    return hmac.compare_digest(hash_secret(value), stored_hash)
 
 
 def _b64url_encode(raw: bytes) -> str:

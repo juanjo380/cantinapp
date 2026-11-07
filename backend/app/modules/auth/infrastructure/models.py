@@ -1,8 +1,8 @@
-"""Modelos ORM de autenticación (businesses, users, user_consents, business_members)."""
+"""Modelos ORM de autenticación (businesses, users, user_consents, business_members, email_codes)."""
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Uuid, func
+from sqlalchemy import DateTime, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.shared.infrastructure.base_model import Base
@@ -38,6 +38,7 @@ class UserRecord(Base):
     job_title: Mapped[str | None]
     role: Mapped[str] = mapped_column(default="ADMIN")  # obsoleto: el rol real está en business_members
     is_active: Mapped[bool] = mapped_column(default=True)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # migración 004
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -61,3 +62,16 @@ class ConsentRecord(Base):
     version: Mapped[str]
     granted: Mapped[bool]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class EmailCodeRecord(Base):
+    __tablename__ = "email_codes"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    purpose: Mapped[str]
+    code_hash: Mapped[str]
+    attempts: Mapped[int] = mapped_column(default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

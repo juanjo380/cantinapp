@@ -18,6 +18,8 @@ export const authApi = {
   me: () => request('/auth/me'),
   updateMe: (body) => request('/auth/me', { method: 'PUT', body }),
   changePassword: (body) => request('/auth/password', { method: 'PUT', body }),
+  forgotPassword: (email) => request('/auth/password/forgot', { method: 'POST', body: { email }, auth: false }),
+  resetPassword: (body) => request('/auth/password/reset', { method: 'POST', body, auth: false }),
   switchBusiness: (businessId) => request('/auth/switch', { method: 'POST', body: { business_id: businessId } }),
   createBusiness: (name) => request('/auth/businesses', { method: 'POST', body: { name } }),
 }
@@ -30,9 +32,13 @@ export const businessApi = {
   updateLocation: (id, body) => request(`/business/locations/${id}`, { method: 'PUT', body }),
   removeLocation: (id) => request(`/business/locations/${id}`, { method: 'DELETE' }),
   members: () => request('/business/members'),
-  addMember: (body) => request('/business/members', { method: 'POST', body }),
   changeRole: (userId, role) => request(`/business/members/${userId}`, { method: 'PATCH', body: { role } }),
   removeMember: (userId) => request(`/business/members/${userId}`, { method: 'DELETE' }),
+  invitations: () => request('/business/invitations'),
+  invite: (body) => request('/business/invitations', { method: 'POST', body }),
+  revokeInvitation: (id) => request(`/business/invitations/${id}`, { method: 'DELETE' }),
+  previewInvitation: (token) => request(`/business/invitations/preview${qs({ token })}`),
+  acceptInvitation: (body) => request('/business/invitations/accept', { method: 'POST', body }),
 }
 
 export const productsApi = {

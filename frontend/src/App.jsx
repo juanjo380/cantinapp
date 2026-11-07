@@ -8,6 +8,7 @@ import { AuthContext } from './auth/context'
 import ProtectedRoute from './auth/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import { AppShellSkeleton } from './components/ui/States'
+import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import Register from './pages/Register'
@@ -22,6 +23,7 @@ const Analytics = lazy(() => import('./pages/Analytics'))
 const Replenishment = lazy(() => import('./pages/Replenishment'))
 const Alerts = lazy(() => import('./pages/Alerts'))
 const Profile = lazy(() => import('./pages/Profile'))
+const Invitation = lazy(() => import('./pages/Invitation'))
 
 const SESSION_KEY = 'cantinapp.session'
 const LEGACY_KEYS = ['cantinapp.user', 'cantinapp.business'] // formato anterior a multi-negocio
@@ -182,7 +184,10 @@ function ThemedApp() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
+              <Route path="/recuperar" element={<ForgotPassword />} />
               <Route element={<ProtectedRoute />}>
+                {/* Fuera del layout: quien acepta puede no tener aún un negocio activo. */}
+                <Route path="invitacion" element={<Invitation />} />
                 <Route element={<AppLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="productos" element={<Products />} />

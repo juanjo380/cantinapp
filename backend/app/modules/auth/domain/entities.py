@@ -1,5 +1,6 @@
 """Entidades del dominio de autenticación y pertenencia a negocios."""
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import UUID
 
 ROLES = ("OWNER", "ADMIN", "MEMBER")
@@ -30,6 +31,21 @@ class Membership:
     business_name: str
     role: str
     profile_completed: bool
+
+
+@dataclass
+class EmailCode:
+    """Código de un solo uso enviado por correo (solo se conoce su hash)."""
+
+    id: UUID
+    code_hash: str
+    attempts: int
+    expires_at: datetime
+    created_at: datetime
+    used_at: datetime | None = None
+
+    def usable(self, now: datetime, max_attempts: int) -> bool:
+        return self.used_at is None and self.attempts < max_attempts and now < self.expires_at
 
 
 @dataclass

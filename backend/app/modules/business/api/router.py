@@ -1,26 +1,35 @@
 """Endpoints del negocio activo: perfil, sedes y equipo. Los permisos se validan en los handlers."""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
+from app.modules.auth.api.router import auth_out
+from app.modules.auth.api.schemas import AuthResponse
+from app.modules.auth.application.commands import SwitchBusinessCommand
+from app.modules.auth.application.facade import AuthFacade
 from app.modules.business.api.schemas import (
     BusinessOut,
     BusinessUpdate,
+    InvitationAccept,
+    InvitationCreate,
+    InvitationCreated,
+    InvitationOut,
+    InvitationPreview,
     LocationIn,
     LocationOut,
-    MemberAdd,
     MemberOut,
     RoleChange,
 )
 from app.modules.business.application.commands import (
-    AddMemberCommand,
+    AcceptInvitationCommand,
     ChangeRoleCommand,
+    InviteMemberCommand,
     RemoveMemberCommand,
     SaveLocationCommand,
     UpdateBusinessCommand,
 )
 from app.modules.business.application.facade import BusinessFacade
-from app.shared.api.dependencies import CurrentUser, get_current_user
+from app.shared.api.dependencies import CurrentAccount, CurrentUser, get_current_account, get_current_user
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork, get_uow
 
 router = APIRouter(prefix="/api/business", tags=["business"])
@@ -88,14 +97,58 @@ async def list_members(user: CurrentUser = Depends(get_current_user), uow: SqlAl
     return [m.__dict__ for m in await BusinessFacade(uow).members(user.business_id)]
 
 
-@router.post("/members", response_model=MemberOut, status_code=201)
-async def add_member(
-    body: MemberAdd,
+# Al equipo solo se entra por invitación: enlace al correo + código que dicta quien invita.
+@router.get("/invitations", response_model=list[InvitationOut])
+async def list_invitations(
+    user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)
+):
+    return [i.__dict__ for i in await BusinessFacade(uow).invitations(user)]
+
+
+@router.post("/invitations", response_model=InvitationCreated, status_code=201)
+async def invite_member(
+    body: InvitationCreate,
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
-    member = await BusinessFacade(uow).add_member(AddMemberCommand(actor=user, email=body.email, role=body.role))
-    return member.__dict__
+    invitation, code = await BusinessFacade(uow).invite(
+        InviteMemberCommand(actor=user, email=body.email, role=body.role)
+    )
+    return {**invitation.__dict__, "code": code}
+
+
+@router.delete("/invitations/{invitation_id}", status_code=204)
+async def revoke_invitation(
+    invitation_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    await BusinessFacade(uow).revoke_invitation(user, invitation_id)
+    return None
+
+
+# Las usa la persona invitada: tiene sesión pero aún no pertenece al negocio (CurrentAccount).
+@router.get("/invitations/preview", response_model=InvitationPreview)
+async def preview_invitation(
+    token: str = Query(min_length=10, max_length=200),
+    account: CurrentAccount = Depends(get_current_account),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    return (await BusinessFacade(uow).invitation(account.email, token)).__dict__
+
+
+@router.post("/invitations/accept", response_model=AuthResponse)
+async def accept_invitation(
+    body: InvitationAccept,
+    account: CurrentAccount = Depends(get_current_account),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    """Entra al negocio y devuelve la sesión ya abierta en él."""
+    business_id = await BusinessFacade(uow).accept_invitation(
+        AcceptInvitationCommand(user_id=account.user_id, email=account.email, token=body.token, code=body.code)
+    )
+    result = await AuthFacade(uow).switch(SwitchBusinessCommand(user_id=account.user_id, business_id=business_id))
+    return auth_out(result)
 
 
 @router.patch("/members/{user_id}", response_model=MemberOut)

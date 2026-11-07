@@ -1,14 +1,21 @@
 """Adaptadores SQLAlchemy para los puertos de autenticación."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.domain.entities import PROFILE_REQUIRED_FIELDS, Business, Membership, User
+from app.modules.auth.domain.entities import PROFILE_REQUIRED_FIELDS, Business, EmailCode, Membership, User
 from app.modules.auth.domain.repository import BusinessRepository, MembershipRepository, UserRepository
-from app.modules.auth.infrastructure.models import BusinessRecord, ConsentRecord, MembershipRecord, UserRecord
+from app.modules.auth.infrastructure.models import (
+    BusinessRecord,
+    ConsentRecord,
+    EmailCodeRecord,
+    MembershipRecord,
+    UserRecord,
+)
 
 USER_PROFILE_FIELDS = ("full_name", "phone", "job_title")
 
@@ -78,12 +85,47 @@ class SqlUserRepository(UserRepository):
     async def set_password(self, user_id: UUID, password_hash: str) -> None:
         record = await self.session.get(UserRecord, user_id)
         record.password_hash = password_hash
+        record.password_changed_at = datetime.now(UTC)
         await self.session.flush()
 
     async def set_last_business(self, user_id: UUID, business_id: UUID) -> None:
         record = await self.session.get(UserRecord, user_id)
         record.business_id = business_id
         await self.session.flush()
+
+    async def add_code(self, *, user_id: UUID, purpose: str, code_hash: str, expires_at: datetime) -> None:
+        self.session.add(EmailCodeRecord(user_id=user_id, purpose=purpose, code_hash=code_hash, expires_at=expires_at))
+        await self.session.flush()
+
+    async def latest_code(self, user_id: UUID, purpose: str) -> EmailCode | None:
+        record = (
+            await self.session.execute(
+                select(EmailCodeRecord)
+                .where(EmailCodeRecord.user_id == user_id, EmailCodeRecord.purpose == purpose)
+                .order_by(EmailCodeRecord.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if record is None:
+            return None
+        return EmailCode(
+            id=record.id,
+            code_hash=record.code_hash,
+            attempts=record.attempts,
+            expires_at=record.expires_at,
+            created_at=record.created_at,
+            used_at=record.used_at,
+        )
+
+    async def count_code_attempt(self, code_id: UUID) -> None:
+        await self.session.execute(
+            update(EmailCodeRecord).where(EmailCodeRecord.id == code_id).values(attempts=EmailCodeRecord.attempts + 1)
+        )
+
+    async def use_code(self, code_id: UUID) -> None:
+        await self.session.execute(
+            update(EmailCodeRecord).where(EmailCodeRecord.id == code_id).values(used_at=func.now())
+        )
 
 
 class SqlBusinessRepository(BusinessRepository):

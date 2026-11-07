@@ -2,6 +2,7 @@
 (RF-02, RNF-02). El `business_id` viene del token y se verifica contra
 `business_members` en cada request: nunca se acepta desde el cliente."""
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import Depends
@@ -42,13 +43,15 @@ class CurrentUser:
         return self.role in ADMIN_ROLES
 
 
-def _decode(credentials: HTTPAuthorizationCredentials | None) -> tuple[UUID, UUID | None]:
+def _decode(credentials: HTTPAuthorizationCredentials | None) -> tuple[UUID, UUID | None, datetime]:
     if credentials is None:
         raise UnauthorizedError("Falta el token de autenticación")
     try:
         payload = decode_access_token(credentials.credentials)
         bid = payload.get("bid")
-        return UUID(payload["sub"]), UUID(bid) if bid else None
+        # +1 s: `iat` va en segundos enteros y el token nuevo se emite justo después del cambio.
+        issued = datetime.fromtimestamp(int(payload.get("iat", 0)) + 1, UTC)
+        return UUID(payload["sub"]), UUID(bid) if bid else None, issued
     except ValueError as exc:
         raise UnauthorizedError("Token inválido o expirado") from exc
 
@@ -57,10 +60,15 @@ async def get_current_account(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     session: AsyncSession = Depends(get_db),
 ) -> CurrentAccount:
-    user_id, business_id = _decode(credentials)
+    user_id, business_id, issued = _decode(credentials)
+    # Cambiar la contraseña invalida los tokens emitidos antes (cierra las demás sesiones).
     row = (
         await session.execute(
-            text("SELECT id, email, full_name FROM users WHERE id = :id AND is_active"), {"id": user_id}
+            text(
+                "SELECT id, email, full_name FROM users WHERE id = :id AND is_active"
+                " AND (password_changed_at IS NULL OR password_changed_at < :issued)"
+            ),
+            {"id": user_id, "issued": issued},
         )
     ).mappings().first()
     if row is None:

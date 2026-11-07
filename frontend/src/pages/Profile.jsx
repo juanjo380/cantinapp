@@ -2,6 +2,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import GroupAddIcon from '@mui/icons-material/GroupAddOutlined'
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailReadOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PlaceIcon from '@mui/icons-material/PlaceOutlined'
 import Alert from '@mui/material/Alert'
@@ -12,7 +13,7 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import TextField from '@mui/material/TextField'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
 import { authApi, businessApi } from '../api/helper'
 import { useAuth } from '../auth/context'
 import { PasswordField } from '../components/ui/IconField'
@@ -24,7 +25,7 @@ import SelectField from '../components/ui/SelectField'
 import { Stamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
-import { formatDate, ROLE_LABELS } from '../utils/format'
+import { formatDate, formatDateTime, ROLE_LABELS } from '../utils/format'
 
 const TABS = [
   ['yo', 'Mi perfil'],
@@ -162,6 +163,7 @@ function MyProfileTab() {
 }
 
 function PasswordSection() {
+  const { user, apply } = useAuth()
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [notice, setNotice] = useState(null)
@@ -179,9 +181,10 @@ function PasswordSection() {
     setSaving(true)
     setNotice(null)
     try {
-      await authApi.changePassword({ current_password: form.current, new_password: form.next })
+      // El backend cierra las demás sesiones y devuelve un token nuevo para esta.
+      apply(await authApi.changePassword({ current_password: form.current, new_password: form.next }))
       setForm({ current: '', next: '', confirm: '' })
-      setNotice({ severity: 'success', text: 'Contraseña actualizada.' })
+      setNotice({ severity: 'success', text: 'Contraseña actualizada. Cerramos tus sesiones en otros dispositivos.' })
     } catch (err) {
       setNotice({ severity: 'error', text: err.message })
     } finally {
@@ -194,6 +197,12 @@ function PasswordSection() {
       <Notice notice={notice} onClose={() => setNotice(null)} />
       <form onSubmit={onSave} noValidate className="flex flex-col gap-4">
         <PasswordField label="Contraseña actual" autoComplete="current-password" {...field('current')} />
+        <RouterLink
+          to={`/recuperar?email=${encodeURIComponent(user.email)}`}
+          className="sketch-link -mt-2 self-start text-sm"
+        >
+          ¿No la recuerdas? Recibe un código por correo
+        </RouterLink>
         <PasswordField label="Nueva contraseña" autoComplete="new-password" {...field('next')} />
         <PasswordField label="Confirmar nueva contraseña" autoComplete="new-password" {...field('confirm')} />
         <Button type="submit" variant="outlined" disabled={saving} className="self-start">
@@ -451,6 +460,7 @@ function LocationDialog({ location, onClose, onSaved }) {
 function TeamTab() {
   const { user, isAdmin, refresh } = useAuth()
   const { data, loading, error, reload } = useApi(() => businessApi.members(), [])
+  const invitations = useApi(() => (isAdmin ? businessApi.invitations() : []), [isAdmin])
   const [adding, setAdding] = useState(false)
   const [notice, setNotice] = useState(null)
 
@@ -543,7 +553,7 @@ function TeamTab() {
         </p>
         {isAdmin && (
           <Button variant="contained" startIcon={<GroupAddIcon />} onClick={() => setAdding(true)}>
-            Agregar persona
+            Invitar persona
           </Button>
         )}
       </div>
@@ -557,26 +567,63 @@ function TeamTab() {
         error={error}
         onRetry={reload}
       />
-      {adding && (
-        <AddMemberDialog
-          onClose={() => setAdding(false)}
-          onAdded={(member) => {
-            setAdding(false)
-            setNotice({ severity: 'success', text: `${member.full_name || member.email} ya es parte del negocio.` })
-            reload()
-          }}
+      {isAdmin && invitations.data?.length > 0 && (
+        <PendingInvitations
+          rows={invitations.data}
+          onRevoke={(i) =>
+            window.confirm(`¿Anular la invitación a ${i.email}?`) &&
+            act(async () => {
+              await businessApi.revokeInvitation(i.id)
+              invitations.reload()
+            }, 'Invitación anulada.')
+          }
         />
       )}
+      {adding && <InviteDialog onClose={() => setAdding(false)} onInvited={invitations.reload} />}
     </>
   )
 }
 
-function AddMemberDialog({ onClose, onAdded }) {
+function PendingInvitations({ rows, onRevoke }) {
+  const columns = [
+    { key: 'email', header: 'Correo', render: (i) => <span className="font-medium text-ink">{i.email}</span> },
+    { key: 'role', header: 'Rol', render: (i) => <Stamp tone="neutral">{ROLE_LABELS[i.role] ?? i.role}</Stamp> },
+    { key: 'invited_by_name', header: 'Invitó', hideOnMobile: true, render: (i) => i.invited_by_name },
+    { key: 'expires_at', header: 'Vence', hideOnMobile: true, render: (i) => formatDateTime(i.expires_at) },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      render: (i) => (
+        <RowAction
+          title="Anular invitación"
+          color="error"
+          icon={<DeleteOutlineIcon fontSize="small" />}
+          onClick={() => onRevoke(i)}
+        />
+      ),
+    },
+  ]
+  return (
+    <div className="mt-8">
+      <h2 className="mb-1 text-lg text-ink">Invitaciones pendientes</h2>
+      <p className="mb-3 max-w-xl text-sm text-ink-soft">
+        Esperan a que la persona abra el enlace del correo y escriba el código de seguridad. ¿Se perdió el código?
+        Invítala otra vez: la invitación anterior se anula.
+      </p>
+      <DataTable label="Invitaciones pendientes" columns={columns} rows={rows} />
+    </div>
+  )
+}
+
+// Paso 1: correo + rol. Paso 2: el código de seguridad (solo se ve ahora) para dictarlo por otro medio.
+function InviteDialog({ onClose, onInvited }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('MEMBER')
   const [error, setError] = useState('')
   const [serverError, setServerError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [sent, setSent] = useState(null)
 
   async function onSave() {
     if (!EMAIL_RE.test(email.trim())) {
@@ -587,7 +634,8 @@ function AddMemberDialog({ onClose, onAdded }) {
     setSaving(true)
     setServerError('')
     try {
-      onAdded(await businessApi.addMember({ email: email.trim(), role }))
+      setSent(await businessApi.invite({ email: email.trim(), role }))
+      onInvited()
     } catch (err) {
       setServerError(err.message)
     } finally {
@@ -595,19 +643,41 @@ function AddMemberDialog({ onClose, onAdded }) {
     }
   }
 
+  if (sent) {
+    return (
+      <FormDialog title="Invitación enviada" icon={<MarkEmailReadIcon />} onClose={onClose}>
+        <p className="text-sm text-ink-soft">
+          Enviamos un enlace a <strong className="text-ink">{sent.email}</strong>. Para aceptar, esa persona debe
+          escribir este código de seguridad:
+        </p>
+        <p
+          className="rounded-lg border border-line py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-brand-ink"
+          aria-label={`Código de seguridad ${sent.code.split('').join(' ')}`}
+        >
+          {sent.code}
+        </p>
+        <Alert severity="warning">
+          Díselo tú por llamada, WhatsApp o en persona: no va en el correo. Así confirmas que entra quien quieres. Solo
+          lo verás ahora; vence el {formatDateTime(sent.expires_at)}.
+        </Alert>
+      </FormDialog>
+    )
+  }
+
   return (
     <FormDialog
-      title="Agregar persona"
+      title="Invitar persona"
       icon={<GroupAddIcon />}
       onClose={onClose}
       onSubmit={onSave}
-      submitLabel="Agregar"
-      submittingLabel="Agregando…"
+      submitLabel="Enviar invitación"
+      submittingLabel="Enviando…"
       submitting={saving}
       error={serverError}
     >
       <p className="text-sm text-ink-soft">
-        La persona debe tener ya una cuenta en CantinAPP. Al entrar, verá este negocio en su selector.
+        La persona debe tener ya una cuenta en CantinAPP. Le llegará un correo con un enlace y tú verás un código de
+        seguridad para dárselo.
       </p>
       <TextField
         label="Correo de su cuenta"

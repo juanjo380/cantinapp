@@ -3,6 +3,7 @@ gestiona la transacción. Toda operación que cambia el negocio activo devuelve 
 from dataclasses import dataclass
 from uuid import UUID
 
+from app.core.mailer import password_changed_email, password_reset_email, send_email
 from app.core.security import create_access_token
 from app.modules.auth.application import handlers
 from app.modules.auth.application.commands import (
@@ -10,6 +11,8 @@ from app.modules.auth.application.commands import (
     CreateBusinessCommand,
     LoginCommand,
     RegisterCommand,
+    RequestPasswordResetCommand,
+    ResetPasswordCommand,
     SwitchBusinessCommand,
     UpdateProfileCommand,
 )
@@ -63,9 +66,25 @@ class AuthFacade:
         await self.uow.commit()
         return await self.session(command.user_id, business_id)
 
-    async def change_password(self, command: ChangePasswordCommand) -> None:
+    async def change_password(self, command: ChangePasswordCommand, business_id: UUID | None) -> AuthResult:
+        """Devuelve un token nuevo: el actual quedó invalidado junto con las demás sesiones."""
         await handlers.change_password(self.users, command)
         await self.uow.commit()
+        await send_email(command.email, *password_changed_email(), quiet=True)
+        return await self._issue(command.user_id, [business_id])
+
+    async def request_password_reset(self, command: RequestPasswordResetCommand) -> None:
+        code = await handlers.request_password_reset(self.users, command)
+        await self.uow.commit()
+        if code:
+            await send_email(command.email, *password_reset_email(code, handlers.RESET_CODE_MINUTES))
+
+    async def reset_password(self, command: ResetPasswordCommand) -> None:
+        try:
+            user = await handlers.reset_password(self.users, command)
+        finally:
+            await self.uow.commit()  # también guarda el intento fallido
+        await send_email(user.email, *password_changed_email(), quiet=True)
 
     async def _issue(self, user_id: UUID, preferred: list[UUID | None]) -> AuthResult:
         return self._result(await handlers.load_session(self.users, self.memberships, user_id, preferred))

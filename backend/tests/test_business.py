@@ -4,14 +4,20 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnprocessableError
+from app.core.security import MAX_CODE_ATTEMPTS
 from app.modules.auth.application import handlers as auth_handlers
 from app.modules.auth.application.commands import SwitchBusinessCommand
 from app.modules.auth.domain.entities import Membership, User, build_session
 from app.modules.business.api.schemas import BusinessUpdate
 from app.modules.business.application import handlers
-from app.modules.business.application.commands import AddMemberCommand, ChangeRoleCommand, RemoveMemberCommand
-from app.modules.business.domain.entities import Member, nit_check_digit, normalize_nit
+from app.modules.business.application.commands import (
+    AcceptInvitationCommand,
+    ChangeRoleCommand,
+    InviteMemberCommand,
+    RemoveMemberCommand,
+)
+from app.modules.business.domain.entities import Invitation, Member, nit_check_digit, normalize_nit
 from app.shared.api.dependencies import CurrentUser
 
 BID = uuid4()
@@ -95,6 +101,21 @@ class FakeRepo:
     async def remove_member(self, business_id, user_id):
         del self.roles[user_id]
 
+    # invitaciones: un solo slot basta para el test
+    async def add_invitation(self, *, business_id, email, role, invited_by, token_hash, code_hash, expires_at):
+        self.invitation = Invitation(uuid4(), business_id, "Tienda", email, role, "Dueña", expires_at, datetime.now(), code_hash)
+        self.token_hash = token_hash
+        return self.invitation
+
+    async def find_invitation(self, token_hash):
+        return self.invitation if getattr(self, "token_hash", None) == token_hash else None
+
+    async def count_invitation_attempt(self, invitation_id):
+        self.invitation.attempts += 1
+
+    async def accept_invitation(self, invitation_id):
+        self.token_hash = None
+
 
 def actor(repo, user_id):
     return CurrentUser(user_id=user_id, business_id=BID, email="x@y.co", full_name=None, role=repo.roles[user_id])
@@ -105,12 +126,13 @@ def test_only_admins_manage_team_and_owner_is_untouchable():
     owner, member = actor(repo, repo.owner), actor(repo, repo.member)
 
     with pytest.raises(ForbiddenError):
-        run(handlers.add_member(repo, AddMemberCommand(member, "nuevo@y.co", "MEMBER")))
+        run(handlers.invite_member(repo, InviteMemberCommand(member, "nuevo@y.co", "MEMBER")))
     with pytest.raises(NotFoundError):
-        run(handlers.add_member(repo, AddMemberCommand(owner, "nadie@y.co", "MEMBER")))
-    assert run(handlers.add_member(repo, AddMemberCommand(owner, "nuevo@y.co", "ADMIN"))).role == "ADMIN"
+        run(handlers.invite_member(repo, InviteMemberCommand(owner, "nadie@y.co", "MEMBER")))
+    accept_invitation(repo, "ADMIN")
+    assert repo.roles[repo.outsider] == "ADMIN"
     with pytest.raises(ConflictError):
-        run(handlers.add_member(repo, AddMemberCommand(owner, "nuevo@y.co", "MEMBER")))
+        run(handlers.invite_member(repo, InviteMemberCommand(owner, "nuevo@y.co", "MEMBER")))
 
     admin = actor(repo, repo.outsider)
     with pytest.raises(ForbiddenError):
@@ -122,3 +144,48 @@ def test_only_admins_manage_team_and_owner_is_untouchable():
 
     run(handlers.remove_member(repo, RemoveMemberCommand(member, repo.member)))  # pero sí puede salirse
     assert repo.member not in repo.roles
+
+
+def accept_invitation(repo, role):
+    """Invita a nuevo@y.co y acepta con su cuenta y el código correcto."""
+    owner = actor(repo, repo.owner)
+    _, token, code = run(handlers.invite_member(repo, InviteMemberCommand(owner, "nuevo@y.co", role)))
+    return run(handlers.accept_invitation(repo, AcceptInvitationCommand(repo.outsider, "nuevo@y.co", token, code)))
+
+
+def test_invitation_needs_the_invited_account_and_the_security_code():
+    repo = FakeRepo()
+    owner = actor(repo, repo.owner)
+    _, token, code = run(handlers.invite_member(repo, InviteMemberCommand(owner, "nuevo@y.co", "MEMBER")))
+    wrong = f"{(int(code) + 1) % 1_000_000:06d}"
+
+    def accept(email, given_code, given_token=token):
+        return run(
+            handlers.accept_invitation(repo, AcceptInvitationCommand(repo.outsider, email, given_token, given_code))
+        )
+
+    with pytest.raises(ForbiddenError):  # el enlace llegó a otra persona
+        accept("otro@y.co", code)
+    with pytest.raises(NotFoundError):  # enlace inventado
+        accept("nuevo@y.co", code, "token-que-no-existe")
+    with pytest.raises(UnprocessableError):
+        accept("nuevo@y.co", wrong)
+    assert repo.outsider not in repo.roles
+
+    assert accept("NUEVO@y.co", code) == BID
+    assert repo.roles[repo.outsider] == "MEMBER"
+    with pytest.raises(NotFoundError):  # un solo uso
+        accept("nuevo@y.co", code)
+
+
+def test_invitation_is_void_after_too_many_wrong_codes():
+    repo = FakeRepo()
+    owner = actor(repo, repo.owner)
+    _, token, code = run(handlers.invite_member(repo, InviteMemberCommand(owner, "nuevo@y.co", "MEMBER")))
+    wrong = f"{(int(code) + 1) % 1_000_000:06d}"
+    for _ in range(MAX_CODE_ATTEMPTS):
+        with pytest.raises(UnprocessableError):
+            run(handlers.accept_invitation(repo, AcceptInvitationCommand(repo.outsider, "nuevo@y.co", token, wrong)))
+    with pytest.raises(NotFoundError):
+        run(handlers.accept_invitation(repo, AcceptInvitationCommand(repo.outsider, "nuevo@y.co", token, code)))
+    assert repo.outsider not in repo.roles

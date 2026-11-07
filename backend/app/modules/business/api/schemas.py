@@ -83,7 +83,7 @@ class LocationOut(BaseModel):
     is_main: bool
 
 
-class MemberAdd(BaseModel):
+class InvitationCreate(BaseModel):
     email: str
     role: AssignableRole = "MEMBER"
 
@@ -94,6 +94,31 @@ class MemberAdd(BaseModel):
         if not _EMAIL_RE.match(value):
             raise ValueError("Correo inválido")
         return value
+
+
+class InvitationOut(BaseModel):
+    id: UUID
+    email: str
+    role: str
+    invited_by_name: str
+    expires_at: datetime
+    created_at: datetime
+
+
+class InvitationCreated(InvitationOut):
+    code: str  # código de seguridad: solo se devuelve al crear
+
+
+class InvitationPreview(BaseModel):
+    business_name: str
+    role: str
+    invited_by_name: str
+    expires_at: datetime
+
+
+class InvitationAccept(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class RoleChange(BaseModel):

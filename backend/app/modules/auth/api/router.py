@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends
 from app.modules.auth.api.schemas import (
     AuthResponse,
     CreateBusinessRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     PasswordChange,
     ProfileUpdate,
     RegisterRequest,
+    ResetPasswordRequest,
     SessionOut,
     SwitchBusinessRequest,
 )
@@ -16,6 +18,8 @@ from app.modules.auth.application.commands import (
     CreateBusinessCommand,
     LoginCommand,
     RegisterCommand,
+    RequestPasswordResetCommand,
+    ResetPasswordCommand,
     SwitchBusinessCommand,
     UpdateProfileCommand,
 )
@@ -46,7 +50,7 @@ def _session_out(session: Session) -> dict:
     }
 
 
-def _auth_out(result: AuthResult) -> AuthResponse:
+def auth_out(result: AuthResult) -> AuthResponse:
     return AuthResponse(token=result.token, **_session_out(result.session))
 
 
@@ -65,12 +69,12 @@ async def register(body: RegisterRequest, uow: SqlAlchemyUnitOfWork = Depends(ge
             },
         )
     )
-    return _auth_out(result)
+    return auth_out(result)
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest, uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
-    return _auth_out(await AuthFacade(uow).login(LoginCommand(email=body.email, password=body.password)))
+    return auth_out(await AuthFacade(uow).login(LoginCommand(email=body.email, password=body.password)))
 
 
 @router.post("/logout", status_code=204)
@@ -97,19 +101,36 @@ async def update_me(
     return _session_out(session)
 
 
-@router.put("/password", status_code=204)
+@router.put("/password", response_model=AuthResponse)
 async def change_password(
     body: PasswordChange,
     account: CurrentAccount = Depends(get_current_account),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
-    await AuthFacade(uow).change_password(
+    """Devuelve un token nuevo: el anterior y las demás sesiones quedan cerradas."""
+    result = await AuthFacade(uow).change_password(
         ChangePasswordCommand(
             user_id=account.user_id,
             email=account.email,
             current_password=body.current_password,
             new_password=body.new_password,
-        )
+        ),
+        account.business_id,
+    )
+    return auth_out(result)
+
+
+@router.post("/password/forgot", status_code=202)
+async def forgot_password(body: ForgotPasswordRequest, uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    """Misma respuesta exista o no la cuenta."""
+    await AuthFacade(uow).request_password_reset(RequestPasswordResetCommand(email=body.email))
+    return {"detail": "Si el correo está registrado, te enviamos un código. Vence en 5 minutos."}
+
+
+@router.post("/password/reset", status_code=204)
+async def reset_password(body: ResetPasswordRequest, uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    await AuthFacade(uow).reset_password(
+        ResetPasswordCommand(email=body.email, code=body.code, new_password=body.new_password)
     )
     return None
 
@@ -123,7 +144,7 @@ async def switch_business(
     result = await AuthFacade(uow).switch(
         SwitchBusinessCommand(user_id=account.user_id, business_id=body.business_id)
     )
-    return _auth_out(result)
+    return auth_out(result)
 
 
 @router.post("/businesses", response_model=AuthResponse, status_code=201)
@@ -133,4 +154,4 @@ async def create_business(
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
     result = await AuthFacade(uow).create_business(CreateBusinessCommand(user_id=account.user_id, name=body.name))
-    return _auth_out(result)
+    return auth_out(result)
