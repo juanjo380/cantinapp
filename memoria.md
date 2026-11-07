@@ -11,7 +11,7 @@ frontend **responsive** y **skeleton loaders**. Bitácora y pendientes en la **s
 > en orden, `db/migrations/001_product_cooccurrences.sql`, `002_user_consents.sql` y
 > `003_business_profile_members.sql` y `004_email_codes_invitations.sql` (ver sección 4). **Sin la 003
 > o la 004 todo el backend nuevo responde 500**; el backend debe desplegarse después de las migraciones.
-> Para que los correos salgan de verdad: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y `FRONTEND_URL` en Render (sección 12).
+> Para que los correos salgan de verdad: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y `FRONTEND_URL` en Render (secciones 9 y 12).
 
 ---
 
@@ -68,6 +68,9 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 | `JWT_SECRET` | Clave de firma JWT (`dev-secret-change-me` por defecto, **cambiar en prod**) |
 | `JWT_EXPIRE_MINUTES` | Expiración del token (720 por defecto) |
 | `CORS_ORIGINS` | Orígenes permitidos (lista JSON; por defecto `["*"]`) |
+| `MAIL_BACKEND` | `console` (por defecto: solo log) o `brevo` (exige `BREVO_API_KEY`) |
+| `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME` | API de Brevo y remitente verificado en su panel |
+| `FRONTEND_URL` | Base de los enlaces de los correos (`http://localhost:5173` por defecto) |
 
 - El motor async vive en `backend/app/shared/infrastructure/database.py`
   (`create_async_engine` + `async_sessionmaker`, `pool_pre_ping`).
@@ -100,7 +103,7 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `003_business_profile_members.sql` | Perfil del negocio y del usuario, `business_members` (usuario ↔ negocios con rol OWNER/ADMIN/MEMBER, backfill del usuario actual como OWNER), `business_locations` (sedes), `users.business_id` pasa a «último negocio usado» | **PENDIENTE de ejecutar** (después de 001 y 002, antes del backend: sin ella todo da 500) |
 | `004_email_codes_invitations.sql` | `users.password_changed_at` (invalida tokens anteriores), `email_codes` (códigos de recuperación, solo hash), `business_invitations` (enlace + código de seguridad) | **PENDIENTE de ejecutar** (después de 003, antes del backend: sin ella todo da 500) |
 
-**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (agregar por correo de cuenta existente, cambiar rol, quitar/salirse). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
+**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (cambiar rol, quitar/salirse; desde 004 el alta es solo por `/api/business/invitations`). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
 
 Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
@@ -173,7 +176,10 @@ productos e inventario; dashboard puede llamar a todos. Sin ciclos ni saltos de 
   puede ser `null`), `iat`, `exp`. Firma HMAC-SHA256 con `JWT_SECRET` (obligatorio y de ≥ 32
   caracteres si `ENVIRONMENT` ≠ `development`: la app no arranca sin él).
 - **Hash de contraseña:** PBKDF2-SHA256, 260k iteraciones, sal aleatoria. Bloqueo temporal tras
-  5 logins fallidos (en memoria por proceso).
+  5 logins fallidos (en memoria por proceso; recuperar la contraseña lo levanta).
+- **Cerrar otras sesiones (desde 004):** `get_current_account` rechaza (401) los tokens cuyo `iat`
+  sea anterior a `users.password_changed_at`; cambiar o recuperar la contraseña la actualiza.
+  Códigos de correo e invitaciones se guardan como HMAC con `JWT_SECRET` (rotarlo los anula).
 - **Multi-negocio (desde 003):** un usuario pertenece a varios negocios vía `business_members`
   con rol `OWNER` / `ADMIN` / `MEMBER` (un solo dueño). `users.business_id` = último negocio usado.
 - **Multitenancy (RNF-01):** `shared/api/dependencies.py`:
@@ -450,6 +456,8 @@ sube el `.env`):
 | `PYTHON_VERSION` | `3.11.9` |
 | `JWT_SECRET` | **Pendiente de definir** (valor largo y aleatorio) |
 | `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
+| `MAIL_BACKEND` / `BREVO_API_KEY` / `MAIL_FROM` | **Pendiente**: `brevo`, la API key y el remitente verificado (sin esto los correos solo van al log) |
+| `FRONTEND_URL` | **Pendiente**: URL del frontend en Vercel (si no, los enlaces de invitación apuntan a localhost) |
 
 **Verificación del despliegue:** el log muestra `Application startup complete`
 y `Your service is live`. El `SELECT 1` del lifespan tiene límite de 15 s y **ya no
