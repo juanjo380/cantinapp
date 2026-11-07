@@ -58,6 +58,7 @@ CREATE TABLE users (
     job_title      text,
     role           text        NOT NULL DEFAULT 'ADMIN' CHECK (role IN ('ADMIN')),
     is_active      boolean     NOT NULL DEFAULT true,
+    password_changed_at timestamptz,             -- tokens emitidos antes quedan invalidos (migracion 004)
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now()
 );
@@ -102,6 +103,37 @@ CREATE TABLE business_locations (
     UNIQUE (business_id, id)
 );
 CREATE UNIQUE INDEX ux_business_locations_main ON business_locations (business_id) WHERE is_main;
+
+-- Códigos por correo (migracion 004): un solo uso, solo se guarda el hash
+CREATE TABLE email_codes (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      uuid        NOT NULL REFERENCES users (id),
+    purpose      text        NOT NULL CHECK (purpose IN ('PASSWORD_RESET')),
+    code_hash    text        NOT NULL,
+    attempts     integer     NOT NULL DEFAULT 0,
+    expires_at   timestamptz NOT NULL,
+    used_at      timestamptz,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_email_codes_user ON email_codes (user_id, purpose, created_at DESC);
+
+-- Invitaciones al equipo (migracion 004): enlace al correo + código que dicta quien invita
+CREATE TABLE business_invitations (
+    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    email        text        NOT NULL,
+    role         text        NOT NULL CHECK (role IN ('ADMIN', 'MEMBER')),
+    invited_by   uuid        NOT NULL REFERENCES users (id),
+    token_hash   text        NOT NULL UNIQUE,
+    code_hash    text        NOT NULL,
+    attempts     integer     NOT NULL DEFAULT 0,
+    expires_at   timestamptz NOT NULL,
+    accepted_at  timestamptz,
+    revoked_at   timestamptz,
+    created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX ux_business_invitations_pending
+    ON business_invitations (business_id, lower(email)) WHERE accepted_at IS NULL AND revoked_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- 2. Catalogos: categorias y proveedores  [Modulo Productos]

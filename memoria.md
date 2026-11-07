@@ -9,8 +9,9 @@ frontend **responsive** y **skeleton loaders**. Bitácora y pendientes en la **s
 
 > ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar en el SQL Editor de Supabase,
 > en orden, `db/migrations/001_product_cooccurrences.sql`, `002_user_consents.sql` y
-> `003_business_profile_members.sql` (ver sección 4). **Sin la 003 todo el backend nuevo
-> responde 500**; el backend debe desplegarse después de las migraciones.
+> `003_business_profile_members.sql` y `004_email_codes_invitations.sql` (ver sección 4). **Sin la 003
+> o la 004 todo el backend nuevo responde 500**; el backend debe desplegarse después de las migraciones.
+> Para que los correos salgan de verdad: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y `FRONTEND_URL` en Render (secciones 9 y 12).
 
 ---
 
@@ -67,6 +68,9 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 | `JWT_SECRET` | Clave de firma JWT (`dev-secret-change-me` por defecto, **cambiar en prod**) |
 | `JWT_EXPIRE_MINUTES` | Expiración del token (720 por defecto) |
 | `CORS_ORIGINS` | Orígenes permitidos (lista JSON; por defecto `["*"]`) |
+| `MAIL_BACKEND` | `console` (por defecto: solo log) o `brevo` (exige `BREVO_API_KEY`) |
+| `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME` | API de Brevo y remitente verificado en su panel |
+| `FRONTEND_URL` | Base de los enlaces de los correos (`http://localhost:5173` por defecto) |
 
 - El motor async vive en `backend/app/shared/infrastructure/database.py`
   (`create_async_engine` + `async_sessionmaker`, `pool_pre_ping`).
@@ -97,8 +101,9 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `001_product_cooccurrences.sql` | Tabla de pares A→B (`peaks`, `hits`, `score`), FK compuestas, RLS y `REVOKE` a `anon`/`authenticated` | **PENDIENTE de ejecutar** |
 | `002_user_consents.sql` | Bitácora de autorizaciones del registro (términos, privacidad, cookies, uso anónimo para ML) con versión y fecha; RLS | **PENDIENTE de ejecutar** (antes de desplegar el backend: sin ella `/register` da 500) |
 | `003_business_profile_members.sql` | Perfil del negocio y del usuario, `business_members` (usuario ↔ negocios con rol OWNER/ADMIN/MEMBER, backfill del usuario actual como OWNER), `business_locations` (sedes), `users.business_id` pasa a «último negocio usado» | **PENDIENTE de ejecutar** (después de 001 y 002, antes del backend: sin ella todo da 500) |
+| `004_email_codes_invitations.sql` | `users.password_changed_at` (invalida tokens anteriores), `email_codes` (códigos de recuperación, solo hash), `business_invitations` (enlace + código de seguridad) | **PENDIENTE de ejecutar** (después de 003, antes del backend: sin ella todo da 500) |
 
-**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (agregar por correo de cuenta existente, cambiar rol, quitar/salirse). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
+**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (cambiar rol, quitar/salirse; desde 004 el alta es solo por `/api/business/invitations`). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
 
 Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
@@ -171,7 +176,10 @@ productos e inventario; dashboard puede llamar a todos. Sin ciclos ni saltos de 
   puede ser `null`), `iat`, `exp`. Firma HMAC-SHA256 con `JWT_SECRET` (obligatorio y de ≥ 32
   caracteres si `ENVIRONMENT` ≠ `development`: la app no arranca sin él).
 - **Hash de contraseña:** PBKDF2-SHA256, 260k iteraciones, sal aleatoria. Bloqueo temporal tras
-  5 logins fallidos (en memoria por proceso).
+  5 logins fallidos (en memoria por proceso; recuperar la contraseña lo levanta).
+- **Cerrar otras sesiones (desde 004):** `get_current_account` rechaza (401) los tokens cuyo `iat`
+  sea anterior a `users.password_changed_at`; cambiar o recuperar la contraseña la actualiza.
+  Códigos de correo e invitaciones se guardan como HMAC con `JWT_SECRET` (rotarlo los anula).
 - **Multi-negocio (desde 003):** un usuario pertenece a varios negocios vía `business_members`
   con rol `OWNER` / `ADMIN` / `MEMBER` (un solo dueño). `users.business_id` = último negocio usado.
 - **Multitenancy (RNF-01):** `shared/api/dependencies.py`:
@@ -216,7 +224,9 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | POST | `/logout` | 🔒 | — | 204 (JWT sin estado: el cliente descarta el token) |
 | GET | `/me` | 🔒 | — | SessionOut (negocio del token; `business_id: null` si ya no es miembro) |
 | PUT | `/me` | 🔒 | `{ full_name?, phone?, job_title? }` | SessionOut |
-| PUT | `/password` | 🔒 | `{ current_password, new_password (min 8) }` | 204 (422 si la actual no coincide) |
+| PUT | `/password` | 🔒 | `{ current_password, new_password (min 8) }` | AuthResponse con **token nuevo**: cierra las demás sesiones (422 si la actual no coincide) |
+| POST | `/password/forgot` | 🔓 | `{ email }` | 202 siempre igual; si la cuenta existe envía un código de 6 dígitos (vence en 5 min, uno por minuto) |
+| POST | `/password/reset` | 🔓 | `{ email, code, new_password }` | 204; 422 si el código es malo o venció (5 intentos por código) |
 | POST | `/switch` | 🔒 | `{ business_id }` | AuthResponse con **token nuevo** (404 si no es miembro) |
 | POST | `/businesses` | 🔒 | `{ name }` | 201 AuthResponse: crea negocio (dueño) y lo activa |
 
@@ -231,7 +241,11 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | GET / PUT | (raíz) | `{ name?, legal_name?, tax_id?, business_type?, phone?, email?, address?, city?, department? }` | BusinessOut |
 | GET / POST | `/locations` | `{ name, address?, city?, phone?, is_main }` | sedes (la primera queda principal) |
 | PUT / DELETE | `/locations/{id}` | igual que POST | LocationOut / 204 |
-| GET / POST | `/members` | `{ email, role: ADMIN\|MEMBER }` (cuenta ya registrada) | MemberOut (404 sin cuenta, 409 si ya es miembro) |
+| GET | `/members` | — | MemberOut[] (al equipo se entra solo por invitación) |
+| GET / POST | `/invitations` | `{ email, role: ADMIN\|MEMBER }` (cuenta ya registrada; solo admin) | POST: 201 con `code` de seguridad (solo esta vez); envía el enlace al correo. 404 sin cuenta, 409 si ya es miembro, 503 si el correo falla |
+| DELETE | `/invitations/{id}` | — | 204 (anular) |
+| GET | `/invitations/preview?token=` | sesión de la cuenta invitada (sin negocio) | `{ business_name, role, invited_by_name, expires_at }`; 403 si es para otro correo |
+| POST | `/invitations/accept` | `{ token, code }` (sesión de la cuenta invitada) | AuthResponse ya dentro del negocio; 5 intentos de código, vence en 48 h |
 | PATCH / DELETE | `/members/{user_id}` | `{ role }` | MemberOut / 204 (salirse uno mismo está permitido) |
 
 - `tax_id` (NIT) se normaliza y, si trae dígito de verificación, se valida (módulo 11 de la DIAN).
@@ -442,6 +456,8 @@ sube el `.env`):
 | `PYTHON_VERSION` | `3.11.9` |
 | `JWT_SECRET` | **Pendiente de definir** (valor largo y aleatorio) |
 | `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
+| `MAIL_BACKEND` / `BREVO_API_KEY` / `MAIL_FROM` | **Pendiente**: `brevo`, la API key y el remitente verificado (sin esto los correos solo van al log) |
+| `FRONTEND_URL` | **Pendiente**: URL del frontend en Vercel (si no, los enlaces de invitación apuntan a localhost) |
 
 **Verificación del despliegue:** el log muestra `Application startup complete`
 y `Your service is live`. El `SELECT 1` del lifespan tiene límite de 15 s y **ya no
@@ -759,13 +775,32 @@ skeletons).
   (reading 'length')`: el backend viejo no envía `businesses`. Se blindó con `?.`, pero perfil,
   equipo y cambio de negocio necesitan el backend nuevo.
 
+### 2026-11-04 — Correo: recuperar contraseña e invitaciones (rama `feature/juan.ruiz/WebMail`)
+
+- **Envío:** `app/core/mailer.py`. `MAIL_BACKEND=console` (por defecto) solo escribe el correo en
+  el log, con el código en development; `brevo` usa la API HTTPS de Brevo porque Render (plan
+  gratis) bloquea SMTP. Con Brevo y sin dominio propio basta con verificar un remitente
+  (`MAIL_FROM`). Los datos de usuarios que van en el HTML se escapan.
+- **Recuperar contraseña:** `/recuperar` (enlace en el login y en Perfil → Cambiar contraseña).
+  Código de 6 dígitos, 5 min, un solo uso, 5 intentos, uno nuevo por minuto; al cambiarla se
+  inicia sesión. Cambiar o recuperar la contraseña cierra las demás sesiones
+  (`password_changed_at` contra el `iat` del JWT) y envía un aviso por correo.
+- **Invitaciones:** reemplazan el alta directa (`POST /members` ya no existe). Quien invita ve
+  un código de seguridad y se lo dice a la persona por otro medio; la persona abre el enlace del
+  correo **con la cuenta de ese correo** y escribe el código (`/invitacion`). Reinvitar anula la
+  anterior. Pendientes visibles y anulables en Perfil → Equipo.
+- **Verificación:** 46 tests de pytest, `eslint` y `vite build` en verde. **No** probado contra
+  Supabase ni con Brevo real.
+
 ### Próxima sesión — pendientes
 
-1. **Desplegar en orden:** migraciones 001 → 002 → 003 en Supabase; luego merge a `main`
+1. **Desplegar en orden:** migraciones 001 → 002 → 003 → 004 en Supabase; variables de correo
+   en Render; luego merge a `main`
    (Render + Vercel). Validar registro, login, cambio de negocio, perfil y co-ocurrencia con
    datos reales.
 2. Probar en un teléfono real (ver 11.8).
-3. Posibles siguientes pasos: invitaciones por correo, transferir el negocio a otro dueño,
+3. Posibles siguientes pasos: verificar el correo al registrarse, invitar a quien aún no tiene
+   cuenta (hoy debe registrarse antes y eso le crea un negocio propio), transferir el negocio a otro dueño,
    inventario por sede, control de CSV de ventas duplicados (hoy se duplican), plantilla CSV
    descargable.
 4. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.

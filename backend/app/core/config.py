@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +45,14 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
+    # Correo (recuperar contraseña, invitaciones). "console" solo lo escribe en el log;
+    # "brevo" usa su API HTTPS porque Render (plan gratis) bloquea los puertos SMTP.
+    mail_backend: Literal["console", "brevo"] = "console"
+    brevo_api_key: SecretStr | None = None
+    mail_from: str = "no-reply@cantinapp.local"  # con Brevo: un remitente verificado en su panel
+    mail_from_name: str = "CantinAPP"
+    frontend_url: str = "http://localhost:5173"  # base de los enlaces que van en los correos
+
     @model_validator(mode="after")
     def _require_real_secret_outside_dev(self) -> "Settings":
         # Con el secreto por defecto cualquiera puede firmar tokens de cualquier usuario.
@@ -51,6 +60,8 @@ class Settings(BaseSettings):
             self.jwt_secret == _DEV_JWT_SECRET or len(self.jwt_secret) < 32
         ):
             raise ValueError("JWT_SECRET debe definirse (mínimo 32 caracteres) fuera de development")
+        if self.mail_backend == "brevo" and not (self.brevo_api_key and self.brevo_api_key.get_secret_value()):
+            raise ValueError("MAIL_BACKEND=brevo necesita BREVO_API_KEY")
         return self
 
 

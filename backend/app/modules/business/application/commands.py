@@ -20,10 +20,20 @@ class SaveLocationCommand(Command):
 
 
 @dataclass
-class AddMemberCommand(Command):
+class InviteMemberCommand(Command):
     actor: CurrentUser
     email: str
     role: str
+
+
+@dataclass
+class AcceptInvitationCommand(Command):
+    """Lo ejecuta la persona invitada con su sesión: aún no es miembro del negocio."""
+
+    user_id: UUID
+    email: str
+    token: str
+    code: str
 
 
 @dataclass

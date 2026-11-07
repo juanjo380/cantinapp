@@ -1,6 +1,7 @@
 """Handlers de los casos de uso de autenticación."""
 import asyncio
 import time
+from datetime import UTC, datetime, timedelta
 from functools import cache
 from uuid import UUID
 
@@ -11,12 +12,14 @@ from app.core.exceptions import (
     UnauthorizedError,
     UnprocessableError,
 )
-from app.core.security import hash_password, verify_password
+from app.core.security import MAX_CODE_ATTEMPTS, hash_password, hash_secret, new_code, same_secret, verify_password
 from app.modules.auth.application.commands import (
     ChangePasswordCommand,
     CreateBusinessCommand,
     LoginCommand,
     RegisterCommand,
+    RequestPasswordResetCommand,
+    ResetPasswordCommand,
     SwitchBusinessCommand,
     UpdateProfileCommand,
 )
@@ -28,6 +31,11 @@ LEGAL_VERSION = "2026-11-01"
 # La política de cookies forma parte de la de privacidad (PRIVACY) desde 2026-11-02.
 REQUIRED_CONSENTS = ("TERMS", "PRIVACY")
 OPTIONAL_CONSENTS = ("ML_ANONYMOUS",)
+
+PASSWORD_RESET = "PASSWORD_RESET"
+RESET_CODE_MINUTES = 5
+RESET_RESEND_SECONDS = 60  # no se manda otro código antes de esto
+INVALID_CODE = "El código no es válido o ya venció. Pide uno nuevo."
 
 _MAX_FAILED_LOGINS = 5
 _LOCKOUT_SECONDS = 15 * 60
@@ -156,3 +164,40 @@ async def change_password(users: UserRepository, command: ChangePasswordCommand)
         # 422, no 401: un 401 haría que el cliente cierre la sesión.
         raise UnprocessableError("La contraseña actual no es correcta")
     await users.set_password(command.user_id, await asyncio.to_thread(hash_password, command.new_password))
+
+
+async def request_password_reset(users: UserRepository, command: RequestPasswordResetCommand) -> str | None:
+    """Crea el código a enviar; None si no hay que enviar nada (cuenta inexistente o pedido repetido).
+    La respuesta al cliente es la misma en ambos casos."""
+    user = await users.get_by_email(command.email)
+    if user is None or not user.is_active:
+        return None
+    now = datetime.now(UTC)
+    last = await users.latest_code(user.id, PASSWORD_RESET)
+    if last and (now - last.created_at).total_seconds() < RESET_RESEND_SECONDS:
+        return None  # el código anterior sigue sirviendo
+    code = new_code()
+    await users.add_code(
+        user_id=user.id,
+        purpose=PASSWORD_RESET,
+        code_hash=hash_secret(code),
+        expires_at=now + timedelta(minutes=RESET_CODE_MINUTES),
+    )
+    return code
+
+
+async def reset_password(users: UserRepository, command: ResetPasswordCommand) -> User:
+    """Cambia la contraseña con el código del correo. El que llama debe confirmar la transacción
+    aunque esto falle: así se guardan los intentos fallidos."""
+    user = await users.get_by_email(command.email)
+    code = await users.latest_code(user.id, PASSWORD_RESET) if user and user.is_active else None
+    if code is None or not code.usable(datetime.now(UTC), MAX_CODE_ATTEMPTS):
+        raise UnprocessableError(INVALID_CODE)
+    if not same_secret(command.code, code.code_hash):
+        await users.count_code_attempt(code.id)
+        left = MAX_CODE_ATTEMPTS - code.attempts - 1
+        raise UnprocessableError(f"Código incorrecto. Te quedan {left} intentos." if left else INVALID_CODE)
+    await users.use_code(code.id)
+    await users.set_password(user.id, await asyncio.to_thread(hash_password, command.new_password))
+    _failed_logins.pop(user.email.lower(), None)  # si estaba bloqueado por intentos, ya puede entrar
+    return user

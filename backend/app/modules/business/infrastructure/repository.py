@@ -1,15 +1,17 @@
 """Adaptador SQLAlchemy del negocio. Reusa los modelos de auth (businesses, users, business_members)."""
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.modules.auth.infrastructure.models import BusinessRecord, MembershipRecord, UserRecord
-from app.modules.business.domain.entities import PROFILE_FIELDS, BusinessProfile, Location, Member
+from app.modules.business.domain.entities import PROFILE_FIELDS, BusinessProfile, Invitation, Location, Member
 from app.modules.business.domain.repository import BusinessProfileRepository
-from app.modules.business.infrastructure.models import LocationRecord
+from app.modules.business.infrastructure.models import InvitationRecord, LocationRecord
 
 _LOCATION_FIELDS = ("name", "address", "city", "phone", "is_main")
 
@@ -128,4 +130,101 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             delete(MembershipRecord).where(
                 MembershipRecord.business_id == business_id, MembershipRecord.user_id == user_id
             )
+        )
+
+    # --- invitaciones ---------------------------------------------------------
+
+    def _invitations_query(self):
+        inviter = aliased(UserRecord)
+        return (
+            select(InvitationRecord, BusinessRecord.name, func.coalesce(inviter.full_name, inviter.email))
+            .join(BusinessRecord, BusinessRecord.id == InvitationRecord.business_id)
+            .join(inviter, inviter.id == InvitationRecord.invited_by)
+            .where(InvitationRecord.accepted_at.is_(None), InvitationRecord.revoked_at.is_(None))
+        )
+
+    @staticmethod
+    def _to_invitation(record: InvitationRecord, business_name: str, inviter_name: str) -> Invitation:
+        return Invitation(
+            id=record.id,
+            business_id=record.business_id,
+            business_name=business_name,
+            email=record.email,
+            role=record.role,
+            invited_by_name=inviter_name,
+            expires_at=record.expires_at,
+            created_at=record.created_at,
+            code_hash=record.code_hash,
+            attempts=record.attempts,
+        )
+
+    def _pending(self, business_id: UUID):
+        return update(InvitationRecord).where(
+            InvitationRecord.business_id == business_id,
+            InvitationRecord.accepted_at.is_(None),
+            InvitationRecord.revoked_at.is_(None),
+        )
+
+    async def add_invitation(
+        self,
+        *,
+        business_id: UUID,
+        email: str,
+        role: str,
+        invited_by: UUID,
+        token_hash: str,
+        code_hash: str,
+        expires_at: datetime,
+    ) -> Invitation:
+        await self.session.execute(
+            self._pending(business_id)
+            .where(func.lower(InvitationRecord.email) == email.lower())
+            .values(revoked_at=func.now())
+        )
+        record = InvitationRecord(
+            business_id=business_id,
+            email=email.lower(),
+            role=role,
+            invited_by=invited_by,
+            token_hash=token_hash,
+            code_hash=code_hash,
+            expires_at=expires_at,
+        )
+        self.session.add(record)
+        await self.session.flush()
+        row = (await self.session.execute(self._invitations_query().where(InvitationRecord.id == record.id))).one()
+        return self._to_invitation(*row)
+
+    async def list_invitations(self, business_id: UUID) -> list[Invitation]:
+        rows = (
+            await self.session.execute(
+                self._invitations_query()
+                .where(InvitationRecord.business_id == business_id, InvitationRecord.expires_at > func.now())
+                .order_by(InvitationRecord.created_at.desc())
+            )
+        ).all()
+        return [self._to_invitation(*row) for row in rows]
+
+    async def revoke_invitation(self, business_id: UUID, invitation_id: UUID) -> bool:
+        result = await self.session.execute(
+            self._pending(business_id).where(InvitationRecord.id == invitation_id).values(revoked_at=func.now())
+        )
+        return result.rowcount > 0
+
+    async def find_invitation(self, token_hash: str) -> Invitation | None:
+        row = (
+            await self.session.execute(self._invitations_query().where(InvitationRecord.token_hash == token_hash))
+        ).first()
+        return self._to_invitation(*row) if row else None
+
+    async def count_invitation_attempt(self, invitation_id: UUID) -> None:
+        await self.session.execute(
+            update(InvitationRecord)
+            .where(InvitationRecord.id == invitation_id)
+            .values(attempts=InvitationRecord.attempts + 1)
+        )
+
+    async def accept_invitation(self, invitation_id: UUID) -> None:
+        await self.session.execute(
+            update(InvitationRecord).where(InvitationRecord.id == invitation_id).values(accepted_at=func.now())
         )

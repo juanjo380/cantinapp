@@ -58,6 +58,15 @@ class PasswordChange(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class ForgotPasswordRequest(_EmailMixin):
+    pass
+
+
+class ResetPasswordRequest(_EmailMixin):
+    code: str = Field(pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserOut(BaseModel):
     id: UUID
     business_id: UUID | None  # negocio activo de la sesión

@@ -44,3 +44,15 @@ class ChangePasswordCommand(Command):
     email: str
     current_password: str
     new_password: str
+
+
+@dataclass
+class RequestPasswordResetCommand(Command):
+    email: str
+
+
+@dataclass
+class ResetPasswordCommand(Command):
+    email: str
+    code: str
+    new_password: str

@@ -1,8 +1,9 @@
 """Puertos (interfaces) del dominio de autenticación."""
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.modules.auth.domain.entities import Business, Membership, User
+from app.modules.auth.domain.entities import Business, EmailCode, Membership, User
 
 
 class UserRepository(Protocol):
@@ -26,9 +27,21 @@ class UserRepository(Protocol):
 
     async def update_profile(self, user_id: UUID, changes: dict) -> User: ...
 
-    async def set_password(self, user_id: UUID, password_hash: str) -> None: ...
+    async def set_password(self, user_id: UUID, password_hash: str) -> None:
+        """También marca password_changed_at: los tokens emitidos antes dejan de valer."""
+        ...
 
     async def set_last_business(self, user_id: UUID, business_id: UUID) -> None: ...
+
+    async def add_code(self, *, user_id: UUID, purpose: str, code_hash: str, expires_at: datetime) -> None: ...
+
+    async def latest_code(self, user_id: UUID, purpose: str) -> EmailCode | None:
+        """Solo vale el último código pedido: pedir otro anula los anteriores."""
+        ...
+
+    async def count_code_attempt(self, code_id: UUID) -> None: ...
+
+    async def use_code(self, code_id: UUID) -> None: ...
 
 
 class BusinessRepository(Protocol):
