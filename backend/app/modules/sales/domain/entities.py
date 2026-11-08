@@ -28,3 +28,4 @@ class SaleImport:
     status: str
     errors: list[dict] = field(default_factory=list)
     affects_inventory: bool = False
+    duplicate_rows: int = 0

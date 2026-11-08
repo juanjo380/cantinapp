@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     mail_from_name: str = "CantinAPP"
     frontend_url: str = "http://localhost:5173"  # base de los enlaces que van en los correos
 
+    # Trabajo diario (POST /api/internal/jobs/daily): header X-Cron-Secret. Sin él, el endpoint
+    # rechaza todo (403); fuera de development es obligatorio.
+    cron_secret: SecretStr | None = None
+
     @model_validator(mode="after")
     def _require_real_secret_outside_dev(self) -> "Settings":
         # Con el secreto por defecto cualquiera puede firmar tokens de cualquier usuario.
@@ -64,6 +68,12 @@ class Settings(BaseSettings):
             self.brevo_api_key = SecretStr(self.brevo_api_key.get_secret_value().strip())
         if self.mail_backend == "brevo" and not (self.brevo_api_key and self.brevo_api_key.get_secret_value()):
             raise ValueError("MAIL_BACKEND=brevo necesita BREVO_API_KEY")
+        if self.cron_secret:
+            self.cron_secret = SecretStr(self.cron_secret.get_secret_value().strip())
+        if self.environment != "development" and (
+            not self.cron_secret or len(self.cron_secret.get_secret_value()) < 32
+        ):
+            raise ValueError("CRON_SECRET debe definirse (mínimo 32 caracteres) fuera de development")
         return self
 
 

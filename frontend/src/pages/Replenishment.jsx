@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { analyticsApi, forecastingApi, recommendationsApi } from '../api/helper'
 import DataTable from '../components/ui/DataTable'
+import DemoData from '../components/ui/DemoData'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
@@ -15,22 +16,30 @@ import { ProvenanceStamp, UrgencyStamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { useProductOptions } from '../hooks/useProductOptions'
-import { daysAgoISO, formatPercent, todayISO } from '../utils/format'
+import { daysAgoISO, formatDate, formatNumber, formatPercent, todayISO } from '../utils/format'
 
 const MODELS = [
+  ['AUTO', 'Automático (recomendado)'],
+  ['SEASONAL_WEEKLY', 'Semanal (por día de la semana)'],
   ['MOVING_AVERAGE', 'Promedio móvil'],
   ['LINEAR_REGRESSION', 'Regresión lineal'],
 ]
+const MODEL_NAMES = Object.fromEntries(MODELS)
 
 export default function Replenishment() {
   const theme = useTheme()
   const [productId, setProductId] = useState('')
   const [forecastDays, setForecastDays] = useState('30')
-  const [model, setModel] = useState('MOVING_AVERAGE')
+  const [model, setModel] = useState('AUTO')
   const [result, setResult] = useState({ status: 'idle' })
 
   const products = useProductOptions()
   const productOptions = products.items
+
+  function reloadAfterDemo() {
+    setProductId('')
+    products.reload()
+  }
 
   useEffect(() => {
     if (!productId) {
@@ -109,7 +118,10 @@ export default function Replenishment() {
             </Button>
           }
         >
-          Registra productos y carga ventas para poder predecir la demanda.
+          Registra productos y carga ventas para poder predecir la demanda, o prueba con datos de ejemplo.
+          <div className="mt-4">
+            <DemoData onChange={reloadAfterDemo} />
+          </div>
         </Empty>
       )}
 
@@ -125,9 +137,12 @@ export default function Replenishment() {
         <Empty
           title="Faltan datos para predecir"
           action={
-            <Button component={RouterLink} to="/ventas" variant="contained">
-              Cargar historial por CSV
-            </Button>
+            <div className="flex flex-col items-center gap-3">
+              <Button component={RouterLink} to="/ventas" variant="contained">
+                Cargar historial por CSV
+              </Button>
+              <DemoData onChange={reloadAfterDemo} />
+            </div>
           }
         >
           El pronóstico necesita al menos 30 días de historial de ventas. Carga tu historial en Ventas
@@ -144,6 +159,7 @@ export default function Replenishment() {
             color={theme.palette.primary.main}
             accent={theme.palette.warning.main}
           />
+          <AccuracyView productId={productId} />
           <CoOccurrenceView productId={productId} />
         </div>
       )}
@@ -167,8 +183,9 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
         label="Histórico contra predicción"
         actions={
           <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
-            Modelo: {forecast.model_type === 'LINEAR_REGRESSION' ? 'Regresión lineal' : 'Promedio móvil'} ·
-            Confianza {formatPercent(forecast.confidence)}
+            Modelo: {MODEL_NAMES[forecast.model_type] ?? forecast.model_type}
+            {forecast.requested_model === 'AUTO' && ' (elegido automáticamente)'} · Confianza{' '}
+            {formatPercent(forecast.confidence)}
           </span>
         }
       >
@@ -190,7 +207,16 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
       <section aria-label="Predicción" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard variant="inset" label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
         <StatCard variant="inset" label="Historial usado" value={`${forecast.history_days} días`} hint="Base de la predicción" />
-        <StatCard variant="inset" label="Confianza" value={formatPercent(forecast.confidence)} hint="0 % a 100 %" />
+        <StatCard
+          variant="inset"
+          label="Confianza"
+          value={formatPercent(forecast.confidence)}
+          hint={
+            forecast.backtest_mae != null
+              ? `En las últimas 2 semanas se equivocó ~${Math.round(forecast.backtest_mae * 10) / 10} u. por día`
+              : '0 % a 100 %'
+          }
+        />
       </section>
 
       <Section title="Recomendación de compra" actions={<UrgencyStamp urgency={recommendation.urgency} />}>
@@ -212,6 +238,64 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
         </div>
       </Section>
     </div>
+  )
+}
+
+const ACCURACY_COLUMNS = [
+  {
+    key: 'forecast_start',
+    header: 'Periodo',
+    render: (row) => `${formatDate(row.forecast_start)} – ${formatDate(row.forecast_end)}`,
+  },
+  { key: 'predicted_total', header: 'Esperábamos', align: 'right', mono: true, render: (row) => `${formatNumber(row.predicted_total)} u.` },
+  { key: 'actual_total', header: 'Vendiste', align: 'right', mono: true, render: (row) => `${formatNumber(row.actual_total)} u.` },
+  {
+    key: 'accuracy',
+    header: 'Acierto',
+    align: 'right',
+    mono: true,
+    hideOnMobile: true,
+    render: (row) => (row.accuracy == null ? 'Sin ventas' : formatPercent(row.accuracy)),
+  },
+]
+
+function AccuracyView({ productId }) {
+  const { data, loading, error, reload } = useApi(() => forecastingApi.accuracy({ product_id: productId }), [productId])
+  const evaluated = data?.evaluated ?? 0
+
+  return (
+    <Section title="Qué tan acertadas han sido las predicciones" label="Acierto de predicciones pasadas">
+      {loading && <Loading variant="list" rows={2} label="Comparando con tus ventas…" />}
+      {error && !loading && <ErrorView error={error} onRetry={reload} />}
+      {data && !loading && evaluated === 0 && (
+        <Empty title="Todavía no hay con qué comparar">
+          Cuando pasen los días de una predicción, aquí verás cuánto esperábamos vender y cuánto vendiste de
+          verdad. Vuelve cuando termine el periodo que acabas de predecir.
+        </Empty>
+      )}
+      {data && !loading && evaluated > 0 && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-ink-soft">
+            {data.accuracy == null
+              ? `En esos días no hubo ventas de este producto y esperábamos ${formatNumber(data.predicted_total)} u.`
+              : `En las últimas ${evaluated} predicciones esperábamos vender ${formatNumber(data.predicted_total)} u. y vendiste ${formatNumber(data.actual_total)} u. Día a día nos equivocamos en unas ${formatNumber(
+                  Math.round(data.mae * 10) / 10,
+                )} u.`}
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <StatCard
+              variant="inset"
+              label="Acierto promedio"
+              value={data.accuracy == null ? '—' : formatPercent(data.accuracy)}
+              hint="100 % = acertamos exacto"
+              strong
+            />
+            <StatCard variant="inset" label="Periodos revisados" value={evaluated} />
+          </div>
+          <DataTable bare label="Predicciones pasadas" columns={ACCURACY_COLUMNS} rows={data.items} rowKey="forecast_id" maxHeight={256} />
+        </div>
+      )}
+    </Section>
   )
 }
 

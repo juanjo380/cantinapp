@@ -8,6 +8,7 @@ import { useTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { Link as RouterLink } from 'react-router-dom'
 import { dashboardApi } from '../api/helper'
+import DemoData from '../components/ui/DemoData'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import StatCard from '../components/ui/StatCard'
@@ -33,6 +34,7 @@ export default function Dashboard() {
 
       {data && !loading && !error && (
         <div className="flex flex-col gap-8">
+          {data.trend?.length > 0 && <DemoData onChange={reload} />}
           <section aria-label="Indicadores" className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
             <StatCard label="Productos" icon={<Inventory2OutlinedIcon />} value={formatNumber(data.total_products)} />
             <StatCard label="Stock total" icon={<LayersOutlinedIcon />} value={formatNumber(data.total_stock)} hint="Unidades" />
@@ -62,7 +64,9 @@ export default function Dashboard() {
                 margin={{ left: 48, right: 16, top: 24, bottom: 40 }}
               />
             ) : (
-              <p className="py-10 text-center text-sm text-ink-soft">Sin ventas registradas todavía.</p>
+              <Empty title="Sin ventas en los últimos 30 días" action={<DemoData onChange={reload} />}>
+                Registra ventas o carga tu historial por CSV en Ventas.
+              </Empty>
             )}
           </Section>
 

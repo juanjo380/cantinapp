@@ -26,6 +26,14 @@ _ALIASES = {
 # Mismos límites que ProductCreate (api/schemas.py).
 _MAX_LEN = {"name": 200, "category": 120, "supplier": 120}
 
+# Plantilla descargable (GET /api/products/import/template); un test verifica que este parser la acepta.
+TEMPLATE = (
+    "nombre;precio;categoria;proveedor;stock_inicial;stock_minimo;dias_abastecimiento\r\n"
+    "Empanada;2500;Comidas;Panadería La Espiga;40;10;1\r\n"
+    "Gaseosa 400 ml;3200,50;Bebidas;Distribuidora Central;24;6;3\r\n"
+    "Galletas de avena;1800;Paquetes;;30;8;7\r\n"
+)
+
 
 @dataclass
 class ParsedProduct:

@@ -1,4 +1,4 @@
-import { request } from './client'
+import { apiUrl, request } from './client'
 
 // Cada función corresponde 1:1 a un endpoint de memoria.md §7.
 function qs(params = {}) {
@@ -52,6 +52,7 @@ export const productsApi = {
     form.append('file', file)
     return request('/products/import', { method: 'POST', formData: form })
   },
+  templateUrl: apiUrl('/products/import/template'),
 }
 
 export const inventoryApi = {
@@ -64,14 +65,16 @@ export const inventoryApi = {
 export const salesApi = {
   list: (params) => request(`/sales${qs(params)}`),
   create: (body) => request('/sales', { method: 'POST', body }),
-  importCsv: (file, affectsInventory) => {
+  importCsv: (file, affectsInventory, confirmReimport = false) => {
     const form = new FormData()
     form.append('file', file)
-    return request(`/sales/import${qs({ affects_inventory: affectsInventory })}`, {
+    const params = { affects_inventory: affectsInventory, confirm_reimport: confirmReimport || undefined }
+    return request(`/sales/import${qs(params)}`, {
       method: 'POST',
       formData: form,
     })
   },
+  templateUrl: apiUrl('/sales/import/template'),
 }
 
 export const analyticsApi = {
@@ -82,6 +85,7 @@ export const analyticsApi = {
 export const forecastingApi = {
   create: (body) => request('/forecasting', { method: 'POST', body }),
   list: (params) => request(`/forecasting${qs(params)}`),
+  accuracy: (params) => request(`/forecasting/accuracy${qs(params)}`),
 }
 
 export const recommendationsApi = {
@@ -93,6 +97,12 @@ export const recommendationsApi = {
 
 export const dashboardApi = {
   get: (params) => request(`/dashboard${qs(params)}`),
+}
+
+export const demoApi = {
+  status: () => request('/demo'),
+  load: () => request('/demo', { method: 'POST' }),
+  remove: () => request('/demo', { method: 'DELETE' }),
 }
 
 export const alertsApi = {

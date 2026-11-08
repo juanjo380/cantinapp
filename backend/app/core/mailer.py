@@ -108,3 +108,20 @@ def invitation_email(business: str, role: str, inviter: str, link: str, hours: i
     text = "\n\n".join([lines[0], f"Aceptar: {link}", *lines[1:]])
     html = _html("Te invitaron a un negocio", lines, button=("Ver invitación", link))
     return f"Invitación a {business} en CantinAPP", text, html
+
+
+def alerts_digest_email(business: str, items: list[tuple[str, int, int, int | None]], link: str) -> tuple[str, str, str]:
+    """Resumen diario. `items`: (producto, stock actual, stock mínimo, cantidad sugerida o None)."""
+    def line(name: str, stock: int, minimum: int, suggested: int | None) -> str:
+        state = "agotado" if stock <= 0 else f"quedan {stock} (mínimo {minimum})"
+        return f"{name}: {state}" + (f"; sugerimos comprar {suggested}" if suggested else "")
+
+    lines = [line(*item) for item in items]
+    count = len(items)
+    intro = (
+        f"Hoy {'hay 1 producto' if count == 1 else f'hay {count} productos'} de «{business}» con poco stock "
+        "o agotados:"
+    )
+    text = "\n".join([intro, "", *[f"- {item}" for item in lines], "", f"Revísalos en CantinAPP: {link}"])
+    html = _html("Productos por reabastecer", [intro, *lines], button=("Ver alertas", link))
+    return f"{business}: {count} producto{'s' if count != 1 else ''} por reabastecer", text, html

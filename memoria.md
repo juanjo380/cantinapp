@@ -3,15 +3,16 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización (2026-11-02): **multi-negocio** (un usuario en varios negocios,
-roles, sedes, perfil), registro con consentimientos legales, **CSV de productos**,
-frontend **responsive** y **skeleton loaders**. Bitácora y pendientes en la **sección 12**.
+Última actualización (2026-11-08): **CSV de ventas sin duplicados**, plantillas CSV,
+predicción **semanal + AUTO** con backtest, **medición de acierto**, **trabajo diario** (alertas
+automáticas + correo-resumen) y **datos de ejemplo**. Bitácora y pendientes en la **sección 12**.
 
-> ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar en el SQL Editor de Supabase,
-> en orden, `db/migrations/001_product_cooccurrences.sql`, `002_user_consents.sql` y
-> `003_business_profile_members.sql` y `004_email_codes_invitations.sql` (ver sección 4). **Sin la 003
-> o la 004 todo el backend nuevo responde 500**; el backend debe desplegarse después de las migraciones.
-> Para que los correos salgan de verdad: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y `FRONTEND_URL` en Render (secciones 9 y 12).
+> ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar en el SQL Editor de Supabase, en
+> orden, `db/migrations/001` → `002` → `003` → `004` → `005` → `006` → `007` → `008` (ver sección 4).
+> **El backend se despliega después de las migraciones**: sin ellas responde 500.
+> **Antes del deploy, crear `CRON_SECRET` (≥ 32 caracteres) en Render**: fuera de development la app
+> no arranca sin él. Correos reales: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y
+> `FRONTEND_URL` en Render. Secrets de GitHub `CANTINAPP_API_URL` y `CRON_SECRET` (secciones 9 y 12).
 
 ---
 
@@ -71,6 +72,7 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 | `MAIL_BACKEND` | `console` (por defecto: solo log) o `brevo` (exige `BREVO_API_KEY`) |
 | `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_NAME` | API de Brevo y remitente verificado en su panel |
 | `FRONTEND_URL` | Base de los enlaces de los correos (`http://localhost:5173` por defecto) |
+| `CRON_SECRET` | Secreto del header `X-Cron-Secret` del trabajo diario. **Obligatorio (≥ 32 caracteres) fuera de development**; en development, si falta, el endpoint responde 403 siempre |
 
 - El motor async vive en `backend/app/shared/infrastructure/database.py`
   (`create_async_engine` + `async_sessionmaker`, `pool_pre_ping`).
@@ -89,7 +91,8 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 
 Ejecutar `db/schema.sql` en el SQL Editor de Supabase **antes** de levantar la API.
 
-**Tablas:** `businesses`, `users`, `categories`, `suppliers`, `products`,
+**Tablas:** `businesses`, `users`, `user_consents`, `business_members`, `business_locations`,
+`email_codes`, `business_invitations`, `categories`, `suppliers`, `products`,
 `sales_imports`, `sales`, `inventory_movements`, `forecasts`,
 `recommendations`, `product_cooccurrences`, `alerts`.
 
@@ -102,6 +105,14 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `002_user_consents.sql` | Bitácora de autorizaciones del registro (términos, privacidad, cookies, uso anónimo para ML) con versión y fecha; RLS | **PENDIENTE de ejecutar** (antes de desplegar el backend: sin ella `/register` da 500) |
 | `003_business_profile_members.sql` | Perfil del negocio y del usuario, `business_members` (usuario ↔ negocios con rol OWNER/ADMIN/MEMBER, backfill del usuario actual como OWNER), `business_locations` (sedes), `users.business_id` pasa a «último negocio usado» | **PENDIENTE de ejecutar** (después de 001 y 002, antes del backend: sin ella todo da 500) |
 | `004_email_codes_invitations.sql` | `users.password_changed_at` (invalida tokens anteriores), `email_codes` (códigos de recuperación, solo hash), `business_invitations` (enlace + código de seguridad) | **PENDIENTE de ejecutar** (después de 003, antes del backend: sin ella todo da 500) |
+| `005_sales_dedup.sql` | `sales_imports.file_hash` + `duplicate_rows`, `sales.row_hash` con índice único parcial `(business_id, row_hash)` y **backfill** de las ventas CSV existentes | **PENDIENTE** (sin ella la carga de CSV da 500) |
+| `006_forecast_backtest.sql` | CHECK de `forecasts.model_type` con `SEASONAL_WEEKLY`; `requested_model`, `backtest_wape`, `backtest_mae` | **PENDIENTE** (sin ella toda predicción nueva falla) |
+| `007_alerts_notified.sql` | `alerts.notified_at` (correo-resumen diario) | **PENDIENTE** (sin ella el trabajo diario da 500) |
+| `008_demo_data.sql` | CHECK de `sales.source` con `DEMO`; `products.is_demo` | **PENDIENTE** (sin ella `/api/demo` da 500) |
+
+Todas las migraciones 005–008 son idempotentes (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`).
+**Ninguna se ha probado contra una BD real**: el backfill de la 005 replica en SQL la fórmula de
+`sales/domain/dedup.py` (`producto|AAAA-MM-DD|cantidad|precio con 2 decimales|n`).
 
 **Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (cambiar rol, quitar/salirse; desde 004 el alta es solo por `/api/business/invitations`). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
 
@@ -265,6 +276,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | PUT | `/{product_id}` | body ProductUpdate (parcial) | ProductOut |
 | DELETE | `/{product_id}` | — | 204 (borrado lógico: `is_active=false`) |
 | POST | `/import` | `multipart/form-data` (campo `file`) | 201 ProductImportOut `{ file_name, total_rows, imported_rows, error_rows, status, errors[] }` |
+| GET | `/import/template` 🔓 | — | `plantilla-productos.csv` (UTF-8 con BOM, `;`, 3 filas de ejemplo) |
 
 - **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
 - **Ambos CSV (productos y ventas):** separador `,` o `;`, UTF-8 o Windows-1252 (Excel), coma decimal (`2500,50`), máximo 5 MB. Utilidades en `shared/application/csv_utils.py` y `shared/api/uploads.py`.
@@ -282,19 +294,30 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | Método | Ruta | Parámetros | Respuesta |
 |---|---|---|---|
 | POST | `/` | body SaleCreate | 201 SaleOut |
-| POST | `/import` | `multipart/form-data` (campo `file`), query `affects_inventory=false` | 201 ImportOut |
+| POST | `/import` | `multipart/form-data` (campo `file`), query `affects_inventory=false`, `skip_duplicates=true`, `confirm_reimport=false` | 201 ImportOut; **409** si ese mismo archivo ya se importó (salvo `confirm_reimport=true`) |
+| GET | `/import/template` 🔓 | — | `plantilla-ventas.csv` (UTF-8 con BOM, `;`, fechas DD/MM/AAAA y AAAA-MM-DD) |
 | GET | `/` | `product_id?`, `date_from?`, `date_to?`, `limit=50 (1-500)`, `offset=0` | SaleListOut |
 
 - **SaleCreate:** `{ product_id, sale_date (YYYY-MM-DD), quantity>0, unit_price? (si falta, usa el precio del producto) }`
-- **SaleOut:** `{ id, product_id, product_name, sale_date, quantity, unit_price, total_amount, source ("MANUAL"/"CSV"), affects_inventory }`
+- **SaleOut:** `{ id, product_id, product_name, sale_date, quantity, unit_price, total_amount, source ("MANUAL"/"CSV"/"DEMO"), affects_inventory }`
 - Venta manual descuenta inventario (trigger). Si el stock es insuficiente → **422**.
 - **CSV (`/import`)**: columnas (encabezados sin distinguir mayúsculas):
-  - `product` (o `product_name`/`nombre`) **o** `product_id`
-  - `date` (o `sale_date`/`fecha`): `YYYY-MM-DD` o `DD/MM/YYYY`
+  - `product` (o `product_name`/`nombre`/`producto`) **o** `product_id`
+  - `date` (o `sale_date`/`fecha`): `YYYY-MM-DD`, `DD/MM/YYYY` o `DD-MM-YYYY`
   - `quantity` (o `cantidad`): entero > 0
   - `unit_price` (o `price`/`precio`): opcional, decimal ≥ 0
   - Por defecto **no** descuenta stock (histórico); `?affects_inventory=true` para descontar.
-- **ImportOut:** `{ id, file_name, total_rows, imported_rows, error_rows, status ("PROCESSING"/"COMPLETED"/"FAILED"), errors[{ row, field, message }] }`
+- **ImportOut:** `{ id, file_name, total_rows, imported_rows, error_rows, duplicate_rows, status ("PROCESSING"/"COMPLETED"/"FAILED"), errors[{ row, field, message }] }`.
+  `total_rows = imported_rows + error_rows + duplicate_rows`.
+- **Sin duplicados (desde 005):** dos niveles.
+  1. **Archivo:** sha256 del contenido en `sales_imports.file_hash`. Si ya hay una carga COMPLETED de ese
+     archivo en el negocio → 409 con la fecha; el cliente reintenta con `confirm_reimport=true`.
+  2. **Fila:** `row_hash` = sha256 de `producto|fecha|cantidad|precio|n`, con `n` = cuántas veces apareció antes
+     esa misma fila en el archivo (`sales/domain/dedup.py`). Reimportar es idempotente, pero 3 ventas iguales
+     el mismo día entran las 3. Índice único parcial por negocio (protege también cargas simultáneas).
+  - `skip_duplicates=false`: inserta todo con `row_hash = NULL` (duplicado a propósito, no bloquea futuras cargas).
+  - Ventas manuales no llevan huella. El backfill numera `n` por negocio: si un CSV ya se había importado dos
+    veces, sus copias quedan con `n` 0 y 1.
 
 ### Inventario — `/api/inventory` (🔒)
 
@@ -327,9 +350,24 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 |---|---|---|---|
 | POST | `/` | body ForecastRequest | 201 ForecastOut |
 | GET | `/` | `product_id` (requerido), `limit=20` | ForecastListOut |
+| GET | `/accuracy` | `product_id` (requerido) | AccuracyOut |
 
-- **ForecastRequest:** `{ product_id, forecast_days? (1-365, def. 30), model? ("LINEAR_REGRESSION"|"MOVING_AVERAGE", def. MOVING_AVERAGE) }`
-- **ForecastOut:** `{ id, product_id, model_type, history_days, forecast_days, forecast_start, predicted_demand, confidence (0-1), daily_prediction[{ date, value }] }`
+- **ForecastRequest:** `{ product_id, forecast_days? (1-365, def. 30), model? ("AUTO"|"SEASONAL_WEEKLY"|"LINEAR_REGRESSION"|"MOVING_AVERAGE", def. **AUTO**) }`
+- **ForecastOut:** `{ id, product_id, model_type, history_days, forecast_days, forecast_start, predicted_demand, confidence (0-1), daily_prediction[{ date, value }], requested_model, backtest_wape, backtest_mae }`
+  - `model_type` = modelo usado (con AUTO, el ganador); `requested_model` = lo pedido (NULL en predicciones anteriores a 006).
+- **Modelos** (`forecasting/domain/models.py`, Python puro):
+  - `MOVING_AVERAGE`: promedio de 7 días. `LINEAR_REGRESSION`: mínimos cuadrados.
+  - `SEASONAL_WEEKLY`: nivel = promedio de 28 días × factor del día de la semana (promedio de ese día / nivel),
+    encogido hacia 1 con pocas semanas. Se descartó Holt-Winters: pide ≥ 2 temporadas y ajustar α, β, γ; con
+    30 días sobreajusta.
+  - `AUTO`: backtest con los últimos 14 días; gana el menor **WAPE** (empate: MAE, luego el más simple:
+    promedio → semanal → regresión). No MAPE: explota con días en 0.
+  - **confidence = 1 − WAPE** del backtest (0..1). Si los 14 días de prueba no tuvieron ventas, WAPE no existe y
+    se usa `1 / (1 + MAE)`. Reemplaza las fórmulas anteriores (1 − coef. de variación y R²).
+- **AccuracyOut:** `{ product_id, evaluated, predicted_total, actual_total, wape, mae, accuracy, items[{ forecast_id, model_type, forecast_start, forecast_end, predicted_total, actual_total, wape, mae, accuracy }] }`
+  - Solo predicciones con periodo cumplido (último día < hoy), comparando `daily_prediction` contra ventas reales
+    (0 los días sin ventas). Un periodo recalculado varias veces cuenta una vez (la más reciente). Máx. 20.
+  - `accuracy = 1 − WAPE` (None si en el periodo no hubo ventas). `evaluated = 0` → estado vacío en el frontend.
 - **RNF-04:** exige ≥ 30 días de historial; si no → **422**.
 - **RNF-03:** la predicción es cálculo en memoria (rápida, < 2 s).
 
@@ -382,8 +420,43 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 - `/generate` escanea `v_inventory` y crea alertas pendientes para productos en
   BAJO/AGOTADO (una sola pendiente por producto), enriquecidas con la última
-  predicción/recomendación si existen. Requiere invocarse (no es automático).
+  predicción/recomendación si existen. Desde la fase 5 también lo hace el **trabajo diario**.
 - **AlertOut:** `{ id, product_id, recommendation_id, current_stock, min_stock, estimated_demand, recommended_quantity, status, reviewed_at, created_at }`
+- Alerta `REVIEWED` con `reviewed_by = NULL` = **resuelta sola** (el trabajo diario vio el producto otra vez en NORMAL).
+
+### Trabajo diario — `/api/internal/jobs` (header `X-Cron-Secret`, oculto en Swagger)
+
+| Método | Ruta | Auth | Respuesta |
+|---|---|---|---|
+| POST | `/daily` | `X-Cron-Secret: <CRON_SECRET>` (sin header **401**; incorrecto o sin `CRON_SECRET` configurado **403**; comparación `hmac.compare_digest`) | `{ businesses, failed, results[{ business_id, ok, resolved, created, cooccurrence_pairs, emailed } \| { business_id, ok:false, error }] }` |
+
+- Para cada negocio con productos activos, con sesiones propias (si uno falla, se registra en el log y se sigue):
+  1. resuelve las alertas pendientes cuyo producto volvió a NORMAL;
+  2. genera las nuevas (`/generate`);
+  3. recalcula co-ocurrencias (se omite si hay < 30 días de historial);
+  4. envía **un único correo-resumen al día** a dueño y administradores activos, **solo si hay alertas sin
+     avisar** (`alerts.notified_at IS NULL`) y no se envió ya hoy (UTC). Si ningún correo sale, no se marcan y
+     se reintenta al día siguiente.
+- **No** regenera predicciones (sería una por producto): las alertas usan la última que exista.
+- Equivalente por consola: `python -m scripts.run_daily_jobs [--business-id <uuid>]` (sale con 1 si algo falló).
+- Programado en `.github/workflows/daily-jobs.yml` (11:00 UTC = 6:00 Colombia, también a mano con
+  *Run workflow*). La llamada **despierta Render**; `curl` reintenta 3 veces cada 30 s por el cold start.
+
+### Datos de ejemplo — `/api/demo` (🔒)
+
+| Método | Ruta | Respuesta |
+|---|---|---|
+| GET | (raíz) | `{ has_demo, can_load, demo_products, demo_sales }` (`can_load`: dueño, negocio sin ventas y sin ejemplo) |
+| POST | (raíz) | 201 igual que GET. Solo **OWNER** (si no 403); **409** si ya hay ventas o ya hay datos de ejemplo |
+| DELETE | (raíz) | `{ deleted_products }`. Solo OWNER |
+
+- 12 productos `«… (ejemplo)»` (`products.is_demo`) y 90 días de ventas `source = 'DEMO'`, `affects_inventory = false`,
+  generados de forma determinista (`demo/domain/generator.py`): patrón semanal, quincena, picos de empanada que
+  suben la gaseosa al día siguiente. Varios productos quedan bajo el mínimo (alertas al instante); al cargar se
+  generan alertas y se recalcula la co-ocurrencia en segundo plano.
+- DELETE borra todo lo que cuelga de los productos de ejemplo (alertas, recomendaciones, predicciones,
+  co-ocurrencias, **todas sus ventas, también las manuales**, movimientos y productos). Las categorías y
+  proveedores de ejemplo quedan (sin productos).
 
 ---
 
@@ -399,7 +472,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | RF-12 predicción + serie diaria | ✅ | módulo `forecasting` |
 | RF-13 recomendación con justificación y urgencia | ✅ | módulo `recommendations` |
 | RF-14 dashboard de KPIs | ✅ | módulo `dashboard` |
-| RF-15 alertas y marcado de revisadas | ✅ | módulo `alerts` |
+| RF-15 alertas y marcado de revisadas | ✅ | módulo `alerts` + trabajo diario (`jobs`) |
 | RNF-04 mín. 30 días de historial (422) | ✅ | `forecasting/application/handlers.py` |
 | RNF-06 códigos HTTP | ✅ | `shared/api/error_handlers.py` |
 | RNF-07 monolito modular sin ciclos | ✅ | estructura de módulos |
@@ -457,7 +530,21 @@ sube el `.env`):
 | `JWT_SECRET` | **Pendiente de definir** (valor largo y aleatorio) |
 | `CORS_ORIGINS` | **Pendiente**: lista JSON con el origen del frontend, ej. `["http://localhost:5173","https://tu-frontend.vercel.app"]` |
 | `MAIL_BACKEND` / `BREVO_API_KEY` / `MAIL_FROM` | **Pendiente**: `brevo`, la API key y el remitente verificado (sin esto los correos solo van al log) |
-| `FRONTEND_URL` | **Pendiente**: URL del frontend en Vercel (si no, los enlaces de invitación apuntan a localhost) |
+| `FRONTEND_URL` | **Pendiente**: URL del frontend en Vercel (si no, los enlaces de invitación y del correo-resumen apuntan a localhost) |
+| `ENVIRONMENT` | `production` (según el autor, ya configurada; con ella `JWT_SECRET` y `CRON_SECRET` son obligatorias) |
+| `CRON_SECRET` | **Pendiente, bloqueante**: valor aleatorio ≥ 32 caracteres, el mismo que el secret de GitHub. **Crearla antes de desplegar la fase 5** o la app no arranca |
+
+**Secrets de GitHub Actions** (repo → *Settings → Secrets and variables → Actions*), para
+`.github/workflows/daily-jobs.yml`:
+
+| Secret | Valor |
+|---|---|
+| `CANTINAPP_API_URL` | `https://cantinapp.onrender.com` (sin barra final) |
+| `CRON_SECRET` | El mismo valor que `CRON_SECRET` en Render |
+
+Generar el secreto, por ejemplo: `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+GitHub puede pausar los workflows programados de un repo sin actividad en 60 días (se reactivan desde la
+pestaña *Actions*).
 
 **Verificación del despliegue:** el log muestra `Application startup complete`
 y `Your service is live`. El `SELECT 1` del lifespan tiene límite de 15 s y **ya no
@@ -504,14 +591,16 @@ cantinapp/
 - **Rotar la contraseña de la BD en Supabase** y actualizar `DB_PASSWORD` en
   Render y en el `.env` local (se compartió en texto plano durante la
   configuración y podría estar en el historial de GitHub si el `.env` se subió).
-- **Definir `JWT_SECRET` en Render** (≥ 32 caracteres) y `ENVIRONMENT=production`.
-  Fuera de `development` la app ya no arranca con el secreto por defecto.
+- `JWT_SECRET` (≥ 32 caracteres) y `ENVIRONMENT=production` en Render: según el autor ya están
+  configuradas (no verificado desde aquí). Fuera de `development` la app no arranca con el secreto por
+  defecto ni sin `CRON_SECRET`.
 - **Restringir `CORS_ORIGINS`** al origen real del frontend (el valor por
   defecto `["*"]` permite cualquier origen). `allow_credentials` está en
   `False`, coherente con autenticación por header Bearer.
 - `/health/db` ya no expone detalles (solo `ok` / 503).
-- Agregar miembros por correo revela si ese correo tiene cuenta (sin servicio de
-  invitaciones no hay alternativa); solo dueño/admin pueden hacerlo.
+- Al equipo se entra por invitación (`/api/business/invitations`, desde 004). Invitar sigue revelando
+  si ese correo tiene cuenta (404 si no la tiene); solo dueño/admin pueden hacerlo.
+- Las plantillas CSV (`/import/template`) son públicas a propósito: son archivos fijos sin datos de negocios.
 
 ---
 
@@ -528,7 +617,8 @@ cantinapp/
 - Para que la predicción funcione debe haber ≥ 30 días de historial (cargar CSV
   histórico).
 - Recomendación y alertas dependen de que exista una predicción; la recomendación
-  la genera sola, las alertas requieren `POST /api/alerts/generate`.
+  la genera sola, las alertas las crea `POST /api/alerts/generate` o el trabajo diario.
+- Sin historial, el dueño puede cargar datos de ejemplo (`POST /api/demo`).
 - CORS configurable vía `CORS_ORIGINS` en Render (añadir el origen exacto del
   frontend: esquema + dominio + puerto, sin barra final).
 - Ejemplo de llamada:
@@ -565,7 +655,7 @@ frontend/
     components/ layout/{AppLayout,BusinessDialog,OnboardingDialog}.jsx
                 auth/{AuthShell,LegalDialog}.jsx
                 ui/{States,Stamp,PageHeader,Section,StatCard,DataTable,FormDialog,CsvImportDialog,
-                    Logo,IconField,SearchField,SelectField}.jsx
+                    DemoData,Logo,IconField,SearchField,SelectField}.jsx
     hooks/      useApi.js, useDebounced.js, usePagination.js, useProductOptions.js
     pages/      Login, Register, Dashboard, Products, Inventory, Sales, Analytics,
                 Replenishment, Alerts, Profile, NotFound
@@ -600,12 +690,12 @@ npm run build
 | Ruta | Pantalla | Endpoints |
 |---|---|---|
 | `/login`, `/registro` | Acceso | `POST /api/auth/{register,login,logout}`, `GET /api/auth/me` |
-| `/` | Dashboard | `GET /api/dashboard` |
-| `/productos` | Productos + CSV | `/api/products`, `POST /api/products/import` |
+| `/` | Dashboard + datos de ejemplo | `GET /api/dashboard`, `/api/demo` |
+| `/productos` | Productos + CSV | `/api/products`, `POST /api/products/import`, `GET /api/products/import/template` |
 | `/inventario` | Inventario + movimientos | `/api/inventory`, `POST /api/inventory/movements` |
-| `/ventas` | Venta manual + import CSV | `/api/sales`, `POST /api/sales/import` |
+| `/ventas` | Venta manual + import CSV | `/api/sales`, `POST /api/sales/import`, `GET /api/sales/import/template`, `GET /api/demo` (aviso) |
 | `/analisis` | Analítica | `GET /api/analytics/{sales,top-products}` |
-| `/reabastecimiento` | Predicción + recomendación + co-ocurrencia | `POST /api/forecasting`, `/api/recommendations`, `GET /api/recommendations/cooccurrence`, `POST .../cooccurrence/recompute` |
+| `/reabastecimiento` | Predicción + recomendación + acierto + co-ocurrencia + datos de ejemplo | `POST /api/forecasting`, `GET /api/forecasting/accuracy`, `/api/recommendations`, `GET /api/recommendations/cooccurrence`, `POST .../cooccurrence/recompute`, `/api/demo` |
 | `/alertas` | Alertas | `/api/alerts`, `/generate`, `PATCH /{id}/review` |
 | `/perfil?tab=yo\|negocio\|sedes\|equipo` | Perfil del usuario, del negocio, sedes y equipo | `/api/auth/{me,password}`, `/api/business/*` |
 
@@ -621,8 +711,16 @@ npm run build
 - Inventario: el stock solo cambia por movimientos (PURCHASE > 0, ADJUSTMENT ≠ 0).
 - Ventas: `422` por stock insuficiente se muestra en contexto; el CSV lleva
   `affects_inventory` (por defecto apagado) y muestra errores por fila.
+- **CsvImportDialog** (ventas y productos): botón «Descargar plantilla» (`templateUrl`), resumen con
+  «N omitidas porque ya estaban cargadas» y, ante un 409, aviso con «Importar de todos modos»
+  (`confirm_reimport=true`). `upload(file, { confirmReimport })`.
 - Reabastecimiento: un `422` (< 30 días de historial) muestra un estado explicativo
-  con enlace a `/ventas`.
+  con enlace a `/ventas` y el botón de datos de ejemplo. Selector de modelo con «Automático
+  (recomendado)» por defecto; muestra el modelo elegido y el error del backtest en unidades por día.
+  Tarjeta «Qué tan acertadas han sido las predicciones» (vacía y explicada si aún no hay periodos cumplidos).
+- **DemoData** (`components/ui/DemoData.jsx`): con datos de ejemplo muestra el aviso y «Borrar datos de
+  ejemplo» (solo dueño); en un negocio vacío y para el dueño, «Cargar datos de ejemplo». Con `noticeOnly`
+  (diálogo de CSV de ventas) nunca ofrece cargar.
 - `GET /api/dashboard` **no** devuelve predicción (brecha de HU08): el Dashboard
   enlaza a `/reabastecimiento`.
 
@@ -710,6 +808,8 @@ navegador. **No** usar `CssBaseline`: el reset base lo aporta el preflight de Ta
 - `DESIGN.md` describe el estilo anterior («Kraft y sello»): está **obsoleto** tras el
   rediseño de 2026-10-31.
 - El Dashboard no recibe predicción del backend (ver 11.3).
+- Probar en navegador las pantallas de la rama `PrediccionAlertasCSV` (diálogos de CSV, acierto,
+  datos de ejemplo): solo se verificaron con lint y build.
 
 ---
 
@@ -792,16 +892,51 @@ skeletons).
 - **Verificación:** 46 tests de pytest, `eslint` y `vite build` en verde. **No** probado contra
   Supabase ni con Brevo real.
 
+### 2026-11-08 — Predicción, alertas y CSV (rama `feature/juan.ruiz/PrediccionAlertasCSV`)
+
+Sale de `main` en `ebe5d76`. Un commit por fase; **el merge y el PR los hace el autor.**
+
+| Commit | Fase |
+|---|---|
+| `de5aa72` | 1. CSV de ventas sin duplicados: huella de archivo (409 + `confirm_reimport`) y de fila (`skip_duplicates`), `duplicate_rows`, migración 005 con backfill |
+| `bddcd6b` | 2. Plantillas CSV públicas de ventas y productos + botón «Descargar plantilla» |
+| `065bafb` | 3. `SEASONAL_WEEKLY`, `AUTO` por defecto (backtest 14 días, WAPE/MAE), confianza = 1 − WAPE, migración 006 |
+| `0ab9b87` | 4. `GET /api/forecasting/accuracy` y tarjeta de acierto en Reabastecimiento |
+| `4adeea3` | 5. Trabajo diario (`POST /api/internal/jobs/daily`, script, GitHub Actions), resolución automática de alertas, correo-resumen, migración 007 |
+| `9f58b56` | 6. Datos de ejemplo (`/api/demo`), migración 008 |
+| `c719565` | 7. `docs/propuesta-inventario-por-sede.md` (**solo propuesta**) |
+
+**Decisiones:**
+- Plantillas públicas (sin token): archivos fijos, sin datos de negocios. Confirmado por el autor.
+- El backfill de huellas numera las repeticiones por negocio, no por archivo (las copias ya duplicadas no
+  chocan con el índice único).
+- Estacional por factores de día de la semana en vez de Holt-Winters (sección 7).
+- El trabajo diario no regenera predicciones; «un correo al día» se mide en días UTC.
+- Resolución automática de alertas = `REVIEWED` con `reviewed_by` NULL (sin migración).
+- Datos de ejemplo solo en negocios sin ventas y sin tocar el stock (`affects_inventory=false`).
+- Los tests del endpoint interno llaman la función directamente: `TestClient` exige `httpx`, que no está
+  en las dependencias y no se agregó.
+
+**Verificación hecha:** 73 tests de pytest (eran 46), `npm run lint` y `npm run build` en verde al cerrar
+cada fase. El esquema OpenAPI incluye las rutas nuevas y oculta la interna.
+**No verificado:** nada se ejecutó contra Supabase ni contra el backend desplegado: migraciones 005–008
+(en especial el backfill de la 005 y los nombres por defecto de los CHECK que se reemplazan), el `INSERT`
+masivo de ventas de ejemplo, el borrado en cascada de `/api/demo`, el envío real por Brevo, ni el workflow
+de GitHub Actions. Tampoco se probaron las pantallas en un navegador.
+
 ### Próxima sesión — pendientes
 
-1. **Desplegar en orden:** migraciones 001 → 002 → 003 → 004 en Supabase; variables de correo
-   en Render; luego merge a `main`
-   (Render + Vercel). Validar registro, login, cambio de negocio, perfil y co-ocurrencia con
-   datos reales.
+1. **Desplegar en orden:**
+   1. Supabase: migraciones `001` → `002` → `003` → `004` → `005` → `006` → `007` → `008`.
+   2. Render: `CRON_SECRET` (≥ 32, **antes** del deploy), variables de correo y `FRONTEND_URL`.
+   3. GitHub: secrets `CANTINAPP_API_URL` y `CRON_SECRET`.
+   4. Merge a `main` (Render + Vercel). Ejecutar el workflow «Trabajo diario» a mano (*Run workflow*) y
+      revisar su salida y el log de Render.
+   5. Validar con datos reales: registro, login, cambio de negocio, perfil, CSV repetido (409 y omitidas),
+      predicción AUTO, datos de ejemplo (cargar y borrar) y co-ocurrencia.
 2. Probar en un teléfono real (ver 11.8).
-3. Posibles siguientes pasos: verificar el correo al registrarse, invitar a quien aún no tiene
-   cuenta (hoy debe registrarse antes y eso le crea un negocio propio), transferir el negocio a otro dueño,
-   inventario por sede, control de CSV de ventas duplicados (hoy se duplican), plantilla CSV
-   descargable.
-4. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.
-5. Siguen abiertos: `JWT_SECRET` (+ `ENVIRONMENT=production`) y `CORS_ORIGINS` en Render.
+3. Decidir sobre `docs/propuesta-inventario-por-sede.md` (sección 7 de ese documento: decisiones abiertas).
+4. Posibles siguientes pasos: verificar el correo al registrarse, invitar a quien aún no tiene cuenta,
+   transferir el negocio a otro dueño, mostrar en Alertas cuáles se resolvieron solas.
+5. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.
+6. Sigue abierto: `CORS_ORIGINS` en Render.

@@ -12,6 +12,7 @@ import { salesApi } from '../api/helper'
 import CsvImportDialog from '../components/ui/CsvImportDialog'
 import DataTable from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
+import DemoData from '../components/ui/DemoData'
 import PageHeader from '../components/ui/PageHeader'
 import SelectField from '../components/ui/SelectField'
 import { Stamp } from '../components/ui/Stamp'
@@ -22,6 +23,8 @@ import { useProductOptions } from '../hooks/useProductOptions'
 import { formatCOP, formatDate, todayISO } from '../utils/format'
 
 const dateLabel = { inputLabel: { shrink: true } }
+
+const SOURCE_LABELS = { MANUAL: 'Manual', CSV: 'CSV', DEMO: 'Ejemplo' }
 
 const SALE_COLUMNS = [
   { key: 'sale_date', header: 'Fecha', render: (s) => formatDate(s.sale_date) },
@@ -36,14 +39,15 @@ const SALE_COLUMNS = [
       </div>
     ),
   },
-  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true, hideOnMobile: true },
-  { key: 'unit_price', header: 'Precio unit.', align: 'right', mono: true, hideOnMobile: true, render: (s) => formatCOP(s.unit_price) },
+  { key: 'quantity', header: 'Cantidad', align: 'right', mono: true, hideOnMobile: true },  { key: 'unit_price', header: 'Precio unit.', align: 'right', mono: true, hideOnMobile: true, render: (s) => formatCOP(s.unit_price) },
   { key: 'total_amount', header: 'Total', align: 'right', mono: true, render: (s) => formatCOP(s.total_amount) },
   {
     key: 'source',
     header: 'Origen',
     hideOnMobile: true,
-    render: (s) => <Stamp tone={s.source === 'CSV' ? 'neutral' : 'ok'}>{s.source === 'CSV' ? 'CSV' : 'Manual'}</Stamp>,
+    render: (s) => (
+      <Stamp tone={s.source === 'MANUAL' ? 'ok' : 'neutral'}>{SOURCE_LABELS[s.source] ?? s.source}</Stamp>
+    ),
   },
 ]
 
@@ -226,7 +230,8 @@ function SalesCsvDialog({ onClose, onDone }) {
   return (
     <CsvImportDialog
       title="Cargar historial por CSV"
-      upload={(file) => salesApi.importCsv(file, affectsInventory)}
+      upload={(file, { confirmReimport }) => salesApi.importCsv(file, affectsInventory, confirmReimport)}
+      templateUrl={salesApi.templateUrl}
       onClose={onClose}
       onDone={onDone}
       next={
@@ -235,12 +240,20 @@ function SalesCsvDialog({ onClose, onDone }) {
         </RouterLink>
       }
     >
+      <DemoData noticeOnly />
       <div className="surface-inset p-3.5 text-sm text-ink-soft">
         <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
         <p>
           <span className="font-mono">product</span> (o <span className="font-mono">product_id</span>),{' '}
-          <span className="font-mono">date</span> (YYYY-MM-DD o DD/MM/YYYY),{' '}
-          <span className="font-mono">quantity</span>, y opcional <span className="font-mono">unit_price</span>.
+          <span className="font-mono">date</span>, <span className="font-mono">quantity</span>, y opcional{' '}
+          <span className="font-mono">unit_price</span>. En español: <span className="font-mono">producto</span>,{' '}
+          <span className="font-mono">fecha</span>, <span className="font-mono">cantidad</span>,{' '}
+          <span className="font-mono">precio</span>.
+        </p>
+        <p className="mt-1">
+          Fechas aceptadas: <span className="font-mono">03/11/2026</span> (día/mes/año),{' '}
+          <span className="font-mono">03-11-2026</span> o <span className="font-mono">2026-11-03</span>. Sin precio
+          se usa el del producto.
         </p>
       </div>
       <FormControlLabel

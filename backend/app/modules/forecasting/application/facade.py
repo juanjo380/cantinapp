@@ -1,7 +1,7 @@
 """Fachada de aplicación de predicción."""
 from app.modules.analytics.infrastructure.repository import SqlAnalyticsRepository
 from app.modules.forecasting.application.commands import RunForecastCommand
-from app.modules.forecasting.application.handlers import run_forecast
+from app.modules.forecasting.application.handlers import forecast_accuracy, run_forecast
 from app.modules.forecasting.infrastructure.repository import SqlForecastRepository
 from app.modules.products.infrastructure.repository import SqlProductRepository
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
@@ -24,3 +24,6 @@ class ForecastingFacade:
 
     async def list(self, business_id, product_id, limit=20):
         return await self.forecasts.list(business_id, product_id, limit=limit)
+
+    async def accuracy(self, business_id, product_id):
+        return await forecast_accuracy(self.analytics, self.forecasts, self.products, business_id, product_id)

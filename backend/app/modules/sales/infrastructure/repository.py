@@ -1,7 +1,7 @@
 """Adaptador SQLAlchemy del repositorio de ventas."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -30,6 +30,7 @@ class SqlSaleRepository(SaleRepository):
         affects_inventory: bool,
         import_id: UUID | None = None,
         created_by: UUID | None = None,
+        row_hash: str | None = None,
     ) -> Sale:
         record = SaleRecord(
             business_id=business_id,
@@ -40,6 +41,7 @@ class SqlSaleRepository(SaleRepository):
             source=source,
             affects_inventory=affects_inventory,
             import_id=import_id,
+            row_hash=row_hash,
             created_by=created_by,
         )
         self.session.add(record)
@@ -57,13 +59,21 @@ class SqlSaleRepository(SaleRepository):
         )
 
     async def open_import(
-        self, *, business_id: UUID, file_name: str, total_rows: int, affects_inventory: bool, created_by
+        self,
+        *,
+        business_id: UUID,
+        file_name: str,
+        total_rows: int,
+        affects_inventory: bool,
+        created_by,
+        file_hash: str | None = None,
     ) -> SaleImport:
         record = SaleImportRecord(
             business_id=business_id,
             file_name=file_name,
             total_rows=total_rows,
             status="PROCESSING",
+            file_hash=file_hash,
             created_by=created_by,
         )
         self.session.add(record)
@@ -78,13 +88,37 @@ class SqlSaleRepository(SaleRepository):
             affects_inventory=affects_inventory,
         )
 
-    async def close_import(self, *, import_id: UUID, imported_rows: int, errors: list[dict]) -> None:
+    async def close_import(
+        self, *, import_id: UUID, imported_rows: int, duplicate_rows: int, errors: list[dict]
+    ) -> None:
         record = await self.session.get(SaleImportRecord, import_id)
         record.imported_rows = imported_rows
+        record.duplicate_rows = duplicate_rows
         record.error_rows = len({e["row"] for e in errors})
         record.error_detail = errors or None
         record.status = "COMPLETED" if imported_rows > 0 or not errors else "FAILED"
         await self.session.flush()
+
+    async def find_import_by_hash(self, business_id: UUID, file_hash: str) -> datetime | None:
+        return (
+            await self.session.execute(
+                select(func.max(SaleImportRecord.created_at)).where(
+                    SaleImportRecord.business_id == business_id,
+                    SaleImportRecord.file_hash == file_hash,
+                    SaleImportRecord.status == "COMPLETED",
+                )
+            )
+        ).scalar_one_or_none()
+
+    async def existing_row_hashes(self, business_id: UUID, hashes: list[str]) -> set[str]:
+        if not hashes:
+            return set()
+        rows = await self.session.execute(
+            select(SaleRecord.row_hash).where(
+                SaleRecord.business_id == business_id, SaleRecord.row_hash.in_(hashes)
+            )
+        )
+        return set(rows.scalars())
 
     async def list(
         self,

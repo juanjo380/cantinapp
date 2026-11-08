@@ -12,6 +12,17 @@ class AlertStatus(str, Enum):
 
 
 @dataclass
+class DigestItem:
+    """Alerta pendiente que aún no se ha enviado por correo."""
+
+    alert_id: UUID
+    product_name: str
+    current_stock: int
+    min_stock: int
+    recommended_quantity: int | None
+
+
+@dataclass
 class Alert:
     id: UUID
     product_id: UUID

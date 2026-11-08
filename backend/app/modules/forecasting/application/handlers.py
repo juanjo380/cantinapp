@@ -6,12 +6,33 @@ from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, UnprocessableError
 from app.modules.analytics.domain.repository import AnalyticsRepository
 from app.modules.forecasting.application.commands import RunForecastCommand
+from app.modules.forecasting.domain.accuracy import AccuracySummary, evaluate
 from app.modules.forecasting.domain.entities import ModelType
 from app.modules.forecasting.domain.models import dense_series, forecast
 from app.modules.forecasting.domain.repository import ForecastRepository
 from app.modules.products.domain.repository import ProductRepository
 
 _MAX_HISTORY_WINDOW = 365
+_ACCURACY_CANDIDATES = 60  # predicciones cumplidas a revisar; tras quitar recálculos quedan hasta 20
+
+
+async def forecast_accuracy(
+    analytics: AnalyticsRepository,
+    forecasts: ForecastRepository,
+    products: ProductRepository,
+    business_id,
+    product_id,
+) -> AccuracySummary:
+    if await products.get(business_id, product_id) is None:
+        raise NotFoundError("Producto no encontrado")
+    today = date.today()
+    finished = await forecasts.finished(business_id, product_id, before=today, limit=_ACCURACY_CANDIDATES)
+    if not finished:
+        return evaluate([], {}, today)
+    oldest = min(f.forecast_start for f in finished)
+    days = min((today - oldest).days + 1, _MAX_HISTORY_WINDOW)
+    actual = dict(await analytics.daily_series(business_id, product_id, days=days))
+    return evaluate(finished, actual, today)
 
 
 async def run_forecast(
@@ -25,7 +46,7 @@ async def run_forecast(
     if product is None:
         raise NotFoundError("Producto no encontrado")
 
-    model = command.model if command.model in {m.value for m in ModelType} else ModelType.MOVING_AVERAGE.value
+    model = command.model if command.model in {m.value for m in ModelType} else ModelType.AUTO.value
     forecast_days = command.forecast_days or settings.default_forecast_days
 
     first = await analytics.first_sale_date(command.business_id, command.product_id)
@@ -45,12 +66,15 @@ async def run_forecast(
     return await forecasts.add(
         business_id=command.business_id,
         product_id=command.product_id,
-        model_type=model,
+        model_type=result.model_type,
+        requested_model=model,
         history_days=history_days,
         forecast_days=forecast_days,
         forecast_start=today + timedelta(days=1),
         predicted_demand=round(result.total, 2),
         confidence=result.confidence,
+        backtest_wape=result.wape,
+        backtest_mae=result.mae,
         daily_prediction=result.daily,
         created_by=command.created_by,
     )

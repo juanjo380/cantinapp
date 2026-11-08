@@ -29,6 +29,9 @@ function messageFrom(data, status) {
   return data.message || `Ocurrió un error (${status}).`
 }
 
+// URL absoluta de un endpoint público para usar en un enlace (p. ej. descargar una plantilla).
+export const apiUrl = (path) => `${API_URL}/api${path}`
+
 // `path` va sin el prefijo /api: se agrega aquí.
 // `auth: false` en login/registro: un token viejo guardado no debe viajar ni convertir un 401 de credenciales en "sesión expirada".
 export async function request(path, { method = 'GET', body, formData, signal, auth = true } = {}) {

@@ -173,6 +173,7 @@ CREATE TABLE products (
     min_stock       integer       NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
     lead_time_days  integer       NOT NULL DEFAULT 0 CHECK (lead_time_days >= 0),
     is_active       boolean       NOT NULL DEFAULT true,
+    is_demo         boolean       NOT NULL DEFAULT false,      -- migracion 008: datos de ejemplo (DELETE /api/demo)
     created_at      timestamptz   NOT NULL DEFAULT now(),
     updated_at      timestamptz   NOT NULL DEFAULT now(),
     CONSTRAINT products_stock_nonnegative CHECK (stock_quantity >= 0),
@@ -185,6 +186,7 @@ CREATE TABLE products (
 CREATE UNIQUE INDEX ux_products_business_name_active
     ON products (business_id, lower(name)) WHERE is_active;
 CREATE INDEX ix_products_business_active ON products (business_id, is_active);
+CREATE INDEX ix_products_business_demo ON products (business_id) WHERE is_demo;
 
 -- ---------------------------------------------------------------------------
 -- 4. Ventas  [Modulo Ventas]
@@ -197,13 +199,16 @@ CREATE TABLE sales_imports (
     total_rows     integer     NOT NULL DEFAULT 0,
     imported_rows  integer     NOT NULL DEFAULT 0,
     error_rows     integer     NOT NULL DEFAULT 0,
+    duplicate_rows integer     NOT NULL DEFAULT 0,   -- filas omitidas por ya importadas (migracion 005)
     status         text        NOT NULL DEFAULT 'PROCESSING'
                    CHECK (status IN ('PROCESSING', 'COMPLETED', 'FAILED')),
     error_detail   jsonb,                       -- [{row, field, message}, ...]
+    file_hash      text,                        -- sha256 del archivo: avisa si se reimporta
     created_by     uuid        REFERENCES users (id),
     created_at     timestamptz NOT NULL DEFAULT now(),
     UNIQUE (business_id, id)
 );
+CREATE INDEX ix_sales_imports_file_hash ON sales_imports (business_id, file_hash) WHERE file_hash IS NOT NULL;
 
 CREATE TABLE sales (
     id                uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -213,15 +218,18 @@ CREATE TABLE sales (
     quantity          integer       NOT NULL CHECK (quantity > 0),
     unit_price        numeric(12,2) NOT NULL CHECK (unit_price >= 0),  -- precio al momento de la venta
     total_amount      numeric(14,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    source            text          NOT NULL DEFAULT 'MANUAL' CHECK (source IN ('MANUAL', 'CSV')),
+    source            text          NOT NULL DEFAULT 'MANUAL'
+                      CONSTRAINT sales_source_check CHECK (source IN ('MANUAL', 'CSV', 'DEMO')),  -- DEMO: migracion 008
     affects_inventory boolean       NOT NULL DEFAULT true,
     import_id         uuid,
+    row_hash          text,                     -- huella de fila CSV (dedup.py); NULL = manual o duplicado a proposito
     created_by        uuid          REFERENCES users (id),
     created_at        timestamptz   NOT NULL DEFAULT now(),
     UNIQUE (business_id, id),
     FOREIGN KEY (business_id, product_id) REFERENCES products      (business_id, id),
     FOREIGN KEY (business_id, import_id)  REFERENCES sales_imports (business_id, id)
 );
+CREATE UNIQUE INDEX ux_sales_business_row_hash ON sales (business_id, row_hash) WHERE row_hash IS NOT NULL;
 -- Indices para analisis historico y prediccion (RNF-05)
 CREATE INDEX ix_sales_business_product_date ON sales (business_id, product_id, sale_date);
 CREATE INDEX ix_sales_business_date         ON sales (business_id, sale_date);
@@ -258,13 +266,19 @@ CREATE TABLE forecasts (                          -- [Modulo Prediccion]
     id                uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id       uuid          NOT NULL REFERENCES businesses (id),
     product_id        uuid          NOT NULL,
-    model_type        text          NOT NULL
-                      CHECK (model_type IN ('LINEAR_REGRESSION', 'MOVING_AVERAGE')),
+    model_type        text          NOT NULL      -- modelo usado (con AUTO, el que gano el backtest)
+                      CONSTRAINT forecasts_model_type_check
+                      CHECK (model_type IN ('LINEAR_REGRESSION', 'MOVING_AVERAGE', 'SEASONAL_WEEKLY')),
+    requested_model   text                        -- migracion 006: AUTO o el modelo pedido
+                      CONSTRAINT forecasts_requested_model_check
+                      CHECK (requested_model IN ('AUTO', 'LINEAR_REGRESSION', 'MOVING_AVERAGE', 'SEASONAL_WEEKLY')),
     history_days      integer       NOT NULL CHECK (history_days >= 30),   -- RNF-04
     forecast_days     integer       NOT NULL CHECK (forecast_days BETWEEN 1 AND 365),
     forecast_start    date          NOT NULL,
     predicted_demand  numeric(14,2) NOT NULL CHECK (predicted_demand >= 0),
-    confidence        numeric(5,4)  CHECK (confidence BETWEEN 0 AND 1),     -- formula por definir
+    confidence        numeric(5,4)  CHECK (confidence BETWEEN 0 AND 1),     -- 1 - WAPE del backtest
+    backtest_wape     numeric(10,4),              -- error del holdout de 14 dias: sum|error| / sum real
+    backtest_mae      numeric(14,4),              -- unidades de error promedio por dia en el holdout
     daily_prediction  jsonb,                      -- [{date, value}, ...] para la grafica
     created_by        uuid          REFERENCES users (id),
     created_at        timestamptz   NOT NULL DEFAULT now(),
@@ -318,8 +332,9 @@ CREATE TABLE alerts (                             -- [Modulo Alertas]
     estimated_demand      numeric(14,2),
     recommended_quantity  integer,
     status                text          NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'REVIEWED')),
-    reviewed_by           uuid          REFERENCES users (id),
+    reviewed_by           uuid          REFERENCES users (id),   -- NULL con REVIEWED = resuelta sola (volvio a stock)
     reviewed_at           timestamptz,
+    notified_at           timestamptz,              -- migracion 007: incluida en el correo-resumen diario
     created_at            timestamptz   NOT NULL DEFAULT now(),
     FOREIGN KEY (business_id, product_id)        REFERENCES products        (business_id, id),
     FOREIGN KEY (business_id, recommendation_id) REFERENCES recommendations (business_id, id),
@@ -332,6 +347,7 @@ CREATE TABLE alerts (                             -- [Modulo Alertas]
 CREATE UNIQUE INDEX ux_alerts_one_pending_per_product
     ON alerts (business_id, product_id) WHERE status = 'PENDING';
 CREATE INDEX ix_alerts_business_status ON alerts (business_id, status, created_at DESC);
+CREATE INDEX ix_alerts_business_unnotified ON alerts (business_id) WHERE status = 'PENDING' AND notified_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- 7. Triggers de integridad de inventario

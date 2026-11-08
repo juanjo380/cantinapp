@@ -3,7 +3,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.modules.forecasting.api.schemas import ForecastListOut, ForecastOut, ForecastRequest
+from app.modules.forecasting.api.schemas import (
+    AccuracyOut,
+    ForecastAccuracyOut,
+    ForecastListOut,
+    ForecastOut,
+    ForecastRequest,
+)
 from app.modules.forecasting.application.commands import RunForecastCommand
 from app.modules.forecasting.application.facade import ForecastingFacade
 from app.shared.api.dependencies import CurrentUser, get_current_user
@@ -23,6 +29,9 @@ def _forecast_out(forecast) -> ForecastOut:
         predicted_demand=forecast.predicted_demand,
         confidence=forecast.confidence,
         daily_prediction=forecast.daily_prediction,
+        requested_model=forecast.requested_model,
+        backtest_wape=forecast.backtest_wape,
+        backtest_mae=forecast.backtest_mae,
     )
 
 
@@ -53,3 +62,22 @@ async def list_forecasts(
 ):
     items = await ForecastingFacade(uow).list(user.business_id, product_id, limit=limit)
     return ForecastListOut(items=[_forecast_out(item) for item in items])
+
+
+@router.get("/accuracy", response_model=AccuracyOut)
+async def forecast_accuracy(
+    product_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    summary = await ForecastingFacade(uow).accuracy(user.business_id, product_id)
+    return AccuracyOut(
+        product_id=product_id,
+        evaluated=len(summary.items),
+        predicted_total=summary.predicted_total,
+        actual_total=summary.actual_total,
+        wape=summary.wape,
+        mae=summary.mae,
+        accuracy=summary.accuracy,
+        items=[ForecastAccuracyOut(**item.__dict__) for item in summary.items],
+    )

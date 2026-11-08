@@ -1,6 +1,7 @@
 """Adaptador SQLAlchemy del repositorio de predicciones."""
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -24,6 +25,9 @@ def _to_forecast(record: ForecastRecord) -> Forecast:
         confidence=float(record.confidence) if record.confidence is not None else None,
         daily_prediction=record.daily_prediction or [],
         created_at=record.created_at,
+        requested_model=record.requested_model,
+        backtest_wape=float(record.backtest_wape) if record.backtest_wape is not None else None,
+        backtest_mae=float(record.backtest_mae) if record.backtest_mae is not None else None,
     )
 
 
@@ -31,8 +35,27 @@ class SqlForecastRepository(ForecastRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def add(self, *, business_id, product_id, model_type, history_days, forecast_days, forecast_start, predicted_demand, confidence, daily_prediction, created_by) -> Forecast:
+    async def add(
+        self,
+        *,
+        business_id,
+        product_id,
+        model_type,
+        history_days,
+        forecast_days,
+        forecast_start,
+        predicted_demand,
+        confidence,
+        daily_prediction,
+        created_by,
+        requested_model=None,
+        backtest_wape=None,
+        backtest_mae=None,
+    ) -> Forecast:
         record = ForecastRecord(
+            requested_model=requested_model,
+            backtest_wape=backtest_wape,
+            backtest_mae=backtest_mae,
             business_id=business_id,
             product_id=product_id,
             model_type=model_type,
@@ -65,6 +88,22 @@ class SqlForecastRepository(ForecastRepository):
             await self.session.execute(
                 select(ForecastRecord)
                 .where(ForecastRecord.business_id == business_id, ForecastRecord.product_id == product_id)
+                .order_by(ForecastRecord.created_at.desc())
+                .limit(limit)
+            )
+        ).scalars().all()
+        return [_to_forecast(record) for record in records]
+
+    async def finished(self, business_id: UUID, product_id: UUID, *, before: date, limit: int) -> list[Forecast]:
+        last_day = ForecastRecord.forecast_start + (ForecastRecord.forecast_days - 1)  # date + int en Postgres
+        records = (
+            await self.session.execute(
+                select(ForecastRecord)
+                .where(
+                    ForecastRecord.business_id == business_id,
+                    ForecastRecord.product_id == product_id,
+                    last_day < before,
+                )
                 .order_by(ForecastRecord.created_at.desc())
                 .limit(limit)
             )

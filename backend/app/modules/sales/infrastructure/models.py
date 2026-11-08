@@ -20,8 +20,10 @@ class SaleImportRecord(Base):
     total_rows: Mapped[int] = mapped_column(default=0)
     imported_rows: Mapped[int] = mapped_column(default=0)
     error_rows: Mapped[int] = mapped_column(default=0)
+    duplicate_rows: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(default="PROCESSING")
     error_detail: Mapped[list | None] = mapped_column(JSONB)
+    file_hash: Mapped[str | None]
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -41,5 +43,6 @@ class SaleRecord(Base):
     source: Mapped[str] = mapped_column(default="MANUAL")
     affects_inventory: Mapped[bool] = mapped_column(default=True)
     import_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    row_hash: Mapped[str | None]
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
