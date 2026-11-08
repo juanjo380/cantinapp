@@ -35,3 +35,26 @@ class ForecastOut(BaseModel):
 
 class ForecastListOut(BaseModel):
     items: list[ForecastOut]
+
+
+class ForecastAccuracyOut(BaseModel):
+    forecast_id: UUID
+    model_type: str
+    forecast_start: date
+    forecast_end: date
+    predicted_total: float
+    actual_total: float
+    wape: float | None  # None si en el periodo no hubo ventas reales
+    mae: float
+    accuracy: float | None  # 1 − WAPE (0..1)
+
+
+class AccuracyOut(BaseModel):
+    product_id: UUID
+    evaluated: int  # predicciones con periodo cumplido (vacío = aún no hay con qué comparar)
+    predicted_total: float
+    actual_total: float
+    wape: float | None
+    mae: float | None
+    accuracy: float | None
+    items: list[ForecastAccuracyOut]

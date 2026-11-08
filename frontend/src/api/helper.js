@@ -85,6 +85,7 @@ export const analyticsApi = {
 export const forecastingApi = {
   create: (body) => request('/forecasting', { method: 'POST', body }),
   list: (params) => request(`/forecasting${qs(params)}`),
+  accuracy: (params) => request(`/forecasting/accuracy${qs(params)}`),
 }
 
 export const recommendationsApi = {

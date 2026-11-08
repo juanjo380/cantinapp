@@ -1,6 +1,7 @@
 """Adaptador SQLAlchemy del repositorio de predicciones."""
 from __future__ import annotations
 
+from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select
@@ -87,6 +88,22 @@ class SqlForecastRepository(ForecastRepository):
             await self.session.execute(
                 select(ForecastRecord)
                 .where(ForecastRecord.business_id == business_id, ForecastRecord.product_id == product_id)
+                .order_by(ForecastRecord.created_at.desc())
+                .limit(limit)
+            )
+        ).scalars().all()
+        return [_to_forecast(record) for record in records]
+
+    async def finished(self, business_id: UUID, product_id: UUID, *, before: date, limit: int) -> list[Forecast]:
+        last_day = ForecastRecord.forecast_start + (ForecastRecord.forecast_days - 1)  # date + int en Postgres
+        records = (
+            await self.session.execute(
+                select(ForecastRecord)
+                .where(
+                    ForecastRecord.business_id == business_id,
+                    ForecastRecord.product_id == product_id,
+                    last_day < before,
+                )
                 .order_by(ForecastRecord.created_at.desc())
                 .limit(limit)
             )

@@ -1,6 +1,7 @@
 """Puerto del repositorio de predicciones."""
 from __future__ import annotations
 
+from datetime import date
 from typing import Protocol
 from uuid import UUID
 
@@ -29,3 +30,6 @@ class ForecastRepository(Protocol):
     async def latest(self, business_id: UUID, product_id: UUID) -> Forecast | None: ...
 
     async def list(self, business_id: UUID, product_id: UUID, *, limit: int = 20) -> list[Forecast]: ...
+
+    async def finished(self, business_id: UUID, product_id: UUID, *, before: date, limit: int) -> list[Forecast]:
+        """Predicciones cuyo último día es anterior a `before`, de la más reciente a la más antigua."""
