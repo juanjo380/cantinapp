@@ -13,6 +13,7 @@ from app.modules.analytics.api.router import router as analytics_router
 from app.modules.auth.api.router import router as auth_router
 from app.modules.business.api.router import router as business_router
 from app.modules.dashboard.api.router import router as dashboard_router
+from app.modules.demo.api.router import router as demo_router
 from app.modules.forecasting.api.router import router as forecasting_router
 from app.modules.inventory.api.router import router as inventory_router
 from app.modules.jobs.api.router import router as jobs_router
@@ -64,6 +65,7 @@ for router in (
     dashboard_router,
     alerts_router,
     jobs_router,
+    demo_router,
 ):
     app.include_router(router)
 

@@ -99,6 +99,12 @@ export const dashboardApi = {
   get: (params) => request(`/dashboard${qs(params)}`),
 }
 
+export const demoApi = {
+  status: () => request('/demo'),
+  load: () => request('/demo', { method: 'POST' }),
+  remove: () => request('/demo', { method: 'DELETE' }),
+}
+
 export const alertsApi = {
   list: (params) => request(`/alerts${qs(params)}`),
   generate: () => request('/alerts/generate', { method: 'POST' }),

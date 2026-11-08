@@ -173,6 +173,7 @@ CREATE TABLE products (
     min_stock       integer       NOT NULL DEFAULT 0 CHECK (min_stock >= 0),
     lead_time_days  integer       NOT NULL DEFAULT 0 CHECK (lead_time_days >= 0),
     is_active       boolean       NOT NULL DEFAULT true,
+    is_demo         boolean       NOT NULL DEFAULT false,      -- migracion 008: datos de ejemplo (DELETE /api/demo)
     created_at      timestamptz   NOT NULL DEFAULT now(),
     updated_at      timestamptz   NOT NULL DEFAULT now(),
     CONSTRAINT products_stock_nonnegative CHECK (stock_quantity >= 0),
@@ -185,6 +186,7 @@ CREATE TABLE products (
 CREATE UNIQUE INDEX ux_products_business_name_active
     ON products (business_id, lower(name)) WHERE is_active;
 CREATE INDEX ix_products_business_active ON products (business_id, is_active);
+CREATE INDEX ix_products_business_demo ON products (business_id) WHERE is_demo;
 
 -- ---------------------------------------------------------------------------
 -- 4. Ventas  [Modulo Ventas]
@@ -216,7 +218,8 @@ CREATE TABLE sales (
     quantity          integer       NOT NULL CHECK (quantity > 0),
     unit_price        numeric(12,2) NOT NULL CHECK (unit_price >= 0),  -- precio al momento de la venta
     total_amount      numeric(14,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    source            text          NOT NULL DEFAULT 'MANUAL' CHECK (source IN ('MANUAL', 'CSV')),
+    source            text          NOT NULL DEFAULT 'MANUAL'
+                      CONSTRAINT sales_source_check CHECK (source IN ('MANUAL', 'CSV', 'DEMO')),  -- DEMO: migracion 008
     affects_inventory boolean       NOT NULL DEFAULT true,
     import_id         uuid,
     row_hash          text,                     -- huella de fila CSV (dedup.py); NULL = manual o duplicado a proposito

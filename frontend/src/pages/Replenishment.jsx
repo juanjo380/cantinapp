@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { analyticsApi, forecastingApi, recommendationsApi } from '../api/helper'
 import DataTable from '../components/ui/DataTable'
+import DemoData from '../components/ui/DemoData'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
@@ -34,6 +35,11 @@ export default function Replenishment() {
 
   const products = useProductOptions()
   const productOptions = products.items
+
+  function reloadAfterDemo() {
+    setProductId('')
+    products.reload()
+  }
 
   useEffect(() => {
     if (!productId) {
@@ -112,7 +118,10 @@ export default function Replenishment() {
             </Button>
           }
         >
-          Registra productos y carga ventas para poder predecir la demanda.
+          Registra productos y carga ventas para poder predecir la demanda, o prueba con datos de ejemplo.
+          <div className="mt-4">
+            <DemoData onChange={reloadAfterDemo} />
+          </div>
         </Empty>
       )}
 
@@ -128,9 +137,12 @@ export default function Replenishment() {
         <Empty
           title="Faltan datos para predecir"
           action={
-            <Button component={RouterLink} to="/ventas" variant="contained">
-              Cargar historial por CSV
-            </Button>
+            <div className="flex flex-col items-center gap-3">
+              <Button component={RouterLink} to="/ventas" variant="contained">
+                Cargar historial por CSV
+              </Button>
+              <DemoData onChange={reloadAfterDemo} />
+            </div>
           }
         >
           El pronóstico necesita al menos 30 días de historial de ventas. Carga tu historial en Ventas
