@@ -1,0 +1,12 @@
+﻿nombre;precio;categoria;proveedor;stock_inicial;stock_minimo;dias_abastecimiento
+Arroz 1 kg;4200;Granos;Mayorista El Sol;60;20;4
+Aceite 1 L;9800;Abarrotes;Mayorista El Sol;10;12;4
+Huevos x30;16500;Lácteos y huevos;Avícola Santa Ana;12;6;2
+Leche 1 L;4300;Lácteos y huevos;Lácteos Andinos;40;20;2
+Pan tajado;5200;Panadería;Panadería La Espiga;15;8;1
+Gaseosa 1,5 L;6500;Bebidas;Distribuidora Central;20;15;3
+Gaseosa 400 ml;3000;Bebidas;Distribuidora Central;48;24;3
+Agua 600 ml;2000;Bebidas;Distribuidora Central;30;12;3
+Cerveza lata;3500;Bebidas;Distribuidora Central;72;24;3
+Papas fritas;2500;Paquetes;Snacks S.A.;30;10;5
+Pila AA;2500;Hogar;Ferretería Central;6;4;10

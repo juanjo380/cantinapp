@@ -1,0 +1,10 @@
+﻿nombre;precio;categoria;proveedor;stock_inicial;stock_minimo;dias_abastecimiento
+Café tinto;1800;Bebidas calientes;Café del Valle;300;80;7
+Café con leche;3200;Bebidas calientes;Café del Valle;200;60;7
+Chocolate caliente;3500;Bebidas calientes;Café del Valle;60;20;7
+Pandebono;2000;Panadería;Panadería La Espiga;40;25;1
+Croissant;4500;Panadería;Panadería La Espiga;10;12;1
+Torta porción;6000;Postres;Repostería Dulce Hogar;12;6;2
+Torta de cumpleaños;45000;Postres;Repostería Dulce Hogar;2;1;3
+Gaseosa 400 ml;3500;Bebidas;Distribuidora Central;24;12;3
+Agua 600 ml;2500;Bebidas;Distribuidora Central;24;10;3
