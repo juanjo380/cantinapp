@@ -44,5 +44,6 @@ class ImportOut(BaseModel):
     total_rows: int
     imported_rows: int
     error_rows: int
+    duplicate_rows: int = 0  # total_rows = imported_rows + error_rows + duplicate_rows
     status: str
     errors: list[ImportErrorOut] = []

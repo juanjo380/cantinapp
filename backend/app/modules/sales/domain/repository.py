@@ -1,7 +1,7 @@
 """Puerto del repositorio de ventas."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
@@ -22,15 +22,28 @@ class SaleRepository(Protocol):
         affects_inventory: bool,
         import_id: UUID | None = None,
         created_by: UUID | None = None,
+        row_hash: str | None = None,
     ) -> Sale: ...
 
     async def open_import(
-        self, *, business_id: UUID, file_name: str, total_rows: int, affects_inventory: bool, created_by: UUID | None
+        self,
+        *,
+        business_id: UUID,
+        file_name: str,
+        total_rows: int,
+        affects_inventory: bool,
+        created_by: UUID | None,
+        file_hash: str | None = None,
     ) -> SaleImport: ...
 
     async def close_import(
-        self, *, import_id: UUID, imported_rows: int, errors: list[dict]
+        self, *, import_id: UUID, imported_rows: int, duplicate_rows: int, errors: list[dict]
     ) -> None: ...
+
+    async def find_import_by_hash(self, business_id: UUID, file_hash: str) -> datetime | None:
+        """Fecha de la última carga completada de ese mismo archivo en el negocio."""
+
+    async def existing_row_hashes(self, business_id: UUID, hashes: list[str]) -> set[str]: ...
 
     async def list(
         self,

@@ -226,7 +226,7 @@ function SalesCsvDialog({ onClose, onDone }) {
   return (
     <CsvImportDialog
       title="Cargar historial por CSV"
-      upload={(file) => salesApi.importCsv(file, affectsInventory)}
+      upload={(file, { confirmReimport }) => salesApi.importCsv(file, affectsInventory, confirmReimport)}
       onClose={onClose}
       onDone={onDone}
       next={

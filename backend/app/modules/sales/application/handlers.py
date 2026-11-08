@@ -7,14 +7,16 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError, UnprocessableError
+from app.core.exceptions import ConflictError, NotFoundError, UnprocessableError
 from app.modules.products.domain.repository import ProductRepository
 from app.modules.sales.application.commands import CreateSaleCommand, ImportSalesCommand
 from app.modules.sales.application.csv_parser import parse_csv
+from app.modules.sales.domain.dedup import file_hash, row_hashes, row_key
 from app.modules.sales.domain.entities import Sale, SaleImport
 from app.modules.sales.domain.repository import SaleRepository
 
 logger = logging.getLogger("cantinapp")
+_DEDUP_INDEX = "ux_sales_business_row_hash"
 
 
 async def register_sale(
@@ -41,15 +43,24 @@ async def import_sales(
     sales: SaleRepository, products: ProductRepository, session: AsyncSession, command: ImportSalesCommand
 ) -> SaleImport:
     parsed, errors = parse_csv(command.content)
+    content_hash = file_hash(command.content)
+    if not command.confirm_reimport:
+        previous = await sales.find_import_by_hash(command.business_id, content_hash)
+        if previous is not None:
+            raise ConflictError(
+                f"Este archivo ya se importó el {previous:%d/%m/%Y}. "
+                "Si de verdad quieres cargarlo otra vez, confirma la reimportación."
+            )
     summary = await sales.open_import(
         business_id=command.business_id,
         file_name=command.file_name,
         total_rows=len(parsed) + len({e["row"] for e in errors}),
         affects_inventory=command.affects_inventory,
         created_by=command.created_by,
+        file_hash=content_hash,
     )
 
-    imported = 0
+    valid = []
     resolved: dict[tuple[str | None, str | None], object] = {}  # un CSV repite productos: una consulta por producto
     for row in parsed:
         key = (row.product_id, row.product_name)
@@ -60,6 +71,16 @@ async def import_sales(
             errors.append({"row": row.row_number, "field": "product", "message": "Producto no encontrado"})
             continue
         unit_price = row.unit_price if row.unit_price is not None else product.price
+        valid.append((row, product, unit_price))
+
+    hashes = row_hashes([row_key(p.id, r.sale_date, r.quantity, price) for r, p, price in valid])
+    existing = await sales.existing_row_hashes(command.business_id, hashes) if command.skip_duplicates else set()
+
+    imported = duplicates = 0
+    for (row, product, unit_price), row_hash in zip(valid, hashes):
+        if row_hash in existing:
+            duplicates += 1
+            continue
         try:
             async with session.begin_nested():
                 await sales.add(
@@ -72,13 +93,21 @@ async def import_sales(
                     affects_inventory=command.affects_inventory,
                     import_id=summary.id,
                     created_by=command.created_by,
+                    # sin huella = duplicado intencional: ni bloquea ni lo bloquean cargas futuras
+                    row_hash=row_hash if command.skip_duplicates else None,
                 )
             imported += 1
-        except IntegrityError:
-            errors.append({"row": row.row_number, "field": "stock", "message": "Stock insuficiente"})
+        except IntegrityError as exc:
+            if _DEDUP_INDEX in str(exc.orig):  # otra carga simultánea insertó la misma fila
+                duplicates += 1
+            else:
+                errors.append({"row": row.row_number, "field": "stock", "message": "Stock insuficiente"})
 
-    await sales.close_import(import_id=summary.id, imported_rows=imported, errors=errors)
+    await sales.close_import(
+        import_id=summary.id, imported_rows=imported, duplicate_rows=duplicates, errors=errors
+    )
     summary.imported_rows = imported
+    summary.duplicate_rows = duplicates
     summary.error_rows = len({e["row"] for e in errors})
     summary.errors = errors
     summary.status = "COMPLETED" if imported > 0 or not errors else "FAILED"

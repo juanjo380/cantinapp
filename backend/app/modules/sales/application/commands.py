@@ -24,3 +24,5 @@ class ImportSalesCommand(Command):
     content: str
     affects_inventory: bool
     created_by: UUID
+    skip_duplicates: bool = True  # omite filas cuya huella ya existe en el negocio
+    confirm_reimport: bool = False  # el usuario aceptó cargar un archivo que ya había importado

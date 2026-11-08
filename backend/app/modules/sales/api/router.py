@@ -37,6 +37,8 @@ async def create_sale(
 async def import_sales(
     file: UploadFile = File(...),
     affects_inventory: bool = Query(False, description="Si es true descuenta del stock actual"),
+    skip_duplicates: bool = Query(True, description="Omite filas que ya se importaron en el negocio"),
+    confirm_reimport: bool = Query(False, description="Carga un archivo ya importado (si no, 409)"),
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
@@ -48,6 +50,8 @@ async def import_sales(
             content=content,
             affects_inventory=affects_inventory,
             created_by=user.user_id,
+            skip_duplicates=skip_duplicates,
+            confirm_reimport=confirm_reimport,
         )
     )
     return ImportOut(**summary.__dict__)

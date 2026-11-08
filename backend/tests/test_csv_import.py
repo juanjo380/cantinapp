@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from types import SimpleNamespace
@@ -53,14 +54,25 @@ def test_sales_csv_from_spanish_excel_semicolon_and_comma_decimal():
 
 
 class FakeSales:
+    """Repositorio de ventas en memoria: recuerda archivos y huellas como lo haría la BD."""
+
     def __init__(self):
         self.added = []
+        self.imports = []
 
     async def open_import(self, **kwargs):
-        return SimpleNamespace(id=uuid4(), **kwargs)
+        summary = SimpleNamespace(id=uuid4(), **kwargs)
+        self.imports.append(summary)
+        return summary
 
-    async def close_import(self, *, import_id, imported_rows, errors):
+    async def close_import(self, *, import_id, imported_rows, duplicate_rows, errors):
         pass
+
+    async def find_import_by_hash(self, business_id, file_hash):
+        return next((datetime(2026, 1, 5) for i in self.imports if i.file_hash == file_hash), None)
+
+    async def existing_row_hashes(self, business_id, hashes):
+        return {a["row_hash"] for a in self.added} & set(hashes)
 
     async def add(self, **kwargs):
         self.added.append(kwargs)

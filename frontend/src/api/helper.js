@@ -64,10 +64,11 @@ export const inventoryApi = {
 export const salesApi = {
   list: (params) => request(`/sales${qs(params)}`),
   create: (body) => request('/sales', { method: 'POST', body }),
-  importCsv: (file, affectsInventory) => {
+  importCsv: (file, affectsInventory, confirmReimport = false) => {
     const form = new FormData()
     form.append('file', file)
-    return request(`/sales/import${qs({ affects_inventory: affectsInventory })}`, {
+    const params = { affects_inventory: affectsInventory, confirm_reimport: confirmReimport || undefined }
+    return request(`/sales/import${qs(params)}`, {
       method: 'POST',
       formData: form,
     })

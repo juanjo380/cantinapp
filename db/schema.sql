@@ -197,13 +197,16 @@ CREATE TABLE sales_imports (
     total_rows     integer     NOT NULL DEFAULT 0,
     imported_rows  integer     NOT NULL DEFAULT 0,
     error_rows     integer     NOT NULL DEFAULT 0,
+    duplicate_rows integer     NOT NULL DEFAULT 0,   -- filas omitidas por ya importadas (migracion 005)
     status         text        NOT NULL DEFAULT 'PROCESSING'
                    CHECK (status IN ('PROCESSING', 'COMPLETED', 'FAILED')),
     error_detail   jsonb,                       -- [{row, field, message}, ...]
+    file_hash      text,                        -- sha256 del archivo: avisa si se reimporta
     created_by     uuid        REFERENCES users (id),
     created_at     timestamptz NOT NULL DEFAULT now(),
     UNIQUE (business_id, id)
 );
+CREATE INDEX ix_sales_imports_file_hash ON sales_imports (business_id, file_hash) WHERE file_hash IS NOT NULL;
 
 CREATE TABLE sales (
     id                uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -216,12 +219,14 @@ CREATE TABLE sales (
     source            text          NOT NULL DEFAULT 'MANUAL' CHECK (source IN ('MANUAL', 'CSV')),
     affects_inventory boolean       NOT NULL DEFAULT true,
     import_id         uuid,
+    row_hash          text,                     -- huella de fila CSV (dedup.py); NULL = manual o duplicado a proposito
     created_by        uuid          REFERENCES users (id),
     created_at        timestamptz   NOT NULL DEFAULT now(),
     UNIQUE (business_id, id),
     FOREIGN KEY (business_id, product_id) REFERENCES products      (business_id, id),
     FOREIGN KEY (business_id, import_id)  REFERENCES sales_imports (business_id, id)
 );
+CREATE UNIQUE INDEX ux_sales_business_row_hash ON sales (business_id, row_hash) WHERE row_hash IS NOT NULL;
 -- Indices para analisis historico y prediccion (RNF-05)
 CREATE INDEX ix_sales_business_product_date ON sales (business_id, product_id, sale_date);
 CREATE INDEX ix_sales_business_date         ON sales (business_id, sale_date);
