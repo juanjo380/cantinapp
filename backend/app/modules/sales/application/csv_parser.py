@@ -15,6 +15,14 @@ from app.shared.application.csv_utils import dict_reader, header_key, parse_deci
 
 _DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y")
 
+# Plantilla descargable (GET /api/sales/import/template); un test verifica que este parser la acepta.
+TEMPLATE = (
+    "producto;fecha;cantidad;precio\r\n"
+    "Empanada;03/11/2026;12;2500\r\n"
+    "Gaseosa 400 ml;03/11/2026;5;3200,50\r\n"
+    "Empanada;2026-11-04;9;\r\n"
+)
+
 _ALIASES = {
     "product": "product",
     "product_name": "product",

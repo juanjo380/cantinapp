@@ -1,4 +1,4 @@
-import { request } from './client'
+import { apiUrl, request } from './client'
 
 // Cada función corresponde 1:1 a un endpoint de memoria.md §7.
 function qs(params = {}) {
@@ -52,6 +52,7 @@ export const productsApi = {
     form.append('file', file)
     return request('/products/import', { method: 'POST', formData: form })
   },
+  templateUrl: apiUrl('/products/import/template'),
 }
 
 export const inventoryApi = {
@@ -73,6 +74,7 @@ export const salesApi = {
       formData: form,
     })
   },
+  templateUrl: apiUrl('/sales/import/template'),
 }
 
 export const analyticsApi = {

@@ -227,6 +227,7 @@ function SalesCsvDialog({ onClose, onDone }) {
     <CsvImportDialog
       title="Cargar historial por CSV"
       upload={(file, { confirmReimport }) => salesApi.importCsv(file, affectsInventory, confirmReimport)}
+      templateUrl={salesApi.templateUrl}
       onClose={onClose}
       onDone={onDone}
       next={
@@ -239,8 +240,15 @@ function SalesCsvDialog({ onClose, onDone }) {
         <p className="mb-1 font-semibold text-ink">Columnas admitidas</p>
         <p>
           <span className="font-mono">product</span> (o <span className="font-mono">product_id</span>),{' '}
-          <span className="font-mono">date</span> (YYYY-MM-DD o DD/MM/YYYY),{' '}
-          <span className="font-mono">quantity</span>, y opcional <span className="font-mono">unit_price</span>.
+          <span className="font-mono">date</span>, <span className="font-mono">quantity</span>, y opcional{' '}
+          <span className="font-mono">unit_price</span>. En español: <span className="font-mono">producto</span>,{' '}
+          <span className="font-mono">fecha</span>, <span className="font-mono">cantidad</span>,{' '}
+          <span className="font-mono">precio</span>.
+        </p>
+        <p className="mt-1">
+          Fechas aceptadas: <span className="font-mono">03/11/2026</span> (día/mes/año),{' '}
+          <span className="font-mono">03-11-2026</span> o <span className="font-mono">2026-11-03</span>. Sin precio
+          se usa el del producto.
         </p>
       </div>
       <FormControlLabel

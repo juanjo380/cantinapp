@@ -16,13 +16,20 @@ from app.modules.products.application.commands import (
     ImportProductsCommand,
     UpdateProductCommand,
 )
+from app.modules.products.application.csv_parser import TEMPLATE
 from app.modules.products.application.facade import ProductsFacade
 from app.modules.products.application.queries import GetProductQuery, ListProductsQuery
 from app.shared.api.dependencies import CurrentUser, get_current_user
-from app.shared.api.uploads import read_csv_upload
+from app.shared.api.uploads import csv_template_response, read_csv_upload
 from app.shared.infrastructure.unit_of_work import SqlAlchemyUnitOfWork, get_uow
 
 router = APIRouter(prefix="/api/products", tags=["products"])
+
+
+@router.get("/import/template")
+async def import_template():
+    """Público: es un archivo fijo de ejemplo, no contiene datos de ningún negocio."""
+    return csv_template_response(TEMPLATE, "plantilla-productos.csv")
 
 
 @router.get("", response_model=ProductListOut)

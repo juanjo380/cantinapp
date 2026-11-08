@@ -180,7 +180,8 @@ export default function Products() {
       {importing && (
         <CsvImportDialog
           title="Cargar productos por CSV"
-          upload={productsApi.importCsv}
+          upload={(file) => productsApi.importCsv(file)}
+          templateUrl={productsApi.templateUrl}
           onClose={() => setImporting(false)}
           onDone={(result) => {
             if (result.imported_rows > 0) {
