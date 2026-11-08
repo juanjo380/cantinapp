@@ -25,7 +25,7 @@ async def run_forecast(
     if product is None:
         raise NotFoundError("Producto no encontrado")
 
-    model = command.model if command.model in {m.value for m in ModelType} else ModelType.MOVING_AVERAGE.value
+    model = command.model if command.model in {m.value for m in ModelType} else ModelType.AUTO.value
     forecast_days = command.forecast_days or settings.default_forecast_days
 
     first = await analytics.first_sale_date(command.business_id, command.product_id)
@@ -45,12 +45,15 @@ async def run_forecast(
     return await forecasts.add(
         business_id=command.business_id,
         product_id=command.product_id,
-        model_type=model,
+        model_type=result.model_type,
+        requested_model=model,
         history_days=history_days,
         forecast_days=forecast_days,
         forecast_start=today + timedelta(days=1),
         predicted_demand=round(result.total, 2),
         confidence=result.confidence,
+        backtest_wape=result.wape,
+        backtest_mae=result.mae,
         daily_prediction=result.daily,
         created_by=command.created_by,
     )

@@ -263,13 +263,19 @@ CREATE TABLE forecasts (                          -- [Modulo Prediccion]
     id                uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id       uuid          NOT NULL REFERENCES businesses (id),
     product_id        uuid          NOT NULL,
-    model_type        text          NOT NULL
-                      CHECK (model_type IN ('LINEAR_REGRESSION', 'MOVING_AVERAGE')),
+    model_type        text          NOT NULL      -- modelo usado (con AUTO, el que gano el backtest)
+                      CONSTRAINT forecasts_model_type_check
+                      CHECK (model_type IN ('LINEAR_REGRESSION', 'MOVING_AVERAGE', 'SEASONAL_WEEKLY')),
+    requested_model   text                        -- migracion 006: AUTO o el modelo pedido
+                      CONSTRAINT forecasts_requested_model_check
+                      CHECK (requested_model IN ('AUTO', 'LINEAR_REGRESSION', 'MOVING_AVERAGE', 'SEASONAL_WEEKLY')),
     history_days      integer       NOT NULL CHECK (history_days >= 30),   -- RNF-04
     forecast_days     integer       NOT NULL CHECK (forecast_days BETWEEN 1 AND 365),
     forecast_start    date          NOT NULL,
     predicted_demand  numeric(14,2) NOT NULL CHECK (predicted_demand >= 0),
-    confidence        numeric(5,4)  CHECK (confidence BETWEEN 0 AND 1),     -- formula por definir
+    confidence        numeric(5,4)  CHECK (confidence BETWEEN 0 AND 1),     -- 1 - WAPE del backtest
+    backtest_wape     numeric(10,4),              -- error del holdout de 14 dias: sum|error| / sum real
+    backtest_mae      numeric(14,4),              -- unidades de error promedio por dia en el holdout
     daily_prediction  jsonb,                      -- [{date, value}, ...] para la grafica
     created_by        uuid          REFERENCES users (id),
     created_at        timestamptz   NOT NULL DEFAULT now(),

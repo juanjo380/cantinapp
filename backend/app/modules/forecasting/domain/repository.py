@@ -18,9 +18,12 @@ class ForecastRepository(Protocol):
         forecast_days: int,
         forecast_start,
         predicted_demand,
-        confidence: float,
+        confidence: float | None,
         daily_prediction: list[dict],
         created_by: UUID | None,
+        requested_model: str | None = None,
+        backtest_wape: float | None = None,
+        backtest_mae: float | None = None,
     ) -> Forecast: ...
 
     async def latest(self, business_id: UUID, product_id: UUID) -> Forecast | None: ...

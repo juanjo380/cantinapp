@@ -22,6 +22,9 @@ class ForecastRecord(Base):
     forecast_start: Mapped[date]
     predicted_demand: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
+    requested_model: Mapped[str | None]
+    backtest_wape: Mapped[float | None] = mapped_column(Numeric(10, 4))
+    backtest_mae: Mapped[float | None] = mapped_column(Numeric(14, 4))
     daily_prediction: Mapped[list | None] = mapped_column(JSONB)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -18,15 +18,18 @@ import { useProductOptions } from '../hooks/useProductOptions'
 import { daysAgoISO, formatPercent, todayISO } from '../utils/format'
 
 const MODELS = [
+  ['AUTO', 'Automático (recomendado)'],
+  ['SEASONAL_WEEKLY', 'Semanal (por día de la semana)'],
   ['MOVING_AVERAGE', 'Promedio móvil'],
   ['LINEAR_REGRESSION', 'Regresión lineal'],
 ]
+const MODEL_NAMES = Object.fromEntries(MODELS)
 
 export default function Replenishment() {
   const theme = useTheme()
   const [productId, setProductId] = useState('')
   const [forecastDays, setForecastDays] = useState('30')
-  const [model, setModel] = useState('MOVING_AVERAGE')
+  const [model, setModel] = useState('AUTO')
   const [result, setResult] = useState({ status: 'idle' })
 
   const products = useProductOptions()
@@ -167,8 +170,9 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
         label="Histórico contra predicción"
         actions={
           <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
-            Modelo: {forecast.model_type === 'LINEAR_REGRESSION' ? 'Regresión lineal' : 'Promedio móvil'} ·
-            Confianza {formatPercent(forecast.confidence)}
+            Modelo: {MODEL_NAMES[forecast.model_type] ?? forecast.model_type}
+            {forecast.requested_model === 'AUTO' && ' (elegido automáticamente)'} · Confianza{' '}
+            {formatPercent(forecast.confidence)}
           </span>
         }
       >
@@ -190,7 +194,16 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
       <section aria-label="Predicción" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard variant="inset" label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
         <StatCard variant="inset" label="Historial usado" value={`${forecast.history_days} días`} hint="Base de la predicción" />
-        <StatCard variant="inset" label="Confianza" value={formatPercent(forecast.confidence)} hint="0 % a 100 %" />
+        <StatCard
+          variant="inset"
+          label="Confianza"
+          value={formatPercent(forecast.confidence)}
+          hint={
+            forecast.backtest_mae != null
+              ? `En las últimas 2 semanas se equivocó ~${Math.round(forecast.backtest_mae * 10) / 10} u. por día`
+              : '0 % a 100 %'
+          }
+        />
       </section>
 
       <Section title="Recomendación de compra" actions={<UrgencyStamp urgency={recommendation.urgency} />}>

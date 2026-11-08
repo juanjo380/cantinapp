@@ -24,6 +24,9 @@ def _to_forecast(record: ForecastRecord) -> Forecast:
         confidence=float(record.confidence) if record.confidence is not None else None,
         daily_prediction=record.daily_prediction or [],
         created_at=record.created_at,
+        requested_model=record.requested_model,
+        backtest_wape=float(record.backtest_wape) if record.backtest_wape is not None else None,
+        backtest_mae=float(record.backtest_mae) if record.backtest_mae is not None else None,
     )
 
 
@@ -31,8 +34,27 @@ class SqlForecastRepository(ForecastRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def add(self, *, business_id, product_id, model_type, history_days, forecast_days, forecast_start, predicted_demand, confidence, daily_prediction, created_by) -> Forecast:
+    async def add(
+        self,
+        *,
+        business_id,
+        product_id,
+        model_type,
+        history_days,
+        forecast_days,
+        forecast_start,
+        predicted_demand,
+        confidence,
+        daily_prediction,
+        created_by,
+        requested_model=None,
+        backtest_wape=None,
+        backtest_mae=None,
+    ) -> Forecast:
         record = ForecastRecord(
+            requested_model=requested_model,
+            backtest_wape=backtest_wape,
+            backtest_mae=backtest_mae,
             business_id=business_id,
             product_id=product_id,
             model_type=model_type,

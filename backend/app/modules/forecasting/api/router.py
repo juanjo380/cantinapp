@@ -23,6 +23,9 @@ def _forecast_out(forecast) -> ForecastOut:
         predicted_demand=forecast.predicted_demand,
         confidence=forecast.confidence,
         daily_prediction=forecast.daily_prediction,
+        requested_model=forecast.requested_model,
+        backtest_wape=forecast.backtest_wape,
+        backtest_mae=forecast.backtest_mae,
     )
 
 
