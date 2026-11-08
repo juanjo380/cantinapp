@@ -23,4 +23,5 @@ class AlertRecord(Base):
     status: Mapped[str] = mapped_column(default="PENDING")
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     reviewed_at: Mapped[datetime | None]
+    notified_at: Mapped[datetime | None]  # migración 007: incluida en el correo-resumen diario
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

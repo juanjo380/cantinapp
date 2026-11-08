@@ -6,12 +6,13 @@ recomendación si existen.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.alerts.domain.entities import Alert
+from app.modules.alerts.domain.entities import Alert, DigestItem
 from app.modules.alerts.domain.repository import AlertRepository
 
 _GENERATE_SQL = """
@@ -58,6 +59,45 @@ class SqlAlertRepository(AlertRepository):
     async def generate_pending(self, business_id: UUID) -> int:
         result = await self.session.execute(text(_GENERATE_SQL), {"business_id": business_id})
         return result.rowcount or 0
+
+    async def resolve_recovered(self, business_id: UUID) -> int:
+        result = await self.session.execute(
+            text(
+                "UPDATE alerts a SET status = 'REVIEWED', reviewed_at = now() "
+                "FROM v_inventory v WHERE a.business_id = :business_id AND a.status = 'PENDING' "
+                "AND v.business_id = a.business_id AND v.product_id = a.product_id AND v.status = 'NORMAL'"
+            ),
+            {"business_id": business_id},
+        )
+        return result.rowcount or 0
+
+    async def unnotified(self, business_id: UUID) -> list[DigestItem]:
+        rows = (
+            await self.session.execute(
+                text(
+                    "SELECT a.id, p.name, a.current_stock, a.min_stock, a.recommended_quantity FROM alerts a "
+                    "JOIN products p ON p.business_id = a.business_id AND p.id = a.product_id "
+                    "WHERE a.business_id = :business_id AND a.status = 'PENDING' AND a.notified_at IS NULL "
+                    "ORDER BY a.current_stock, p.name"
+                ),
+                {"business_id": business_id},
+            )
+        ).all()
+        return [DigestItem(*row) for row in rows]
+
+    async def last_notified_at(self, business_id: UUID) -> datetime | None:
+        return (
+            await self.session.execute(
+                text("SELECT max(notified_at) FROM alerts WHERE business_id = :business_id"),
+                {"business_id": business_id},
+            )
+        ).scalar_one_or_none()
+
+    async def mark_notified(self, business_id: UUID, alert_ids: list[UUID]) -> None:
+        await self.session.execute(
+            text("UPDATE alerts SET notified_at = now() WHERE business_id = :business_id AND id = ANY(:ids)"),
+            {"business_id": business_id, "ids": alert_ids},
+        )
 
     async def list(
         self, business_id: UUID, *, status: str | None = None, limit: int = 50, offset: int = 0

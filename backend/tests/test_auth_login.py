@@ -52,7 +52,7 @@ def test_lockout_after_repeated_failures_and_success_resets():
 
 
 def test_default_jwt_secret_rejected_outside_development():
-    base = {"db_host": "h", "db_user": "u", "db_password": "p"}
+    base = {"db_host": "h", "db_user": "u", "db_password": "p", "cron_secret": "c" * 32}
     with pytest.raises(ValueError):
         Settings(**base, environment="production", jwt_secret="dev-secret-change-me")
     assert Settings(**base, environment="production", jwt_secret="x" * 32).jwt_secret == "x" * 32

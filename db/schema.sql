@@ -329,8 +329,9 @@ CREATE TABLE alerts (                             -- [Modulo Alertas]
     estimated_demand      numeric(14,2),
     recommended_quantity  integer,
     status                text          NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'REVIEWED')),
-    reviewed_by           uuid          REFERENCES users (id),
+    reviewed_by           uuid          REFERENCES users (id),   -- NULL con REVIEWED = resuelta sola (volvio a stock)
     reviewed_at           timestamptz,
+    notified_at           timestamptz,              -- migracion 007: incluida en el correo-resumen diario
     created_at            timestamptz   NOT NULL DEFAULT now(),
     FOREIGN KEY (business_id, product_id)        REFERENCES products        (business_id, id),
     FOREIGN KEY (business_id, recommendation_id) REFERENCES recommendations (business_id, id),
@@ -343,6 +344,7 @@ CREATE TABLE alerts (                             -- [Modulo Alertas]
 CREATE UNIQUE INDEX ux_alerts_one_pending_per_product
     ON alerts (business_id, product_id) WHERE status = 'PENDING';
 CREATE INDEX ix_alerts_business_status ON alerts (business_id, status, created_at DESC);
+CREATE INDEX ix_alerts_business_unnotified ON alerts (business_id) WHERE status = 'PENDING' AND notified_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- 7. Triggers de integridad de inventario
