@@ -3,6 +3,7 @@ en el log (en development con el contenido, para poder copiar los códigos)."""
 import asyncio
 import json
 import logging
+import urllib.error
 import urllib.request
 from html import escape
 
@@ -45,7 +46,12 @@ async def send_email(to: str, subject: str, text: str, html: str, *, quiet: bool
     try:
         await asyncio.to_thread(_post_brevo, settings.brevo_api_key.get_secret_value(), payload)
     except Exception as exc:  # noqa: BLE001 - red, HTTP 4xx/5xx de Brevo, timeout
-        logger.error("No se pudo enviar el correo a %s (%s): %s", to, subject, exc)
+        # Nunca str(exc) a secas: algunos errores de urllib incluyen el valor de la cabecera api-key.
+        if isinstance(exc, urllib.error.HTTPError):
+            detail = f"HTTP {exc.code}: {exc.read()[:300]!r}"
+        else:
+            detail = type(exc).__name__
+        logger.error("No se pudo enviar el correo a %s (%s): %s", to, subject, detail)
         if not quiet:
             raise MailError("No pudimos enviar el correo. Inténtalo de nuevo en unos minutos.") from exc
 

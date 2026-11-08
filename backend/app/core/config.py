@@ -60,6 +60,8 @@ class Settings(BaseSettings):
             self.jwt_secret == _DEV_JWT_SECRET or len(self.jwt_secret) < 32
         ):
             raise ValueError("JWT_SECRET debe definirse (mínimo 32 caracteres) fuera de development")
+        if self.brevo_api_key:  # al pegarla en un panel suele colarse un salto de línea
+            self.brevo_api_key = SecretStr(self.brevo_api_key.get_secret_value().strip())
         if self.mail_backend == "brevo" and not (self.brevo_api_key and self.brevo_api_key.get_secret_value()):
             raise ValueError("MAIL_BACKEND=brevo necesita BREVO_API_KEY")
         return self
