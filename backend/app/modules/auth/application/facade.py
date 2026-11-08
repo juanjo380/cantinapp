@@ -75,9 +75,10 @@ class AuthFacade:
 
     async def request_password_reset(self, command: RequestPasswordResetCommand) -> None:
         code = await handlers.request_password_reset(self.users, command)
-        await self.uow.commit()
         if code:
+            # Antes del commit: si el correo falla no queda un código que bloquee reintentar por 60 s.
             await send_email(command.email, *password_reset_email(code, handlers.RESET_CODE_MINUTES))
+        await self.uow.commit()
 
     async def reset_password(self, command: ResetPasswordCommand) -> None:
         try:
