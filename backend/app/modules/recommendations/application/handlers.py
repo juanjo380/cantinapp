@@ -12,6 +12,14 @@ from app.modules.inventory.domain.repository import InventoryRepository
 from app.modules.products.domain.repository import ProductRepository
 from app.modules.recommendations.application.commands import RecomputeCoOccurrenceCommand
 from app.modules.recommendations.domain.cooccurrence import cooccurrence_scores
+from app.modules.recommendations.domain.events import (
+    BASELINE_DAYS,
+    event_extra_units,
+    event_lift,
+    order_by,
+    past_occurrences,
+    upcoming_events,
+)
 from app.modules.recommendations.domain.policy import build_recommendation
 from app.modules.recommendations.domain.repository import CoOccurrenceRepository, RecommendationRepository
 
@@ -92,3 +100,55 @@ async def get_cooccurrence(
         raise NotFoundError("Producto no encontrado")
     await ensure_history(analytics, business_id, product_id)
     return await cooccurrences.list(business_id, product_id)
+
+
+SEASON_HORIZON_DAYS = 120  # se avisa con tiempo: San Valentín aparece desde mediados de octubre
+_SEASON_MAX_PRODUCTS = 10
+
+
+async def seasonal_plan(analytics: AnalyticsRepository, inventory: InventoryRepository, business_id, today=None):
+    """Próximas fechas comerciales y los productos que, en años anteriores, se dispararon alrededor de ellas."""
+    today = today or date.today()
+    events = upcoming_events(today, SEASON_HORIZON_DAYS)
+    first = await analytics.first_sale_date(business_id)
+    if not events or first is None:
+        return []
+    history: dict = defaultdict(dict)
+    days = min((today - first).days + 1, 3 * _MAX_HISTORY_WINDOW)
+    for product_id, day, units in await analytics.business_daily_series(business_id, days=days):
+        history[product_id][day] = units
+    # shortcut: hasta 200 productos (igual que el plan de compra); paginar si un negocio tiene más.
+    items, _ = await inventory.list(business_id, limit=200)
+
+    result = []
+    for key, name, event_day in events:
+        occurrences = past_occurrences(key, before=today, since=first)
+        if not occurrences:
+            continue
+        found = []
+        for item in items:
+            daily = history.get(item.product_id, {})
+            lift = event_lift(daily, occurrences)
+            if lift is None:
+                continue
+            recent = sum(daily.get(today - timedelta(days=i), 0) for i in range(1, BASELINE_DAYS + 1)) / BASELINE_DAYS
+            found.append(
+                {
+                    "product_id": item.product_id,
+                    "name": item.name,
+                    "lift": lift.lift,
+                    "usual_daily": round(recent, 2),
+                    "past_window_units": lift.window_units,
+                    "years": lift.years,
+                    "extra_units": event_extra_units(lift, recent),
+                    "current_stock": item.stock_quantity,
+                    "order_by": max(today, order_by(event_day, item.lead_time_days)),
+                }
+            )
+        if found:
+            found.sort(key=lambda f: -f["lift"])
+            result.append(
+                {"key": key, "name": name, "date": event_day, "days_until": (event_day - today).days,
+                 "items": found[:_SEASON_MAX_PRODUCTS]}
+            )
+    return result

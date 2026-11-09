@@ -8,11 +8,12 @@ from app.modules.analytics.domain.repository import AnalyticsRepository
 from app.modules.forecasting.application.commands import RunForecastCommand
 from app.modules.forecasting.domain.accuracy import AccuracySummary, evaluate
 from app.modules.forecasting.domain.entities import ModelType
-from app.modules.forecasting.domain.models import dense_series, forecast
+from app.modules.forecasting.domain.models import dense_series, forecast, pooled_prior
 from app.modules.forecasting.domain.repository import ForecastRepository
 from app.modules.products.domain.repository import ProductRepository
 
 _MAX_HISTORY_WINDOW = 365
+_POOL_DAYS = 84  # 12 semanas: suficiente para el patrón semanal sin arrastrar temporadas viejas
 _ACCURACY_CANDIDATES = 60  # predicciones cumplidas a revisar; tras quitar recálculos quedan hasta 20
 
 
@@ -62,7 +63,11 @@ async def run_forecast(
     start = today - timedelta(days=window - 1)
     daily = dense_series({day: units for day, units in rows}, start, today)
 
-    result = forecast(daily, forecast_days, model, start=today + timedelta(days=1))
+    # shortcut: el patrón agregado se calcula en cada predicción; si la tabla sales crece mucho,
+    # materializarlo una vez al día en el trabajo diario.
+    pool = await analytics.pooled_weekday_factors(exclude_business_id=command.business_id, days=_POOL_DAYS)
+    prior = pooled_prior(pool)
+    result = forecast(daily, forecast_days, model, start=today + timedelta(days=1), prior=prior)
     return await forecasts.add(
         business_id=command.business_id,
         product_id=command.product_id,

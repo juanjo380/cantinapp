@@ -1,4 +1,4 @@
-# Datos de prueba: 3 negocios para evaluar la predicción
+# Datos de prueba: 4 negocios para evaluar la predicción
 
 Ventas de **120 días** que terminan el **07/11/2026**, con un patrón distinto por negocio. Los
 tres comparten productos (Gaseosa 400 ml, Agua 600 ml, Papas fritas) para comparar el mismo
@@ -9,6 +9,7 @@ artículo en negocios diferentes.
 | `negocio1Productos.csv` / `negocio1Ventas.csv` | **Cantina escolar** (tipo `CANTINA_ESCOLAR`) | Lunes a viernes; **cerrada sábado y domingo**; **semana de receso** del 5 al 9/10 en 0; picos de empanada (día del jean) seguidos de más gaseosa |
 | `negocio2Productos.csv` / `negocio2Ventas.csv` | **Tienda de barrio** (`TIENDA`) | Abre todos los días; **viernes y sábado fuertes**; **quincena** (1, 15, 16 y fin de mes ×1,5); *Gaseosa 1,5 L* **en alza** (+0,8 %/día); *Pila AA* **intermitente**; picos de cerveza (partidos) seguidos de más agua |
 | `negocio3Productos.csv` / `negocio3Ventas.csv` | **Cafetería** (`CAFETERIA`) | Estable, domingo flojo; *Chocolate caliente* **a la baja** (−0,6 %/día); *Torta de cumpleaños* por encargo (**intermitente**); promos de pandebono seguidas de más café con leche |
+| `negocio4Productos.csv` / `negocio4Ventas.csv` | **Droguería** (`DROGUERIA`) | **400 días** (desde oct-2025) con **fechas especiales**: en San Valentín suben preservativos y chocolates, y 1-2 días después la **Postday** (×12); Amor y Amistad parecido; fin de año: Alka-Seltzer, suero oral y Postday |
 
 Formato: igual que las plantillas (UTF-8 con BOM, separador `;`, fechas `DD/MM/AAAA`). Varios
 productos empiezan con **stock bajo el mínimo** para que aparezcan alertas.
@@ -75,6 +76,20 @@ Alerta: Aceite 1 L.
 | Torta de cumpleaños (intermitente) | Promedio móvil | **0 %**, demanda **0** | Ver hallazgo 2 |
 
 Alerta: Croissant. Co-ocurrencia: **Pandebono → Café con leche** (9 de 9 picos), el par sembrado.
+
+### negocio4 — Droguería: «Fechas especiales» en Qué comprar
+
+Con hoy = 09/11/2026 (calculado con `recommendations/domain/events.py` sobre estos archivos):
+
+| Fecha | Producto | Se vende | Compra de más | Pide antes del |
+|---|---|---|---|---|
+| Fin de año (31/12) | Postday | ×1,8 | +5 u. | 24/12/2026 |
+| Fin de año (31/12) | Alka-Seltzer x2 | ×1,8 | +13 u. | 26/12/2026 |
+| San Valentín (14/02) | **Postday** | **×3,1** | +11 u. | 07/02/2027 |
+| San Valentín (14/02) | Preservativos x3 | ×2,6 | +25 u. | 07/02/2027 |
+| San Valentín (14/02) | Chocolates caja | ×2,4 | +11 u. | 07/02/2027 |
+
+Navidad no aparece: su pico (×3 un solo día) se diluye en la ventana de 5 días y queda bajo el umbral ×1,5.
 
 ## Hallazgos de la evaluación (límites de los algoritmos actuales)
 

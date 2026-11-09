@@ -29,3 +29,21 @@ class ProductRankingOut(BaseModel):
 class ProductRankingListOut(BaseModel):
     order: str
     items: list[ProductRankingOut]
+
+
+class ClassifiedProductOut(BaseModel):
+    product_id: UUID
+    name: str
+    units: int
+    revenue: Decimal
+    rank: int
+    share: float
+    cumulative_share: float
+    abc: str
+    previous_rank: int | None
+
+
+class ClassificationOut(BaseModel):
+    date_from: date
+    date_to: date
+    items: list[ClassifiedProductOut]

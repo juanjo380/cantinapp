@@ -12,6 +12,9 @@ Cada negocio tiene un patrón distinto para que gane un modelo distinto (ver REA
   negocio1  Cantina escolar   cierra fines de semana y en la semana de receso  -> SEASONAL_WEEKLY
   negocio2  Tienda de barrio  fines de semana, quincena, un producto en alza    -> SEASONAL_WEEKLY / LINEAR
   negocio3  Cafetería          estable, un producto a la baja                   -> MOVING_AVERAGE / LINEAR
+  negocio4  Droguería          400 días con fechas especiales (San Valentín, Amor y Amistad,
+                               Navidad, fin de año): Postday, preservativos, chocolates y
+                               Alka-Seltzer se disparan -> sección «Fechas especiales»
 Los tres comparten productos (Gaseosa 400 ml, Agua 600 ml, Papas fritas) para comparar el mismo
 artículo bajo patrones diferentes.
 """
@@ -27,6 +30,41 @@ OUT = Path(__file__).resolve().parent
 CANTINA = (1.0, 1.0, 1.05, 1.0, 1.2, 0.0, 0.0)
 TIENDA = (0.85, 0.85, 0.9, 0.95, 1.2, 1.4, 1.1)
 CAFE = (1.1, 1.0, 1.0, 1.0, 1.05, 0.9, 0.7)
+DROGUERIA = (0.95, 0.95, 0.95, 1.0, 1.1, 1.2, 0.9)
+
+
+def _third_saturday_september(year: int) -> date:
+    first = date(year, 9, 1)
+    return first + timedelta(days=(5 - first.weekday()) % 7 + 14)
+
+
+# Fechas especiales de la droguería: (fecha según el año, [(producto, días desde la fecha, factor)]).
+# La Postday sube DESPUÉS de la fecha: es el pico que nadie anticipa.
+PICOS_DROGUERIA = [
+    (lambda y: date(y, 2, 14), [
+        ("Preservativos x3", -1, 4), ("Preservativos x3", 0, 5),
+        ("Chocolates caja", -1, 5), ("Chocolates caja", 0, 6),
+        ("Postday", 1, 12), ("Postday", 2, 9),
+    ]),
+    (_third_saturday_september, [
+        ("Preservativos x3", -1, 3), ("Preservativos x3", 0, 4),
+        ("Chocolates caja", 0, 3), ("Postday", 1, 6), ("Postday", 2, 4),
+    ]),
+    (lambda y: date(y, 12, 24), [("Chocolates caja", -1, 3), ("Alka-Seltzer x2", 1, 3)]),
+    (lambda y: date(y, 12, 31), [
+        ("Preservativos x3", 0, 3), ("Alka-Seltzer x2", 1, 6), ("Suero oral", 1, 3),
+        ("Postday", 1, 5), ("Postday", 2, 3),
+    ]),
+]
+
+
+def _special_days(first: date, last: date) -> dict[tuple[str, date], float]:
+    factors = {}
+    for year in range(first.year, last.year + 1):
+        for rule, effects in PICOS_DROGUERIA:
+            for product, offset, factor in effects:
+                factors[(product, rule(year) + timedelta(days=offset))] = factor
+    return factors
 
 # (nombre, precio, categoría, proveedor, stock, mínimo, días abastecimiento, unidades/día, opciones)
 # opciones: trend = cambio diario (0.008 = +0,8 %/día), prob = probabilidad de vender ese día (intermitente)
@@ -85,6 +123,28 @@ NEGOCIOS = {
             ("Agua 600 ml", 2500, "Bebidas", "Distribuidora Central", 24, 10, 3, 7, {}),
         ],
     },
+    "negocio4": {
+        "perfil": DROGUERIA,
+        "dias": 400,  # más de un año: hace falta un San Valentín anterior para anticipar el próximo
+        "receso": None,
+        "quincena": 1.2,
+        "evento": None,
+        "fechas": True,
+        "productos": [
+            ("Acetaminofén 500 mg x10", 3500, "Analgésicos", "Distribuidora Pharma", 40, 15, 3, 8, {}),
+            ("Ibuprofeno 400 mg x10", 5200, "Analgésicos", "Distribuidora Pharma", 25, 10, 3, 5, {}),
+            ("Loratadina x10", 4000, "Antialérgicos", "Distribuidora Pharma", 15, 6, 3, 2, {}),
+            ("Suero oral", 4800, "Hidratación", "Distribuidora Pharma", 20, 8, 3, 4, {}),
+            ("Alka-Seltzer x2", 2500, "Digestivos", "Distribuidora Pharma", 30, 10, 3, 3, {}),
+            ("Vitamina C x12", 8000, "Vitaminas", "Distribuidora Pharma", 20, 8, 5, 2.5, {}),
+            ("Preservativos x3", 9500, "Salud sexual", "Distribuidora Pharma", 18, 10, 5, 3, {}),
+            ("Postday", 18000, "Salud sexual", "Distribuidora Pharma", 6, 4, 5, 0.8, {}),
+            ("Prueba de embarazo", 9000, "Salud sexual", "Distribuidora Pharma", 8, 4, 5, 0.8, {}),
+            ("Toallas higiénicas x10", 6500, "Cuidado personal", "Distribuidora Pharma", 30, 10, 4, 4, {}),
+            ("Chocolates caja", 15000, "Confitería", "Dulces La Fe", 10, 5, 5, 1.5, {}),
+            ("Agua 600 ml", 2500, "Bebidas", "Distribuidora Central", 30, 10, 3, 6, {}),
+        ],
+    },
 }
 
 
@@ -97,16 +157,20 @@ def _money(value: int) -> str:
 
 
 def generate(end: date) -> None:
-    first = end - timedelta(days=DAYS - 1)
     for key, negocio in NEGOCIOS.items():
+        days = negocio.get("dias", DAYS)
+        first = end - timedelta(days=days - 1)
         rng = random.Random(f"cantinapp-{key}")
-        trigger, follower = negocio["evento"]
-        open_days = [first + timedelta(days=i) for i in range(DAYS)
-                     if negocio["perfil"][(first + timedelta(days=i)).weekday()] > 0]
-        events = set(rng.sample(open_days[14:-2], 8))  # tras 14 días hay base para medir el pico
+        trigger, follower = negocio["evento"] or (None, None)
+        events = set()
+        if trigger:
+            open_days = [first + timedelta(days=i) for i in range(days)
+                         if negocio["perfil"][(first + timedelta(days=i)).weekday()] > 0]
+            events = set(rng.sample(open_days[14:-2], 8))  # tras 14 días hay base para medir el pico
+        special = _special_days(first, end) if negocio.get("fechas") else {}
 
         rows = []
-        for offset in range(DAYS):
+        for offset in range(days):
             day = first + timedelta(days=offset)
             factor = negocio["perfil"][day.weekday()]
             if negocio["receso"] and negocio["receso"][0] <= day <= negocio["receso"][1]:
@@ -123,6 +187,7 @@ def generate(end: date) -> None:
                     units *= 3
                 if name == follower and day - timedelta(days=1) in events:
                     units *= 2
+                units *= special.get((name, day), 1)
                 quantity = max(1, round(units)) if opts.get("prob") else round(units)
                 if quantity > 0:
                     rows.append(f"{name};{day:%d/%m/%Y};{quantity};{_money(price)}")

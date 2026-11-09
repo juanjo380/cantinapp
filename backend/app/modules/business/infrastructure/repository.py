@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.modules.auth.infrastructure.models import BusinessRecord, MembershipRecord, UserRecord
+from app.modules.auth.infrastructure.models import BusinessRecord, ConsentRecord, MembershipRecord, UserRecord
 from app.modules.business.domain.entities import PROFILE_FIELDS, BusinessProfile, Invitation, Location, Member
 from app.modules.business.domain.repository import BusinessProfileRepository
 from app.modules.business.infrastructure.models import InvitationRecord, LocationRecord
@@ -228,3 +228,21 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
         await self.session.execute(
             update(InvitationRecord).where(InvitationRecord.id == invitation_id).values(accepted_at=func.now())
         )
+
+    async def ml_data_sharing(self, business_id: UUID) -> bool:
+        # Bitácora de solo inserción: manda la fila más reciente del negocio.
+        granted = await self.session.scalar(
+            select(ConsentRecord.granted)
+            .where(ConsentRecord.business_id == business_id, ConsentRecord.document == "ML_ANONYMOUS")
+            .order_by(ConsentRecord.created_at.desc())
+            .limit(1)
+        )
+        return bool(granted)
+
+    async def set_ml_data_sharing(self, business_id: UUID, user_id: UUID, granted: bool, version: str) -> None:
+        self.session.add(
+            ConsentRecord(
+                business_id=business_id, user_id=user_id, document="ML_ANONYMOUS", version=version, granted=granted
+            )
+        )
+        await self.session.flush()

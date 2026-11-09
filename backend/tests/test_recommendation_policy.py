@@ -23,3 +23,17 @@ def test_low_coverage_is_medium_or_high():
     )
     assert draft.urgency in ("MEDIO", "ALTO")
     assert draft.coverage_days is not None
+
+
+def test_plan_order_puts_urgent_and_shortest_coverage_first():
+    from app.modules.recommendations.domain.policy import plan_order
+
+    def draft(stock, demand):
+        return build_recommendation(
+            current_stock=stock, min_stock=5, lead_time_days=3, predicted_demand=demand, forecast_days=30
+        )
+
+    calm, soon, out_of_stock, no_demand = draft(100, 30), draft(4, 30), draft(0, 30), draft(10, 0)
+    ordered = sorted([calm, no_demand, soon, out_of_stock], key=plan_order)
+    assert [d.urgency for d in ordered] == ["ALTO", "MEDIO", "BAJO", "BAJO"]
+    assert ordered[0] is out_of_stock and ordered[2] is calm  # sin demanda (cobertura infinita) va al final

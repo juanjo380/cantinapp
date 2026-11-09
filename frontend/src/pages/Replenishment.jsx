@@ -1,173 +1,215 @@
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
 import { useTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { analyticsApi, forecastingApi, recommendationsApi } from '../api/helper'
 import DataTable from '../components/ui/DataTable'
 import DemoData from '../components/ui/DemoData'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
-import SelectField from '../components/ui/SelectField'
 import StatCard from '../components/ui/StatCard'
-import { ProvenanceStamp, UrgencyStamp } from '../components/ui/Stamp'
+import { ProvenanceStamp, Stamp, UrgencyStamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
-import { useProductOptions } from '../hooks/useProductOptions'
 import { daysAgoISO, formatDate, formatNumber, formatPercent, todayISO } from '../utils/format'
 
-const MODELS = [
-  ['AUTO', 'Automático (recomendado)'],
-  ['SEASONAL_WEEKLY', 'Semanal (por día de la semana)'],
-  ['MOVING_AVERAGE', 'Promedio móvil'],
-  ['LINEAR_REGRESSION', 'Regresión lineal'],
-]
-const MODEL_NAMES = Object.fromEntries(MODELS)
+// El modelo lo elige el Sistema (AUTO); al usuario solo se le explica en palabras qué patrón encontró.
+const MODEL_EXPLAIN = {
+  SEASONAL_WEEKLY: 'Tus ventas cambian según el día de la semana, y lo tuvimos en cuenta.',
+  MOVING_AVERAGE: 'Tus ventas son estables, así que usamos tu promedio de los últimos días.',
+  LINEAR_REGRESSION: 'Tus ventas vienen cambiando de forma sostenida, y seguimos esa tendencia.',
+}
+
+function reliability(confidence) {
+  if (confidence == null) return { label: 'Aún sin medir', hint: 'Falta historial para comprobarla' }
+  const hint = `Acertó ${formatPercent(confidence)} en las últimas 2 semanas`
+  if (confidence >= 0.75) return { label: 'Alta', hint }
+  if (confidence >= 0.5) return { label: 'Media', hint }
+  return { label: 'Baja', hint: 'Tus ventas varían mucho: revisa antes de comprar' }
+}
+
+const coverageText = (days) => (days == null ? 'Sin ventas recientes' : `${formatNumber(Math.floor(days))} días`)
+const buyText = (qty) => (qty > 0 ? `${formatNumber(qty)} u.` : 'Nada por ahora')
 
 export default function Replenishment() {
-  const theme = useTheme()
-  const [productId, setProductId] = useState('')
-  const [forecastDays, setForecastDays] = useState('30')
-  const [model, setModel] = useState('AUTO')
-  const [result, setResult] = useState({ status: 'idle' })
+  const plan = useApi(() => recommendationsApi.plan(), [])
+  const [selected, setSelected] = useState(null)
+  const items = plan.data?.items ?? []
+  const pending = plan.data?.pending ?? []
 
-  const products = useProductOptions()
-  const productOptions = products.items
+  if (selected) return <ProductDetail item={selected} onBack={() => setSelected(null)} />
 
-  function reloadAfterDemo() {
-    setProductId('')
-    products.reload()
-  }
-
-  useEffect(() => {
-    if (!productId) {
-      setResult({ status: 'idle' })
-      return
-    }
-    let alive = true
-    setResult({ status: 'loading' })
-    ;(async () => {
-      try {
-        const forecast = await forecastingApi.create({
-          product_id: productId,
-          forecast_days: Number(forecastDays),
-          model,
-        })
-        const [recommendation, history] = await Promise.all([
-          recommendationsApi.create({
-            product_id: productId,
-            forecast_days: Number(forecastDays),
-          }),
-          analyticsApi.sales({
-            product_id: productId,
-            period: 'daily',
-            date_from: daysAgoISO(Math.min(365, (forecast.history_days || 30) + 5)),
-            date_to: todayISO(),
-          }),
-        ])
-        if (alive) setResult({ status: 'ready', forecast, recommendation, history })
-      } catch (err) {
-        if (!alive) return
-        setResult({ status: err.status === 422 ? 'insufficient' : 'error', error: err })
-      }
-    })()
-    return () => {
-      alive = false
-    }
-  }, [productId, forecastDays, model])
+  const count = (urgency) => items.filter((i) => i.urgency === urgency).length
+  const columns = [
+    {
+      key: 'name',
+      header: 'Producto',
+      render: (row) => (
+        <span className="flex flex-col">
+          <span className="text-ink">{row.name}</span>
+          {row.category && <span className="text-xs text-ink-soft">{row.category}</span>}
+        </span>
+      ),
+    },
+    { key: 'urgency', header: 'Estado', render: (row) => <UrgencyStamp urgency={row.urgency} /> },
+    { key: 'suggested_quantity', header: 'Comprar', align: 'right', mono: true, render: (row) => buyText(row.suggested_quantity) },
+    {
+      key: 'coverage_days',
+      header: 'Te alcanza para',
+      align: 'right',
+      mono: true,
+      hideOnMobile: true,
+      render: (row) => coverageText(row.coverage_days),
+    },
+    {
+      key: 'daily_demand',
+      header: 'Vendes al día',
+      align: 'right',
+      mono: true,
+      hideOnMobile: true,
+      render: (row) => `~${formatNumber(row.daily_demand)} u.`,
+    },
+    {
+      key: 'detail',
+      header: '',
+      align: 'right',
+      render: (row) => (
+        <Button size="small" onClick={() => setSelected(row)} aria-label={`Ver por qué: ${row.name}`}>
+          Ver por qué
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <>
       <PageHeader
-        title="Reabastecimiento"
-        subtitle="Elige un producto: el Sistema predice la demanda y recomienda cuánto comprar."
+        title="Qué comprar"
+        subtitle="Tus 15 productos más vendidos del último mes, lo más urgente primero, y las fechas especiales que se vienen."
       />
 
-      <div className="filter-row items-end">
-        <SelectField
-          size="small"
-          label="Producto"
-          options={[['', 'Elige un producto'], ...productOptions.map((p) => [p.id, p.name])]}
-          value={productId}
-          onChange={setProductId}
-          className="min-w-56"
-        />
-        <TextField
-          size="small"
-          type="number"
-          label="Días a predecir"
-          value={forecastDays}
-          onChange={(e) => setForecastDays(e.target.value)}
-          slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: 1, max: 365 } }}
-          className="w-36"
-        />
-        <SelectField size="small" label="Modelo" options={MODELS} value={model} onChange={setModel} className="min-w-44" />
-      </div>
+      {plan.loading && <Loading variant="dashboard" label="Revisando tus ventas e inventario…" />}
+      {plan.error && !plan.loading && <ErrorView error={plan.error} onRetry={plan.reload} />}
 
-      {products.loading && <Loading variant="list" rows={3} label="Cargando productos…" />}
-      {products.error && !products.loading && <ErrorView error={products.error} onRetry={products.reload} />}
-
-      {!products.loading && !products.error && productOptions.length === 0 && (
+      {!plan.loading && !plan.error && items.length === 0 && (
         <Empty
-          title="Aún no tienes productos"
-          action={
-            <Button component={RouterLink} to="/productos" variant="contained">
-              Ir a Productos
-            </Button>
-          }
-        >
-          Registra productos y carga ventas para poder predecir la demanda, o prueba con datos de ejemplo.
-          <div className="mt-4">
-            <DemoData onChange={reloadAfterDemo} />
-          </div>
-        </Empty>
-      )}
-
-      {result.status === 'idle' && productOptions.length > 0 && (
-        <Empty title="Elige un producto arriba">
-          El Sistema usará su historial de ventas para predecir la demanda y recomendar una compra.
-        </Empty>
-      )}
-
-      {result.status === 'loading' && <Loading variant="dashboard" label="Analizando historial…" />}
-      {result.status === 'error' && <ErrorView error={result.error} />}
-      {result.status === 'insufficient' && (
-        <Empty
-          title="Faltan datos para predecir"
+          title={pending.length ? 'Aún faltan ventas para recomendar' : 'Aún no tienes productos'}
           action={
             <div className="flex flex-col items-center gap-3">
-              <Button component={RouterLink} to="/ventas" variant="contained">
-                Cargar historial por CSV
+              <Button component={RouterLink} to={pending.length ? '/ventas' : '/productos'} variant="contained">
+                {pending.length ? 'Cargar historial de ventas' : 'Ir a Productos'}
               </Button>
-              <DemoData onChange={reloadAfterDemo} />
+              <DemoData onChange={plan.reload} />
             </div>
           }
         >
-          El pronóstico necesita al menos 30 días de historial de ventas. Carga tu historial en Ventas
-          y vuelve a intentarlo.
+          {pending.length
+            ? 'Para recomendarte compras necesitamos al menos 30 días de ventas de cada producto.'
+            : 'Registra productos y carga ventas, o prueba con datos de ejemplo.'}
         </Empty>
       )}
 
-      {result.status === 'ready' && (
+      {!plan.loading && !plan.error && items.length > 0 && (
         <div className="flex flex-col gap-6">
-          <ForecastView
-            forecast={result.forecast}
-            recommendation={result.recommendation}
-            history={result.history}
-            color={theme.palette.primary.main}
-            accent={theme.palette.warning.main}
-          />
-          <AccuracyView productId={productId} />
-          <CoOccurrenceView productId={productId} />
+          <section aria-label="Resumen" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Comprar ya" value={count('ALTO')} hint="Se acaban antes de que llegue el pedido" strong />
+            <StatCard label="Comprar pronto" value={count('MEDIO')} hint="Bajo la reserva o cerca de agotarse" />
+            <StatCard label="Tienes suficiente" value={count('BAJO')} hint="No hace falta comprar todavía" />
+          </section>
+
+          <Section
+            title="Tu lista de compra"
+            actions={
+              <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={plan.reload}>
+                Actualizar
+              </Button>
+            }
+          >
+            <DataTable bare label="Lista de compra" columns={columns} rows={items} rowKey="product_id" />
+          </Section>
+
+          {pending.length > 0 && (
+            <p className="text-sm text-ink-soft">
+              Sin recomendación todavía (necesitan 30 días de ventas): {pending.join(', ')}.
+            </p>
+          )}
         </div>
       )}
+
+      {!plan.loading && <SeasonalView />}
     </>
   )
 }
 
-function ForecastView({ forecast, recommendation, history, color, accent }) {
+function ProductDetail({ item, onBack }) {
+  const theme = useTheme()
+  const data = useApi(async () => {
+    const [list, history] = await Promise.all([
+      forecastingApi.list({ product_id: item.product_id, limit: 1 }),
+      analyticsApi.sales({ product_id: item.product_id, period: 'daily', date_from: daysAgoISO(60), date_to: todayISO() }),
+    ])
+    return { forecast: list.items[0], history }
+  }, [item.product_id])
+
+  return (
+    <>
+      <PageHeader title={item.name} subtitle="Por qué te recomendamos esta compra." />
+      <div className="mb-4">
+        <Button startIcon={<ArrowBackIcon />} onClick={onBack}>
+          Volver a la lista
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <Recommendation item={item} />
+        {data.loading && <Loading variant="chart" label="Cargando tus ventas…" />}
+        {data.error && !data.loading && <ErrorView error={data.error} onRetry={data.reload} />}
+        {data.data?.forecast && (
+          <ForecastView
+            forecast={data.data.forecast}
+            history={data.data.history}
+            color={theme.palette.primary.main}
+            accent={theme.palette.warning.main}
+          />
+        )}
+        <AccuracyView productId={item.product_id} />
+        <CoOccurrenceView productId={item.product_id} />
+      </div>
+    </>
+  )
+}
+
+function Recommendation({ item }) {
+  const coverage = item.coverage_days == null ? null : Math.floor(item.coverage_days)
+  let why
+  if (item.current_stock <= 0) why = `Está agotado y vendes unas ${formatNumber(item.daily_demand)} al día.`
+  else if (coverage == null) why = `No ha tenido ventas recientes: tus ${formatNumber(item.current_stock)} u. alcanzan.`
+  else
+    why = `Con ${formatNumber(item.current_stock)} u. y unas ${formatNumber(item.daily_demand)} ventas al día, te alcanza para ${coverage} días.`
+  const supplier = `Tu proveedor tarda ${item.lead_time_days} días en traerlo y quieres guardar al menos ${formatNumber(item.min_stock)} u. de reserva.`
+
+  return (
+    <Section title="Recomendación" actions={<UrgencyStamp urgency={item.urgency} />}>
+      <p className="mb-4 text-sm text-ink">
+        {why} {supplier}{' '}
+        <strong>
+          {item.suggested_quantity > 0 ? `Compra ${formatNumber(item.suggested_quantity)} u.` : 'Por ahora no necesitas comprar.'}
+        </strong>
+      </p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard variant="inset" label="Comprar" value={buyText(item.suggested_quantity)} strong />
+        <StatCard variant="inset" label="Te alcanza para" value={coverageText(item.coverage_days)} />
+        <StatCard variant="inset" label="Tienes hoy" value={`${formatNumber(item.current_stock)} u.`} />
+        <StatCard variant="inset" label="Reserva mínima" value={`${formatNumber(item.min_stock)} u.`} />
+      </div>
+    </Section>
+  )
+}
+
+function ForecastView({ forecast, history, color, accent }) {
   const historyPoints = history?.series ?? []
   const forecastPoints = forecast.daily_prediction ?? []
   const historyLabels = historyPoints.map((point) => point.period)
@@ -175,69 +217,34 @@ function ForecastView({ forecast, recommendation, history, color, accent }) {
   const labels = [...historyLabels, ...forecastLabels]
   const historyData = [...historyPoints.map((point) => point.units), ...forecastLabels.map(() => null)]
   const forecastData = [...historyLabels.map(() => null), ...forecastPoints.map((point) => point.value)]
+  const trust = reliability(forecast.confidence)
 
   return (
-    <div className="flex flex-col gap-6">
-      <Section
-        title="Histórico vs. predicción"
-        label="Histórico contra predicción"
-        actions={
-          <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
-            Modelo: {MODEL_NAMES[forecast.model_type] ?? forecast.model_type}
-            {forecast.requested_model === 'AUTO' && ' (elegido automáticamente)'} · Confianza{' '}
-            {formatPercent(forecast.confidence)}
-          </span>
-        }
-      >
-        {labels.length === 0 ? (
-          <Empty title="Sin datos para graficar">No hay serie diaria disponible.</Empty>
-        ) : (
-          <LineChart
-            height={320}
-            xAxis={[{ scaleType: 'band', data: labels }]}
-            series={[
-              { data: historyData, label: 'Histórico (unidades)', color, curve: 'monotoneX' },
-              { data: forecastData, label: 'Predicción (unidades)', color: accent, curve: 'monotoneX' },
-            ]}
-            margin={{ left: 56, right: 16, top: 24, bottom: 40 }}
-          />
-        )}
-      </Section>
-
-      <section aria-label="Predicción" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard variant="inset" label="Demanda estimada" value={`${forecast.predicted_demand} u.`} hint={`Próximos ${forecast.forecast_days} días`} />
-        <StatCard variant="inset" label="Historial usado" value={`${forecast.history_days} días`} hint="Base de la predicción" />
+    <Section title="Lo que vendiste y lo que esperamos vender" label="Ventas pasadas y esperadas">
+      <p className="mb-4 text-sm text-ink-soft">
+        {MODEL_EXPLAIN[forecast.model_type] ?? 'Usamos tu historial de ventas.'} Nos basamos en{' '}
+        {formatNumber(forecast.history_days)} días de ventas.
+      </p>
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard
           variant="inset"
-          label="Confianza"
-          value={formatPercent(forecast.confidence)}
-          hint={
-            forecast.backtest_mae != null
-              ? `En las últimas 2 semanas se equivocó ~${Math.round(forecast.backtest_mae * 10) / 10} u. por día`
-              : '0 % a 100 %'
-          }
+          label={`Esperamos vender en ${forecast.forecast_days} días`}
+          value={`${formatNumber(Math.round(forecast.predicted_demand))} u.`}
         />
-      </section>
-
-      <Section title="Recomendación de compra" actions={<UrgencyStamp urgency={recommendation.urgency} />}>
-
-        <p className="mb-4 text-sm text-ink-soft">{recommendation.justification}</p>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard variant="inset" label="Comprar" value={`${recommendation.suggested_quantity} u.`} strong />
-          <StatCard variant="inset" label="Cobertura" value={`${recommendation.coverage_days} días`} />
-          <StatCard variant="inset" label="Stock actual" value={`${recommendation.current_stock} u.`} />
-          <StatCard variant="inset" label="Stock mínimo" value={`${recommendation.min_stock} u.`} />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-stamp tracking-stamp uppercase text-ink-soft">
-            Abastecimiento: {recommendation.lead_time_days} días
-          </span>
-          <ProvenanceStamp date={recommendation.created_at} />
-        </div>
-      </Section>
-    </div>
+        <StatCard variant="inset" label="Qué tan fiable es" value={trust.label} hint={trust.hint} />
+      </div>
+      {labels.length > 0 && (
+        <LineChart
+          height={300}
+          xAxis={[{ scaleType: 'band', data: labels }]}
+          series={[
+            { data: historyData, label: 'Lo que vendiste', color, curve: 'monotoneX' },
+            { data: forecastData, label: 'Lo que esperamos', color: accent, curve: 'monotoneX' },
+          ]}
+          margin={{ left: 56, right: 16, top: 24, bottom: 40 }}
+        />
+      )}
+    </Section>
   )
 }
 
@@ -371,5 +378,67 @@ function CoOccurrenceView({ productId }) {
         }
       />
     </Section>
+  )
+}
+
+const SEASONAL_COLUMNS = [
+  { key: 'name', header: 'Producto' },
+  { key: 'lift', header: 'Se vende', align: 'right', mono: true, render: (row) => `×${formatNumber(row.lift)} lo normal` },
+  { key: 'extra_units', header: 'Compra de más', align: 'right', mono: true, render: (row) => `+${formatNumber(row.extra_units)} u.` },
+  { key: 'order_by', header: 'Pide antes del', align: 'right', mono: true, render: (row) => formatDate(row.order_by) },
+  {
+    key: 'current_stock',
+    header: 'Tienes hoy',
+    align: 'right',
+    mono: true,
+    hideOnMobile: true,
+    render: (row) => `${formatNumber(row.current_stock)} u.`,
+  },
+]
+
+const eventTone = (days) => (days <= 14 ? 'crit' : days <= 45 ? 'warn' : 'neutral')
+
+function SeasonalView() {
+  const { data, loading, error, reload } = useApi(() => recommendationsApi.seasonal(), [])
+  const events = data?.events ?? []
+
+  return (
+    <div className="mt-6 flex flex-col gap-6">
+      {loading && <Loading variant="list" rows={3} label="Revisando fechas especiales…" />}
+      {error && !loading && <ErrorView error={error} onRetry={reload} />}
+      {data && !loading && events.length === 0 && (
+        <Section title="Fechas especiales que se vienen">
+          <p className="text-sm text-ink-soft">
+            Cuando tengas al menos un año de ventas, aquí te avisaremos qué productos se disparan en fechas como San
+            Valentín, Amor y Amistad o fin de año, y cuánto comprar de más.
+          </p>
+        </Section>
+      )}
+      {events.map((event) => {
+        const top = event.items[0]
+        return (
+          <Section
+            key={event.key}
+            title={`${event.name} · ${formatDate(event.date)}`}
+            label={`Productos que suben en ${event.name}`}
+            actions={
+              <Stamp tone={eventTone(event.days_until)}>
+                {event.days_until <= 0 ? 'Es ahora' : `En ${event.days_until} días`}
+              </Stamp>
+            }
+          >
+            <p className="mb-4 text-sm text-ink-soft">
+              {top.years > 1 ? `En los últimos ${top.years} años` : 'El año pasado'}, alrededor de esta fecha vendiste{' '}
+              <strong className="text-ink">
+                {formatNumber(top.lift)} veces más {top.name}
+              </strong>{' '}
+              de lo normal{event.items.length > 1 && `, y subieron ${event.items.length - 1} productos más`}. Pide lo
+              extra antes del día indicado para que te llegue a tiempo.
+            </p>
+            <DataTable bare label={`Productos de ${event.name}`} columns={SEASONAL_COLUMNS} rows={event.items} rowKey="product_id" />
+          </Section>
+        )
+      })}
+    </div>
   )
 }

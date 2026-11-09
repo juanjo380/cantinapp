@@ -4,7 +4,9 @@
 - LINEAR_REGRESSION: tendencia por mínimos cuadrados.
 - SEASONAL_WEEKLY: nivel (promedio de 28 días) × factor del día de la semana. Se eligió en
   lugar de Holt-Winters porque este necesita ≥ 2 temporadas completas y ajustar α, β y γ: con
-  30 días de historial se sobreajusta. Los factores se encogen hacia 1 cuando hay pocas semanas.
+  30 días de historial se sobreajusta. Los factores se encogen hacia un "prior" cuando hay pocas
+  semanas: el patrón agregado de los negocios que autorizaron ML_ANONYMOUS (ver `pooled_prior`),
+  o 1 (sin patrón) si no hay suficientes negocios.
 - AUTO: backtest con los últimos 14 días (holdout) y gana el de menor WAPE (empate: MAE, y
   luego el más simple). No se usa MAPE porque explota con días en 0.
 
@@ -22,7 +24,8 @@ MODELS = ("MOVING_AVERAGE", "SEASONAL_WEEKLY", "LINEAR_REGRESSION")  # del más 
 HOLDOUT_DAYS = 14
 _MOVING_AVERAGE_WINDOW = 7
 _SEASON_WINDOW = 28
-_SEASON_SHRINK = 1.0  # peso de "factor = 1" frente a cada semana observada
+_SEASON_SHRINK = 1.0  # peso del prior frente a cada semana observada
+MIN_POOL_BUSINESSES = 3  # anonimato: un patrón agregado nunca sale de menos negocios
 _MIN_TRAIN_DAYS = 7
 
 
@@ -67,25 +70,47 @@ def linear_regression(daily: list[float]) -> tuple[float, float]:
     return slope, mean_y - slope * mean_x
 
 
-def weekday_factors(daily: list[float], start: date) -> tuple[float, list[float]]:
+def pooled_prior(rows: list[tuple[bool, int, float, int]]) -> list[float] | None:
+    """Factor por día de la semana (0=lunes) agregado entre negocios. `rows` = (mismo tipo de
+    negocio, día, factor promedio, n.º de negocios). Usa el segmento del mismo tipo si tiene al
+    menos MIN_POOL_BUSINESSES negocios; si no, todos; si tampoco alcanza, None."""
+
+    def combine(selected):
+        sums, counts = [0.0] * 7, [0] * 7
+        for _, weekday, factor, n in selected:
+            sums[weekday] += factor * n
+            counts[weekday] += n
+        if min(counts) < MIN_POOL_BUSINESSES:
+            return None
+        return [total / count for total, count in zip(sums, counts)]
+
+    return combine([r for r in rows if r[0]]) or combine(rows)
+
+
+def weekday_factors(
+    daily: list[float], start: date, prior: list[float] | None = None
+) -> tuple[float, list[float]]:
     """(nivel, factor por día de la semana 0=lunes) de los últimos 28 días; la serie termina el día antes de `start`."""
+    prior = prior or [1.0] * 7
     recent = daily[-_SEASON_WINDOW:]
     level = sum(recent) / len(recent) if recent else 0.0
     if level <= 0:
-        return 0.0, [1.0] * 7
+        return 0.0, list(prior)
     sums, counts = [0.0] * 7, [0] * 7
     for i, value in enumerate(recent):
         weekday = (start - timedelta(days=len(recent) - i)).weekday()
         sums[weekday] += value
         counts[weekday] += 1
     factors = []
-    for total, count in zip(sums, counts):
-        raw = (total / count) / level if count else 1.0
-        factors.append((count * raw + _SEASON_SHRINK) / (count + _SEASON_SHRINK))
+    for total, count, base in zip(sums, counts, prior):
+        raw = (total / count) / level if count else base
+        factors.append((count * raw + _SEASON_SHRINK * base) / (count + _SEASON_SHRINK))
     return level, factors
 
 
-def predict(daily: list[float], horizon: int, model: str, start: date) -> list[float]:
+def predict(
+    daily: list[float], horizon: int, model: str, start: date, prior: list[float] | None = None
+) -> list[float]:
     """Valores diarios (≥ 0) de `start` a `start + horizon − 1`; `daily` termina el día anterior a `start`."""
     if not daily:
         return [0.0] * horizon
@@ -94,7 +119,7 @@ def predict(daily: list[float], horizon: int, model: str, start: date) -> list[f
         n = len(daily)
         return [max(0.0, intercept + slope * (n - 1 + k)) for k in range(1, horizon + 1)]
     if model == "SEASONAL_WEEKLY":
-        level, factors = weekday_factors(daily, start)
+        level, factors = weekday_factors(daily, start, prior)
         return [max(0.0, level * factors[(start + timedelta(days=k)).weekday()]) for k in range(horizon)]
     return [max(0.0, moving_average(daily))] * horizon
 
@@ -108,12 +133,14 @@ def error_metrics(predicted: list[float], actual: list[float]) -> tuple[float | 
     return (abs_error / total if total > 0 else None), abs_error / len(actual)
 
 
-def backtest(daily: list[float], model: str, start: date) -> tuple[float | None, float] | None:
+def backtest(
+    daily: list[float], model: str, start: date, prior: list[float] | None = None
+) -> tuple[float | None, float] | None:
     """Entrena sin los últimos 14 días y mide el error en ellos. None si la serie es muy corta."""
     if len(daily) < HOLDOUT_DAYS + _MIN_TRAIN_DAYS:
         return None
     train, test = daily[:-HOLDOUT_DAYS], daily[-HOLDOUT_DAYS:]
-    return error_metrics(predict(train, HOLDOUT_DAYS, model, start - timedelta(days=HOLDOUT_DAYS)), test)
+    return error_metrics(predict(train, HOLDOUT_DAYS, model, start - timedelta(days=HOLDOUT_DAYS), prior), test)
 
 
 def confidence_from(wape: float | None, mae: float) -> float:
@@ -122,9 +149,11 @@ def confidence_from(wape: float | None, mae: float) -> float:
     return round(max(0.0, min(1.0, 1.0 - wape)), 4)
 
 
-def forecast(daily: list[float], forecast_days: int, model: str, start: date) -> ForecastResult:
+def forecast(
+    daily: list[float], forecast_days: int, model: str, start: date, prior: list[float] | None = None
+) -> ForecastResult:
     """Proyecta `forecast_days` días desde `start` (normalmente mañana). `model` puede ser AUTO."""
-    scores = {m: backtest(daily, m, start) for m in (MODELS if model == AUTO else (model,))}
+    scores = {m: backtest(daily, m, start, prior) for m in (MODELS if model == AUTO else (model,))}
     if model == AUTO:
         ranked = [m for m in MODELS if scores[m] is not None]
         # Si el holdout no tuvo ventas, todos tienen WAPE None: decide el MAE.
@@ -132,7 +161,7 @@ def forecast(daily: list[float], forecast_days: int, model: str, start: date) ->
     else:
         chosen = model
 
-    values = predict(daily, forecast_days, chosen, start)
+    values = predict(daily, forecast_days, chosen, start, prior)
     points = [
         {"date": (start + timedelta(days=k)).isoformat(), "value": round(v, 2)} for k, v in enumerate(values)
     ]

@@ -5,6 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.modules.analytics.api.schemas import (
+    ClassificationOut,
+    ClassifiedProductOut,
     ProductRankingListOut,
     ProductRankingOut,
     SalesSeriesOut,
@@ -67,3 +69,18 @@ async def top_products(
         )
     )
     return ProductRankingListOut(order=order, items=[ProductRankingOut(**item.__dict__) for item in items])
+
+
+@router.get("/classification", response_model=ClassificationOut)
+async def classification(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    date_to = date_to or date.today()
+    date_from = date_from or (date_to - timedelta(days=29))
+    items = await AnalyticsFacade(uow).classification(user.business_id, date_from, date_to)
+    return ClassificationOut(
+        date_from=date_from, date_to=date_to, items=[ClassifiedProductOut(**i.__dict__) for i in items]
+    )

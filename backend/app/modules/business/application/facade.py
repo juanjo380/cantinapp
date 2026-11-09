@@ -35,6 +35,12 @@ class BusinessFacade:
     async def update(self, command: UpdateBusinessCommand):
         return await self._commit(await handlers.update_business(self.repo, command))
 
+    async def ml_data_sharing(self, business_id: UUID) -> bool:
+        return await self.repo.ml_data_sharing(business_id)
+
+    async def set_ml_data_sharing(self, actor: CurrentUser, granted: bool) -> bool:
+        return await self._commit(await handlers.set_ml_data_sharing(self.repo, actor, granted))
+
     async def locations(self, business_id: UUID):
         return await self.repo.list_locations(business_id)
 

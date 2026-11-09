@@ -132,3 +132,9 @@ class MemberOut(BaseModel):
     job_title: str | None
     role: str
     created_at: datetime
+
+
+class DataSharing(BaseModel):
+    """Autorización de uso anónimo y agregado de los datos del negocio para predicciones."""
+
+    enabled: bool

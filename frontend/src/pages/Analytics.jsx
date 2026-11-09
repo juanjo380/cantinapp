@@ -8,10 +8,12 @@ import { analyticsApi } from '../api/helper'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
+import DataTable from '../components/ui/DataTable'
+import { Stamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
 import { useProductOptions } from '../hooks/useProductOptions'
-import { daysAgoISO, formatCOP, formatNumber, todayISO } from '../utils/format'
+import { daysAgoISO, formatCOP, formatNumber, formatPercent, todayISO } from '../utils/format'
 
 const PERIODS = [
   ['daily', 'Diario'],
@@ -41,6 +43,10 @@ export default function Analytics() {
   )
   const top = useApi(
     () => analyticsApi.topProducts({ order: 'top', limit: 10, date_from: dateFrom || undefined, date_to: dateTo || undefined }),
+    [dateFrom, dateTo],
+  )
+  const classification = useApi(
+    () => analyticsApi.classification({ date_from: dateFrom || undefined, date_to: dateTo || undefined }),
     [dateFrom, dateTo],
   )
   const bottom = useApi(
@@ -109,6 +115,10 @@ export default function Analytics() {
         )}
       </Section>
 
+      <div className="mt-6">
+        <Classification query={classification} />
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Ranking title="Más vendidos" query={top} />
         <Ranking title="Menos vendidos" query={bottom} />
@@ -138,6 +148,63 @@ function Ranking({ title, query }) {
           ))}
         </ol>
       )}
+    </Section>
+  )
+}
+
+const ABC = {
+  A: { tone: 'ok', label: 'A · Clave' },
+  B: { tone: 'warn', label: 'B · Importante' },
+  C: { tone: 'neutral', label: 'C · Menor' },
+}
+
+function rankChange(row) {
+  if (row.previous_rank == null) return <span className="text-ink-soft">Nuevo</span>
+  const diff = row.previous_rank - row.rank
+  if (diff === 0) return <span className="text-ink-soft">=</span>
+  return (
+    <span className={diff > 0 ? 'text-ok' : 'text-crit'} aria-label={diff > 0 ? `Subió ${diff}` : `Bajó ${-diff}`}>
+      {diff > 0 ? `▲ ${diff}` : `▼ ${-diff}`}
+    </span>
+  )
+}
+
+const CLASSIFICATION_COLUMNS = [
+  { key: 'rank', header: '#', align: 'right', mono: true },
+  { key: 'name', header: 'Producto' },
+  { key: 'abc', header: 'Clase', render: (row) => <Stamp tone={ABC[row.abc].tone}>{ABC[row.abc].label}</Stamp> },
+  { key: 'revenue', header: 'Ingresos', align: 'right', mono: true, render: (row) => formatCOP(row.revenue) },
+  { key: 'share', header: '% del total', align: 'right', mono: true, render: (row) => formatPercent(row.share) },
+  { key: 'units', header: 'Unidades', align: 'right', mono: true, hideOnMobile: true, render: (row) => formatNumber(row.units) },
+  { key: 'previous_rank', header: 'Puesto', align: 'right', mono: true, hideOnMobile: true, render: rankChange },
+]
+
+function Classification({ query }) {
+  const items = query.data?.items ?? []
+  const classA = items.filter((item) => item.abc === 'A').length
+  return (
+    <Section title="Clasificación de productos" label="Clasificación ABC de productos">
+      {items.length > 0 && (
+        <p className="mb-4 text-sm text-ink-soft">
+          <strong className="text-ink">
+            {classA} de {items.length} productos
+          </strong>{' '}
+          hacen el 80 % de tus ingresos: son los que nunca deben faltar. La columna Puesto compara con el período
+          anterior de la misma duración.
+        </p>
+      )}
+      <DataTable
+        bare
+        label="Clasificación"
+        columns={CLASSIFICATION_COLUMNS}
+        rows={items}
+        rowKey="product_id"
+        loading={query.loading}
+        error={query.error}
+        onRetry={query.reload}
+        maxHeight={420}
+        empty={<p className="py-6 text-center text-sm text-ink-soft">Sin ventas en el rango.</p>}
+      />
     </Section>
   )
 }

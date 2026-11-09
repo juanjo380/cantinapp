@@ -61,3 +61,12 @@ def build_recommendation(
         urgency=urgency,
         justification=justification,
     )
+
+
+_URGENCY_RANK = {"ALTO": 0, "MEDIO": 1, "BAJO": 2}
+
+
+def plan_order(draft: RecommendationDraft) -> tuple:
+    """Orden del plan de compra: urgencia, luego lo que menos dura, luego lo que más hay que comprar."""
+    coverage = draft.coverage_days if draft.coverage_days is not None else float("inf")
+    return (_URGENCY_RANK.get(draft.urgency, 3), coverage, -draft.suggested_quantity)
