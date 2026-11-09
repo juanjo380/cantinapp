@@ -11,6 +11,39 @@ from app.modules.analytics.domain.entities import PERIOD_UNITS, ProductRanking, 
 from app.modules.analytics.domain.repository import AnalyticsRepository
 
 
+# Patrón semanal agregado entre negocios que autorizaron ML_ANONYMOUS (la fila más reciente del
+# negocio manda). Se excluyen ventas DEMO y el propio negocio. Días sin ventas cuentan como 0.
+# Solo sale (¿mismo tipo de negocio que :exclude?, día, factor promedio, n.º de negocios): ningún id ni nombre.
+_POOLED_WEEKDAY_SQL = """
+WITH consent AS (
+    SELECT DISTINCT ON (business_id) business_id, granted FROM user_consents
+    WHERE document = 'ML_ANONYMOUS' ORDER BY business_id, created_at DESC
+), daily AS (
+    SELECT s.business_id, s.sale_date, SUM(s.quantity) AS units FROM sales s
+    JOIN consent c ON c.business_id = s.business_id AND c.granted
+    WHERE s.source <> 'DEMO' AND s.business_id <> :exclude
+      AND s.sale_date BETWEEN CURRENT_DATE - CAST(:days AS int) AND CURRENT_DATE - 1
+    GROUP BY 1, 2
+), dense AS (
+    SELECT g.business_id, g.day, COALESCE(d.units, 0) AS units
+    FROM (SELECT business_id, generate_series(MIN(sale_date), CURRENT_DATE - 1, interval '1 day')::date AS day
+          FROM daily GROUP BY business_id) g
+    LEFT JOIN daily d ON d.business_id = g.business_id AND d.sale_date = g.day
+), level AS (
+    SELECT business_id, AVG(units) AS level FROM dense GROUP BY 1 HAVING COUNT(*) >= 28 AND AVG(units) > 0
+), factors AS (
+    SELECT d.business_id, EXTRACT(ISODOW FROM d.day)::int - 1 AS weekday, AVG(d.units) / l.level AS factor
+    FROM dense d JOIN level l USING (business_id) GROUP BY d.business_id, 2, l.level
+)
+SELECT (NULLIF(lower(trim(b.business_type)), '') = (
+            SELECT NULLIF(lower(trim(business_type)), '') FROM businesses WHERE id = :exclude
+        )) IS TRUE AS same_type, f.weekday,
+       AVG(f.factor)::float AS factor, COUNT(*)::int AS businesses
+FROM factors f JOIN businesses b ON b.id = f.business_id
+GROUP BY 1, 2
+"""
+
+
 class SqlAnalyticsRepository(AnalyticsRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -100,3 +133,11 @@ class SqlAnalyticsRepository(AnalyticsRepository):
                 {"business_id": business_id, **({"product_id": product_id} if product_id else {})},
             )
         ).scalar_one_or_none()
+
+    async def pooled_weekday_factors(
+        self, *, exclude_business_id: UUID, days: int
+    ) -> list[tuple[bool, int, float, int]]:
+        rows = (
+            await self.session.execute(text(_POOLED_WEEKDAY_SQL), {"exclude": exclude_business_id, "days": days})
+        ).all()
+        return [(r[0], r[1], r[2], r[3]) for r in rows]

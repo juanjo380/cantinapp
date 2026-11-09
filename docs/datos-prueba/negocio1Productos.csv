@@ -1,0 +1,11 @@
+﻿nombre;precio;categoria;proveedor;stock_inicial;stock_minimo;dias_abastecimiento
+Empanada;2500;Comidas;Panadería La Espiga;40;30;1
+Pastel de pollo;3000;Comidas;Panadería La Espiga;15;20;1
+Arepa con queso;2800;Comidas;Panadería La Espiga;30;10;1
+Gaseosa 400 ml;3000;Bebidas;Distribuidora Central;48;24;3
+Agua 600 ml;2000;Bebidas;Distribuidora Central;36;12;3
+Jugo en caja;2200;Bebidas;Distribuidora Central;8;20;3
+Papas fritas;2500;Paquetes;Snacks S.A.;0;15;5
+Chocolatina;1200;Dulces;Dulces La Fe;80;20;5
+Galletas de avena;1800;Paquetes;Snacks S.A.;40;10;5
+Yogur;2600;Lácteos;Lácteos Andinos;20;10;2

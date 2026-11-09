@@ -221,7 +221,58 @@ function BusinessTab() {
   const { data, loading, error, reload } = useApi(() => businessApi.get(), [])
   if (loading) return <Loading variant="form" label="Cargando tu negocio…" />
   if (error) return <ErrorView error={error} onRetry={reload} />
-  return <BusinessForm initial={data} />
+  return (
+    <div className="flex flex-col gap-6">
+      <BusinessForm initial={data} />
+      <DataSharingSection />
+    </div>
+  )
+}
+
+function DataSharingSection() {
+  const { isAdmin } = useAuth()
+  const { data, loading, error, reload } = useApi(() => businessApi.dataSharing(), [])
+  const [enabled, setEnabled] = useState(null)
+  const [notice, setNotice] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const checked = enabled ?? data?.enabled ?? false
+
+  async function onToggle(next) {
+    setSaving(true)
+    setNotice(null)
+    try {
+      setEnabled((await businessApi.setDataSharing(next)).enabled)
+      setNotice({
+        severity: 'success',
+        text: next ? 'Gracias: tus datos ayudarán a mejorar las predicciones.' : 'Listo: ya no usaremos tus datos.',
+      })
+    } catch (err) {
+      setNotice({ severity: 'error', text: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Section title="Uso anónimo de datos">
+      {loading && <Loading variant="form" label="Cargando autorización…" />}
+      {error && !loading && <ErrorView error={error} onRetry={reload} />}
+      {!loading && !error && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-ink-soft">
+            Si lo autorizas, el patrón de ventas de tu negocio se suma, sin nombres ni datos que te identifiquen, al de
+            otros negocios para afinar las predicciones de todos. Tus predicciones funcionan igual si no lo autorizas.
+          </p>
+          <Notice notice={notice} onClose={() => setNotice(null)} />
+          <FormControlLabel
+            control={<Switch checked={checked} disabled={!isAdmin || saving} onChange={(e) => onToggle(e.target.checked)} />}
+            label="Autorizo el uso anónimo y agregado de los datos de mi negocio"
+          />
+          {!isAdmin && <span className="text-xs text-ink-soft">Solo el dueño o un administrador puede cambiarlo.</span>}
+        </div>
+      )}
+    </Section>
+  )
 }
 
 function BusinessForm({ initial }) {

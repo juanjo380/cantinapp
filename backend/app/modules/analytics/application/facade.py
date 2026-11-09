@@ -15,3 +15,6 @@ class AnalyticsFacade:
 
     async def product_ranking(self, query: ProductRankingQuery):
         return await handlers.product_ranking(self.analytics, query)
+
+    async def classification(self, business_id, date_from, date_to):
+        return await handlers.classification(self.analytics, business_id, date_from, date_to)

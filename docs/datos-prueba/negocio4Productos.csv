@@ -1,0 +1,13 @@
+﻿nombre;precio;categoria;proveedor;stock_inicial;stock_minimo;dias_abastecimiento
+Acetaminofén 500 mg x10;3500;Analgésicos;Distribuidora Pharma;40;15;3
+Ibuprofeno 400 mg x10;5200;Analgésicos;Distribuidora Pharma;25;10;3
+Loratadina x10;4000;Antialérgicos;Distribuidora Pharma;15;6;3
+Suero oral;4800;Hidratación;Distribuidora Pharma;20;8;3
+Alka-Seltzer x2;2500;Digestivos;Distribuidora Pharma;30;10;3
+Vitamina C x12;8000;Vitaminas;Distribuidora Pharma;20;8;5
+Preservativos x3;9500;Salud sexual;Distribuidora Pharma;18;10;5
+Postday;18000;Salud sexual;Distribuidora Pharma;6;4;5
+Prueba de embarazo;9000;Salud sexual;Distribuidora Pharma;8;4;5
+Toallas higiénicas x10;6500;Cuidado personal;Distribuidora Pharma;30;10;4
+Chocolates caja;15000;Confitería;Dulces La Fe;10;5;5
+Agua 600 ml;2500;Bebidas;Distribuidora Central;30;10;3

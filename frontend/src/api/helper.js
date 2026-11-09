@@ -27,6 +27,8 @@ export const authApi = {
 export const businessApi = {
   get: () => request('/business'),
   update: (body) => request('/business', { method: 'PUT', body }),
+  dataSharing: () => request('/business/data-sharing'),
+  setDataSharing: (enabled) => request('/business/data-sharing', { method: 'PUT', body: { enabled } }),
   locations: () => request('/business/locations'),
   createLocation: (body) => request('/business/locations', { method: 'POST', body }),
   updateLocation: (id, body) => request(`/business/locations/${id}`, { method: 'PUT', body }),
@@ -80,6 +82,7 @@ export const salesApi = {
 export const analyticsApi = {
   sales: (params) => request(`/analytics/sales${qs(params)}`),
   topProducts: (params) => request(`/analytics/top-products${qs(params)}`),
+  classification: (params) => request(`/analytics/classification${qs(params)}`),
 }
 
 export const forecastingApi = {
@@ -90,6 +93,8 @@ export const forecastingApi = {
 
 export const recommendationsApi = {
   create: (body) => request('/recommendations', { method: 'POST', body }),
+  plan: () => request('/recommendations/plan', { method: 'POST' }),
+  seasonal: () => request('/recommendations/seasonal'),
   list: (params) => request(`/recommendations${qs(params)}`),
   cooccurrence: (params) => request(`/recommendations/cooccurrence${qs(params)}`),
   recomputeCooccurrence: () => request('/recommendations/cooccurrence/recompute', { method: 'POST' }),

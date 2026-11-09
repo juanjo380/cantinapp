@@ -10,6 +10,7 @@ from app.modules.auth.application.facade import AuthFacade
 from app.modules.business.api.schemas import (
     BusinessOut,
     BusinessUpdate,
+    DataSharing,
     InvitationAccept,
     InvitationCreate,
     InvitationCreated,
@@ -50,6 +51,20 @@ async def update_business(
         UpdateBusinessCommand(actor=user, changes=body.model_dump(exclude_unset=True))
     )
     return profile.__dict__
+
+
+@router.get("/data-sharing", response_model=DataSharing)
+async def get_data_sharing(user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    return DataSharing(enabled=await BusinessFacade(uow).ml_data_sharing(user.business_id))
+
+
+@router.put("/data-sharing", response_model=DataSharing)
+async def set_data_sharing(
+    body: DataSharing,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    return DataSharing(enabled=await BusinessFacade(uow).set_ml_data_sharing(user, body.enabled))
 
 
 @router.get("/locations", response_model=list[LocationOut])

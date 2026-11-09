@@ -13,6 +13,7 @@ from app.modules.business.application.commands import (
     SaveLocationCommand,
     UpdateBusinessCommand,
 )
+from app.modules.auth.application.handlers import LEGAL_VERSION
 from app.modules.business.domain.entities import BusinessProfile, Invitation, Location, Member
 from app.modules.business.domain.repository import BusinessProfileRepository
 from app.shared.api.dependencies import CurrentUser
@@ -28,6 +29,14 @@ def _require_admin(actor: CurrentUser) -> None:
 async def update_business(repo: BusinessProfileRepository, command: UpdateBusinessCommand) -> BusinessProfile:
     _require_admin(command.actor)
     return await repo.update(command.actor.business_id, command.changes)
+
+
+async def set_ml_data_sharing(repo: BusinessProfileRepository, actor: CurrentUser, granted: bool) -> bool:
+    """Autorización ML_ANONYMOUS del negocio: queda una fila nueva en user_consents (prueba, Ley 1581)."""
+    _require_admin(actor)
+    if await repo.ml_data_sharing(actor.business_id) != granted:
+        await repo.set_ml_data_sharing(actor.business_id, actor.user_id, granted, LEGAL_VERSION)
+    return granted
 
 
 async def save_location(repo: BusinessProfileRepository, command: SaveLocationCommand) -> Location:

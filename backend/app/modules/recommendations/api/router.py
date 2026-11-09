@@ -6,10 +6,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from app.modules.recommendations.api.schemas import (
     CoOccurrenceListOut,
     CoOccurrenceOut,
+    PlanItemOut,
+    PlanOut,
     RecommendationListOut,
     RecommendationOut,
     RecommendationRequest,
     RecomputeAcceptedOut,
+    SeasonalOut,
 )
 from app.modules.recommendations.application.commands import CreateRecommendationCommand
 from app.modules.recommendations.application.facade import RecommendationsFacade, run_cooccurrence_job
@@ -34,6 +37,37 @@ async def create_recommendation(
         )
     )
     return RecommendationOut(**recommendation.__dict__)
+
+
+# POST: si la predicción de hoy no existe, la genera y la guarda.
+@router.post("/plan", response_model=PlanOut)
+async def purchase_plan(user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    plan, pending = await RecommendationsFacade(uow).plan(user.business_id, user.user_id)
+    return PlanOut(
+        items=[
+            PlanItemOut(
+                product_id=item.product_id,
+                name=item.name,
+                category=item.category,
+                current_stock=draft.current_stock,
+                min_stock=draft.min_stock,
+                lead_time_days=draft.lead_time_days,
+                daily_demand=round(draft.predicted_demand / forecast.forecast_days, 2) if forecast.forecast_days else 0.0,
+                coverage_days=draft.coverage_days,
+                suggested_quantity=draft.suggested_quantity,
+                urgency=draft.urgency,
+                confidence=forecast.confidence,
+                model_type=forecast.model_type,
+            )
+            for item, forecast, draft in plan
+        ],
+        pending=pending,
+    )
+
+
+@router.get("/seasonal", response_model=SeasonalOut)
+async def seasonal(user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    return SeasonalOut(events=await RecommendationsFacade(uow).seasonal(user.business_id))
 
 
 @router.get("", response_model=RecommendationListOut)
