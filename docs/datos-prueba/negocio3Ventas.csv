@@ -1,0 +1,976 @@
+﻿producto;fecha;cantidad;precio
+Café tinto;11/07/2026;41;1800
+Café con leche;11/07/2026;26;3200
+Chocolate caliente;11/07/2026;14;3500
+Pandebono;11/07/2026;33;2000
+Croissant;11/07/2026;9;4500
+Torta porción;11/07/2026;7;6000
+Gaseosa 400 ml;11/07/2026;6;3500
+Agua 600 ml;11/07/2026;5;2500
+Café tinto;12/07/2026;18;1800
+Café con leche;12/07/2026;20;3200
+Chocolate caliente;12/07/2026;9;3500
+Pandebono;12/07/2026;22;2000
+Croissant;12/07/2026;6;4500
+Torta porción;12/07/2026;4;6000
+Gaseosa 400 ml;12/07/2026;4;3500
+Agua 600 ml;12/07/2026;5;2500
+Café tinto;13/07/2026;56;1800
+Café con leche;13/07/2026;34;3200
+Chocolate caliente;13/07/2026;15;3500
+Pandebono;13/07/2026;34;2000
+Croissant;13/07/2026;8;4500
+Torta porción;13/07/2026;5;6000
+Gaseosa 400 ml;13/07/2026;6;3500
+Agua 600 ml;13/07/2026;4;2500
+Café tinto;14/07/2026;38;1800
+Café con leche;14/07/2026;22;3200
+Chocolate caliente;14/07/2026;12;3500
+Pandebono;14/07/2026;26;2000
+Croissant;14/07/2026;9;4500
+Torta porción;14/07/2026;4;6000
+Gaseosa 400 ml;14/07/2026;7;3500
+Agua 600 ml;14/07/2026;5;2500
+Café tinto;15/07/2026;46;1800
+Café con leche;15/07/2026;20;3200
+Chocolate caliente;15/07/2026;15;3500
+Pandebono;15/07/2026;24;2000
+Croissant;15/07/2026;7;4500
+Torta porción;15/07/2026;5;6000
+Gaseosa 400 ml;15/07/2026;7;3500
+Agua 600 ml;15/07/2026;8;2500
+Café tinto;16/07/2026;31;1800
+Café con leche;16/07/2026;22;3200
+Chocolate caliente;16/07/2026;20;3500
+Pandebono;16/07/2026;26;2000
+Croissant;16/07/2026;10;4500
+Torta porción;16/07/2026;5;6000
+Torta de cumpleaños;16/07/2026;1;45000
+Gaseosa 400 ml;16/07/2026;6;3500
+Agua 600 ml;16/07/2026;7;2500
+Café tinto;17/07/2026;37;1800
+Café con leche;17/07/2026;26;3200
+Chocolate caliente;17/07/2026;12;3500
+Pandebono;17/07/2026;25;2000
+Croissant;17/07/2026;11;4500
+Torta porción;17/07/2026;6;6000
+Gaseosa 400 ml;17/07/2026;9;3500
+Agua 600 ml;17/07/2026;7;2500
+Café tinto;18/07/2026;36;1800
+Café con leche;18/07/2026;18;3200
+Chocolate caliente;18/07/2026;17;3500
+Pandebono;18/07/2026;25;2000
+Croissant;18/07/2026;8;4500
+Torta porción;18/07/2026;5;6000
+Gaseosa 400 ml;18/07/2026;5;3500
+Agua 600 ml;18/07/2026;6;2500
+Café tinto;19/07/2026;21;1800
+Café con leche;19/07/2026;17;3200
+Chocolate caliente;19/07/2026;8;3500
+Pandebono;19/07/2026;22;2000
+Croissant;19/07/2026;8;4500
+Torta porción;19/07/2026;4;6000
+Torta de cumpleaños;19/07/2026;1;45000
+Gaseosa 400 ml;19/07/2026;4;3500
+Agua 600 ml;19/07/2026;5;2500
+Café tinto;20/07/2026;48;1800
+Café con leche;20/07/2026;26;3200
+Chocolate caliente;20/07/2026;16;3500
+Pandebono;20/07/2026;32;2000
+Croissant;20/07/2026;13;4500
+Torta porción;20/07/2026;7;6000
+Torta de cumpleaños;20/07/2026;1;45000
+Gaseosa 400 ml;20/07/2026;8;3500
+Agua 600 ml;20/07/2026;7;2500
+Café tinto;21/07/2026;32;1800
+Café con leche;21/07/2026;23;3200
+Chocolate caliente;21/07/2026;11;3500
+Pandebono;21/07/2026;42;2000
+Croissant;21/07/2026;10;4500
+Torta porción;21/07/2026;7;6000
+Gaseosa 400 ml;21/07/2026;8;3500
+Agua 600 ml;21/07/2026;6;2500
+Café tinto;22/07/2026;37;1800
+Café con leche;22/07/2026;20;3200
+Chocolate caliente;22/07/2026;11;3500
+Pandebono;22/07/2026;23;2000
+Croissant;22/07/2026;9;4500
+Torta porción;22/07/2026;7;6000
+Gaseosa 400 ml;22/07/2026;7;3500
+Agua 600 ml;22/07/2026;8;2500
+Café tinto;23/07/2026;36;1800
+Café con leche;23/07/2026;23;3200
+Chocolate caliente;23/07/2026;14;3500
+Pandebono;23/07/2026;32;2000
+Croissant;23/07/2026;9;4500
+Torta porción;23/07/2026;6;6000
+Gaseosa 400 ml;23/07/2026;6;3500
+Agua 600 ml;23/07/2026;7;2500
+Café tinto;24/07/2026;31;1800
+Café con leche;24/07/2026;16;3200
+Chocolate caliente;24/07/2026;17;3500
+Pandebono;24/07/2026;31;2000
+Croissant;24/07/2026;8;4500
+Torta porción;24/07/2026;5;6000
+Gaseosa 400 ml;24/07/2026;5;3500
+Agua 600 ml;24/07/2026;7;2500
+Café tinto;25/07/2026;46;1800
+Café con leche;25/07/2026;18;3200
+Chocolate caliente;25/07/2026;7;3500
+Pandebono;25/07/2026;98;2000
+Croissant;25/07/2026;10;4500
+Torta porción;25/07/2026;7;6000
+Gaseosa 400 ml;25/07/2026;4;3500
+Agua 600 ml;25/07/2026;6;2500
+Café tinto;26/07/2026;24;1800
+Café con leche;26/07/2026;46;3200
+Chocolate caliente;26/07/2026;9;3500
+Pandebono;26/07/2026;18;2000
+Croissant;26/07/2026;8;4500
+Torta porción;26/07/2026;4;6000
+Torta de cumpleaños;26/07/2026;1;45000
+Gaseosa 400 ml;26/07/2026;4;3500
+Agua 600 ml;26/07/2026;6;2500
+Café tinto;27/07/2026;32;1800
+Café con leche;27/07/2026;32;3200
+Chocolate caliente;27/07/2026;14;3500
+Pandebono;27/07/2026;37;2000
+Croissant;27/07/2026;10;4500
+Torta porción;27/07/2026;8;6000
+Gaseosa 400 ml;27/07/2026;7;3500
+Agua 600 ml;27/07/2026;7;2500
+Café tinto;28/07/2026;35;1800
+Café con leche;28/07/2026;23;3200
+Chocolate caliente;28/07/2026;15;3500
+Pandebono;28/07/2026;31;2000
+Croissant;28/07/2026;9;4500
+Torta porción;28/07/2026;6;6000
+Gaseosa 400 ml;28/07/2026;7;3500
+Agua 600 ml;28/07/2026;9;2500
+Café tinto;29/07/2026;42;1800
+Café con leche;29/07/2026;20;3200
+Chocolate caliente;29/07/2026;12;3500
+Pandebono;29/07/2026;41;2000
+Croissant;29/07/2026;9;4500
+Torta porción;29/07/2026;7;6000
+Gaseosa 400 ml;29/07/2026;8;3500
+Agua 600 ml;29/07/2026;7;2500
+Café tinto;30/07/2026;38;1800
+Café con leche;30/07/2026;23;3200
+Chocolate caliente;30/07/2026;11;3500
+Pandebono;30/07/2026;31;2000
+Croissant;30/07/2026;12;4500
+Torta porción;30/07/2026;6;6000
+Gaseosa 400 ml;30/07/2026;7;3500
+Agua 600 ml;30/07/2026;7;2500
+Café tinto;31/07/2026;44;1800
+Café con leche;31/07/2026;26;3200
+Chocolate caliente;31/07/2026;12;3500
+Pandebono;31/07/2026;33;2000
+Croissant;31/07/2026;9;4500
+Torta porción;31/07/2026;8;6000
+Gaseosa 400 ml;31/07/2026;7;3500
+Agua 600 ml;31/07/2026;6;2500
+Café tinto;01/08/2026;35;1800
+Café con leche;01/08/2026;23;3200
+Chocolate caliente;01/08/2026;10;3500
+Pandebono;01/08/2026;20;2000
+Croissant;01/08/2026;8;4500
+Torta porción;01/08/2026;6;6000
+Gaseosa 400 ml;01/08/2026;6;3500
+Agua 600 ml;01/08/2026;6;2500
+Café tinto;02/08/2026;29;1800
+Café con leche;02/08/2026;16;3200
+Chocolate caliente;02/08/2026;9;3500
+Pandebono;02/08/2026;21;2000
+Croissant;02/08/2026;8;4500
+Torta porción;02/08/2026;4;6000
+Gaseosa 400 ml;02/08/2026;4;3500
+Agua 600 ml;02/08/2026;6;2500
+Café tinto;03/08/2026;37;1800
+Café con leche;03/08/2026;29;3200
+Chocolate caliente;03/08/2026;18;3500
+Pandebono;03/08/2026;36;2000
+Croissant;03/08/2026;6;4500
+Torta porción;03/08/2026;8;6000
+Torta de cumpleaños;03/08/2026;1;45000
+Gaseosa 400 ml;03/08/2026;7;3500
+Agua 600 ml;03/08/2026;6;2500
+Café tinto;04/08/2026;44;1800
+Café con leche;04/08/2026;36;3200
+Chocolate caliente;04/08/2026;13;3500
+Pandebono;04/08/2026;30;2000
+Croissant;04/08/2026;11;4500
+Torta porción;04/08/2026;5;6000
+Gaseosa 400 ml;04/08/2026;8;3500
+Agua 600 ml;04/08/2026;7;2500
+Café tinto;05/08/2026;52;1800
+Café con leche;05/08/2026;33;3200
+Chocolate caliente;05/08/2026;11;3500
+Pandebono;05/08/2026;23;2000
+Croissant;05/08/2026;13;4500
+Torta porción;05/08/2026;6;6000
+Gaseosa 400 ml;05/08/2026;4;3500
+Agua 600 ml;05/08/2026;8;2500
+Café tinto;06/08/2026;31;1800
+Café con leche;06/08/2026;25;3200
+Chocolate caliente;06/08/2026;14;3500
+Pandebono;06/08/2026;30;2000
+Croissant;06/08/2026;10;4500
+Torta porción;06/08/2026;6;6000
+Gaseosa 400 ml;06/08/2026;5;3500
+Agua 600 ml;06/08/2026;6;2500
+Café tinto;07/08/2026;43;1800
+Café con leche;07/08/2026;30;3200
+Chocolate caliente;07/08/2026;11;3500
+Pandebono;07/08/2026;90;2000
+Croissant;07/08/2026;8;4500
+Torta porción;07/08/2026;6;6000
+Torta de cumpleaños;07/08/2026;1;45000
+Gaseosa 400 ml;07/08/2026;6;3500
+Agua 600 ml;07/08/2026;8;2500
+Café tinto;08/08/2026;36;1800
+Café con leche;08/08/2026;48;3200
+Chocolate caliente;08/08/2026;14;3500
+Pandebono;08/08/2026;34;2000
+Croissant;08/08/2026;9;4500
+Torta porción;08/08/2026;6;6000
+Gaseosa 400 ml;08/08/2026;7;3500
+Agua 600 ml;08/08/2026;6;2500
+Café tinto;09/08/2026;26;1800
+Café con leche;09/08/2026;17;3200
+Chocolate caliente;09/08/2026;8;3500
+Pandebono;09/08/2026;26;2000
+Croissant;09/08/2026;7;4500
+Torta porción;09/08/2026;4;6000
+Gaseosa 400 ml;09/08/2026;5;3500
+Agua 600 ml;09/08/2026;4;2500
+Café tinto;10/08/2026;47;1800
+Café con leche;10/08/2026;24;3200
+Chocolate caliente;10/08/2026;13;3500
+Pandebono;10/08/2026;28;2000
+Croissant;10/08/2026;5;4500
+Torta porción;10/08/2026;7;6000
+Gaseosa 400 ml;10/08/2026;9;3500
+Agua 600 ml;10/08/2026;7;2500
+Café tinto;11/08/2026;42;1800
+Café con leche;11/08/2026;23;3200
+Chocolate caliente;11/08/2026;14;3500
+Pandebono;11/08/2026;25;2000
+Croissant;11/08/2026;13;4500
+Torta porción;11/08/2026;5;6000
+Gaseosa 400 ml;11/08/2026;6;3500
+Agua 600 ml;11/08/2026;10;2500
+Café tinto;12/08/2026;43;1800
+Café con leche;12/08/2026;32;3200
+Chocolate caliente;12/08/2026;11;3500
+Pandebono;12/08/2026;15;2000
+Croissant;12/08/2026;9;4500
+Torta porción;12/08/2026;8;6000
+Gaseosa 400 ml;12/08/2026;7;3500
+Agua 600 ml;12/08/2026;7;2500
+Café tinto;13/08/2026;40;1800
+Café con leche;13/08/2026;32;3200
+Chocolate caliente;13/08/2026;15;3500
+Pandebono;13/08/2026;32;2000
+Croissant;13/08/2026;13;4500
+Torta porción;13/08/2026;5;6000
+Gaseosa 400 ml;13/08/2026;6;3500
+Agua 600 ml;13/08/2026;9;2500
+Café tinto;14/08/2026;44;1800
+Café con leche;14/08/2026;22;3200
+Chocolate caliente;14/08/2026;6;3500
+Pandebono;14/08/2026;119;2000
+Croissant;14/08/2026;11;4500
+Torta porción;14/08/2026;6;6000
+Gaseosa 400 ml;14/08/2026;8;3500
+Agua 600 ml;14/08/2026;10;2500
+Café tinto;15/08/2026;33;1800
+Café con leche;15/08/2026;38;3200
+Chocolate caliente;15/08/2026;15;3500
+Pandebono;15/08/2026;25;2000
+Croissant;15/08/2026;8;4500
+Torta porción;15/08/2026;5;6000
+Gaseosa 400 ml;15/08/2026;4;3500
+Agua 600 ml;15/08/2026;5;2500
+Café tinto;16/08/2026;20;1800
+Café con leche;16/08/2026;13;3200
+Chocolate caliente;16/08/2026;8;3500
+Pandebono;16/08/2026;26;2000
+Croissant;16/08/2026;6;4500
+Torta porción;16/08/2026;4;6000
+Gaseosa 400 ml;16/08/2026;2;3500
+Agua 600 ml;16/08/2026;5;2500
+Café tinto;17/08/2026;45;1800
+Café con leche;17/08/2026;32;3200
+Chocolate caliente;17/08/2026;12;3500
+Pandebono;17/08/2026;27;2000
+Croissant;17/08/2026;11;4500
+Torta porción;17/08/2026;6;6000
+Gaseosa 400 ml;17/08/2026;5;3500
+Agua 600 ml;17/08/2026;6;2500
+Café tinto;18/08/2026;37;1800
+Café con leche;18/08/2026;28;3200
+Chocolate caliente;18/08/2026;11;3500
+Pandebono;18/08/2026;30;2000
+Croissant;18/08/2026;11;4500
+Torta porción;18/08/2026;6;6000
+Gaseosa 400 ml;18/08/2026;6;3500
+Agua 600 ml;18/08/2026;8;2500
+Café tinto;19/08/2026;41;1800
+Café con leche;19/08/2026;16;3200
+Chocolate caliente;19/08/2026;12;3500
+Pandebono;19/08/2026;31;2000
+Croissant;19/08/2026;7;4500
+Torta porción;19/08/2026;5;6000
+Torta de cumpleaños;19/08/2026;1;45000
+Gaseosa 400 ml;19/08/2026;6;3500
+Agua 600 ml;19/08/2026;8;2500
+Café tinto;20/08/2026;36;1800
+Café con leche;20/08/2026;27;3200
+Chocolate caliente;20/08/2026;11;3500
+Pandebono;20/08/2026;27;2000
+Croissant;20/08/2026;11;4500
+Torta porción;20/08/2026;5;6000
+Gaseosa 400 ml;20/08/2026;6;3500
+Agua 600 ml;20/08/2026;7;2500
+Café tinto;21/08/2026;39;1800
+Café con leche;21/08/2026;33;3200
+Chocolate caliente;21/08/2026;10;3500
+Pandebono;21/08/2026;33;2000
+Croissant;21/08/2026;7;4500
+Torta porción;21/08/2026;7;6000
+Gaseosa 400 ml;21/08/2026;6;3500
+Agua 600 ml;21/08/2026;6;2500
+Café tinto;22/08/2026;46;1800
+Café con leche;22/08/2026;22;3200
+Chocolate caliente;22/08/2026;9;3500
+Pandebono;22/08/2026;22;2000
+Croissant;22/08/2026;8;4500
+Torta porción;22/08/2026;6;6000
+Torta de cumpleaños;22/08/2026;1;45000
+Gaseosa 400 ml;22/08/2026;8;3500
+Agua 600 ml;22/08/2026;8;2500
+Café tinto;23/08/2026;26;1800
+Café con leche;23/08/2026;19;3200
+Chocolate caliente;23/08/2026;9;3500
+Pandebono;23/08/2026;31;2000
+Croissant;23/08/2026;5;4500
+Torta porción;23/08/2026;4;6000
+Gaseosa 400 ml;23/08/2026;3;3500
+Agua 600 ml;23/08/2026;6;2500
+Café tinto;24/08/2026;59;1800
+Café con leche;24/08/2026;37;3200
+Chocolate caliente;24/08/2026;13;3500
+Pandebono;24/08/2026;39;2000
+Croissant;24/08/2026;12;4500
+Torta porción;24/08/2026;7;6000
+Gaseosa 400 ml;24/08/2026;5;3500
+Agua 600 ml;24/08/2026;6;2500
+Café tinto;25/08/2026;47;1800
+Café con leche;25/08/2026;33;3200
+Chocolate caliente;25/08/2026;14;3500
+Pandebono;25/08/2026;32;2000
+Croissant;25/08/2026;11;4500
+Torta porción;25/08/2026;7;6000
+Gaseosa 400 ml;25/08/2026;7;3500
+Agua 600 ml;25/08/2026;8;2500
+Café tinto;26/08/2026;45;1800
+Café con leche;26/08/2026;26;3200
+Chocolate caliente;26/08/2026;10;3500
+Pandebono;26/08/2026;32;2000
+Croissant;26/08/2026;8;4500
+Torta porción;26/08/2026;4;6000
+Gaseosa 400 ml;26/08/2026;6;3500
+Agua 600 ml;26/08/2026;8;2500
+Café tinto;27/08/2026;62;1800
+Café con leche;27/08/2026;30;3200
+Chocolate caliente;27/08/2026;12;3500
+Pandebono;27/08/2026;30;2000
+Croissant;27/08/2026;6;4500
+Torta porción;27/08/2026;4;6000
+Gaseosa 400 ml;27/08/2026;6;3500
+Agua 600 ml;27/08/2026;6;2500
+Café tinto;28/08/2026;38;1800
+Café con leche;28/08/2026;27;3200
+Chocolate caliente;28/08/2026;15;3500
+Pandebono;28/08/2026;34;2000
+Croissant;28/08/2026;10;4500
+Torta porción;28/08/2026;8;6000
+Gaseosa 400 ml;28/08/2026;7;3500
+Agua 600 ml;28/08/2026;9;2500
+Café tinto;29/08/2026;31;1800
+Café con leche;29/08/2026;19;3200
+Chocolate caliente;29/08/2026;5;3500
+Pandebono;29/08/2026;61;2000
+Croissant;29/08/2026;9;4500
+Torta porción;29/08/2026;5;6000
+Gaseosa 400 ml;29/08/2026;5;3500
+Agua 600 ml;29/08/2026;7;2500
+Café tinto;30/08/2026;19;1800
+Café con leche;30/08/2026;33;3200
+Chocolate caliente;30/08/2026;6;3500
+Pandebono;30/08/2026;25;2000
+Croissant;30/08/2026;7;4500
+Torta porción;30/08/2026;4;6000
+Gaseosa 400 ml;30/08/2026;4;3500
+Agua 600 ml;30/08/2026;4;2500
+Café tinto;31/08/2026;38;1800
+Café con leche;31/08/2026;24;3200
+Chocolate caliente;31/08/2026;10;3500
+Pandebono;31/08/2026;33;2000
+Croissant;31/08/2026;9;4500
+Torta porción;31/08/2026;5;6000
+Torta de cumpleaños;31/08/2026;1;45000
+Gaseosa 400 ml;31/08/2026;7;3500
+Agua 600 ml;31/08/2026;7;2500
+Café tinto;01/09/2026;28;1800
+Café con leche;01/09/2026;26;3200
+Chocolate caliente;01/09/2026;9;3500
+Pandebono;01/09/2026;24;2000
+Croissant;01/09/2026;10;4500
+Torta porción;01/09/2026;7;6000
+Gaseosa 400 ml;01/09/2026;5;3500
+Agua 600 ml;01/09/2026;8;2500
+Café tinto;02/09/2026;33;1800
+Café con leche;02/09/2026;32;3200
+Chocolate caliente;02/09/2026;12;3500
+Pandebono;02/09/2026;96;2000
+Croissant;02/09/2026;9;4500
+Torta porción;02/09/2026;6;6000
+Gaseosa 400 ml;02/09/2026;6;3500
+Agua 600 ml;02/09/2026;7;2500
+Café tinto;03/09/2026;35;1800
+Café con leche;03/09/2026;32;3200
+Chocolate caliente;03/09/2026;11;3500
+Pandebono;03/09/2026;86;2000
+Croissant;03/09/2026;8;4500
+Torta porción;03/09/2026;7;6000
+Gaseosa 400 ml;03/09/2026;5;3500
+Agua 600 ml;03/09/2026;6;2500
+Café tinto;04/09/2026;40;1800
+Café con leche;04/09/2026;46;3200
+Chocolate caliente;04/09/2026;10;3500
+Pandebono;04/09/2026;24;2000
+Croissant;04/09/2026;9;4500
+Torta porción;04/09/2026;6;6000
+Gaseosa 400 ml;04/09/2026;5;3500
+Agua 600 ml;04/09/2026;5;2500
+Café tinto;05/09/2026;41;1800
+Café con leche;05/09/2026;19;3200
+Chocolate caliente;05/09/2026;9;3500
+Pandebono;05/09/2026;20;2000
+Croissant;05/09/2026;7;4500
+Torta porción;05/09/2026;4;6000
+Gaseosa 400 ml;05/09/2026;7;3500
+Agua 600 ml;05/09/2026;5;2500
+Café tinto;06/09/2026;24;1800
+Café con leche;06/09/2026;18;3200
+Chocolate caliente;06/09/2026;7;3500
+Pandebono;06/09/2026;23;2000
+Croissant;06/09/2026;7;4500
+Torta porción;06/09/2026;4;6000
+Gaseosa 400 ml;06/09/2026;5;3500
+Agua 600 ml;06/09/2026;4;2500
+Café tinto;07/09/2026;39;1800
+Café con leche;07/09/2026;26;3200
+Chocolate caliente;07/09/2026;14;3500
+Pandebono;07/09/2026;38;2000
+Croissant;07/09/2026;11;4500
+Torta porción;07/09/2026;5;6000
+Gaseosa 400 ml;07/09/2026;8;3500
+Agua 600 ml;07/09/2026;8;2500
+Café tinto;08/09/2026;36;1800
+Café con leche;08/09/2026;32;3200
+Chocolate caliente;08/09/2026;10;3500
+Pandebono;08/09/2026;38;2000
+Croissant;08/09/2026;10;4500
+Torta porción;08/09/2026;4;6000
+Gaseosa 400 ml;08/09/2026;5;3500
+Agua 600 ml;08/09/2026;9;2500
+Café tinto;09/09/2026;35;1800
+Café con leche;09/09/2026;24;3200
+Chocolate caliente;09/09/2026;14;3500
+Pandebono;09/09/2026;29;2000
+Croissant;09/09/2026;9;4500
+Torta porción;09/09/2026;5;6000
+Gaseosa 400 ml;09/09/2026;7;3500
+Agua 600 ml;09/09/2026;8;2500
+Café tinto;10/09/2026;55;1800
+Café con leche;10/09/2026;28;3200
+Chocolate caliente;10/09/2026;10;3500
+Pandebono;10/09/2026;31;2000
+Croissant;10/09/2026;8;4500
+Torta porción;10/09/2026;7;6000
+Gaseosa 400 ml;10/09/2026;5;3500
+Agua 600 ml;10/09/2026;8;2500
+Café tinto;11/09/2026;37;1800
+Café con leche;11/09/2026;29;3200
+Chocolate caliente;11/09/2026;9;3500
+Pandebono;11/09/2026;23;2000
+Croissant;11/09/2026;8;4500
+Torta porción;11/09/2026;5;6000
+Gaseosa 400 ml;11/09/2026;6;3500
+Agua 600 ml;11/09/2026;5;2500
+Café tinto;12/09/2026;29;1800
+Café con leche;12/09/2026;22;3200
+Chocolate caliente;12/09/2026;8;3500
+Pandebono;12/09/2026;24;2000
+Croissant;12/09/2026;8;4500
+Torta porción;12/09/2026;4;6000
+Torta de cumpleaños;12/09/2026;1;45000
+Gaseosa 400 ml;12/09/2026;3;3500
+Agua 600 ml;12/09/2026;7;2500
+Café tinto;13/09/2026;22;1800
+Café con leche;13/09/2026;18;3200
+Chocolate caliente;13/09/2026;4;3500
+Pandebono;13/09/2026;17;2000
+Croissant;13/09/2026;8;4500
+Torta porción;13/09/2026;5;6000
+Torta de cumpleaños;13/09/2026;1;45000
+Gaseosa 400 ml;13/09/2026;4;3500
+Agua 600 ml;13/09/2026;5;2500
+Café tinto;14/09/2026;52;1800
+Café con leche;14/09/2026;29;3200
+Chocolate caliente;14/09/2026;10;3500
+Pandebono;14/09/2026;29;2000
+Croissant;14/09/2026;11;4500
+Torta porción;14/09/2026;5;6000
+Gaseosa 400 ml;14/09/2026;6;3500
+Agua 600 ml;14/09/2026;10;2500
+Café tinto;15/09/2026;46;1800
+Café con leche;15/09/2026;24;3200
+Chocolate caliente;15/09/2026;10;3500
+Pandebono;15/09/2026;36;2000
+Croissant;15/09/2026;9;4500
+Torta porción;15/09/2026;4;6000
+Gaseosa 400 ml;15/09/2026;5;3500
+Agua 600 ml;15/09/2026;8;2500
+Café tinto;16/09/2026;47;1800
+Café con leche;16/09/2026;22;3200
+Chocolate caliente;16/09/2026;12;3500
+Pandebono;16/09/2026;31;2000
+Croissant;16/09/2026;9;4500
+Torta porción;16/09/2026;7;6000
+Gaseosa 400 ml;16/09/2026;5;3500
+Agua 600 ml;16/09/2026;9;2500
+Café tinto;17/09/2026;27;1800
+Café con leche;17/09/2026;24;3200
+Chocolate caliente;17/09/2026;10;3500
+Pandebono;17/09/2026;28;2000
+Croissant;17/09/2026;9;4500
+Torta porción;17/09/2026;7;6000
+Gaseosa 400 ml;17/09/2026;6;3500
+Agua 600 ml;17/09/2026;8;2500
+Café tinto;18/09/2026;50;1800
+Café con leche;18/09/2026;27;3200
+Chocolate caliente;18/09/2026;14;3500
+Pandebono;18/09/2026;33;2000
+Croissant;18/09/2026;13;4500
+Torta porción;18/09/2026;9;6000
+Torta de cumpleaños;18/09/2026;1;45000
+Gaseosa 400 ml;18/09/2026;6;3500
+Agua 600 ml;18/09/2026;6;2500
+Café tinto;19/09/2026;31;1800
+Café con leche;19/09/2026;26;3200
+Chocolate caliente;19/09/2026;9;3500
+Pandebono;19/09/2026;29;2000
+Croissant;19/09/2026;7;4500
+Torta porción;19/09/2026;5;6000
+Gaseosa 400 ml;19/09/2026;5;3500
+Agua 600 ml;19/09/2026;7;2500
+Café tinto;20/09/2026;32;1800
+Café con leche;20/09/2026;21;3200
+Chocolate caliente;20/09/2026;6;3500
+Pandebono;20/09/2026;24;2000
+Croissant;20/09/2026;6;4500
+Torta porción;20/09/2026;5;6000
+Gaseosa 400 ml;20/09/2026;5;3500
+Agua 600 ml;20/09/2026;4;2500
+Café tinto;21/09/2026;30;1800
+Café con leche;21/09/2026;26;3200
+Chocolate caliente;21/09/2026;14;3500
+Pandebono;21/09/2026;37;2000
+Croissant;21/09/2026;10;4500
+Torta porción;21/09/2026;7;6000
+Gaseosa 400 ml;21/09/2026;8;3500
+Agua 600 ml;21/09/2026;8;2500
+Café tinto;22/09/2026;47;1800
+Café con leche;22/09/2026;33;3200
+Chocolate caliente;22/09/2026;11;3500
+Pandebono;22/09/2026;26;2000
+Croissant;22/09/2026;6;4500
+Torta porción;22/09/2026;6;6000
+Gaseosa 400 ml;22/09/2026;8;3500
+Agua 600 ml;22/09/2026;7;2500
+Café tinto;23/09/2026;36;1800
+Café con leche;23/09/2026;27;3200
+Chocolate caliente;23/09/2026;8;3500
+Pandebono;23/09/2026;27;2000
+Croissant;23/09/2026;7;4500
+Torta porción;23/09/2026;8;6000
+Gaseosa 400 ml;23/09/2026;5;3500
+Agua 600 ml;23/09/2026;6;2500
+Café tinto;24/09/2026;28;1800
+Café con leche;24/09/2026;23;3200
+Chocolate caliente;24/09/2026;7;3500
+Pandebono;24/09/2026;20;2000
+Croissant;24/09/2026;9;4500
+Torta porción;24/09/2026;5;6000
+Gaseosa 400 ml;24/09/2026;7;3500
+Agua 600 ml;24/09/2026;9;2500
+Café tinto;25/09/2026;34;1800
+Café con leche;25/09/2026;22;3200
+Chocolate caliente;25/09/2026;9;3500
+Pandebono;25/09/2026;24;2000
+Croissant;25/09/2026;9;4500
+Torta porción;25/09/2026;5;6000
+Gaseosa 400 ml;25/09/2026;7;3500
+Agua 600 ml;25/09/2026;8;2500
+Café tinto;26/09/2026;45;1800
+Café con leche;26/09/2026;26;3200
+Chocolate caliente;26/09/2026;8;3500
+Pandebono;26/09/2026;19;2000
+Croissant;26/09/2026;9;4500
+Torta porción;26/09/2026;4;6000
+Gaseosa 400 ml;26/09/2026;8;3500
+Agua 600 ml;26/09/2026;7;2500
+Café tinto;27/09/2026;25;1800
+Café con leche;27/09/2026;16;3200
+Chocolate caliente;27/09/2026;7;3500
+Pandebono;27/09/2026;26;2000
+Croissant;27/09/2026;5;4500
+Torta porción;27/09/2026;3;6000
+Gaseosa 400 ml;27/09/2026;4;3500
+Agua 600 ml;27/09/2026;4;2500
+Café tinto;28/09/2026;47;1800
+Café con leche;28/09/2026;32;3200
+Chocolate caliente;28/09/2026;13;3500
+Pandebono;28/09/2026;24;2000
+Croissant;28/09/2026;11;4500
+Torta porción;28/09/2026;6;6000
+Gaseosa 400 ml;28/09/2026;5;3500
+Agua 600 ml;28/09/2026;10;2500
+Café tinto;29/09/2026;40;1800
+Café con leche;29/09/2026;28;3200
+Chocolate caliente;29/09/2026;11;3500
+Pandebono;29/09/2026;28;2000
+Croissant;29/09/2026;7;4500
+Torta porción;29/09/2026;5;6000
+Gaseosa 400 ml;29/09/2026;6;3500
+Agua 600 ml;29/09/2026;7;2500
+Café tinto;30/09/2026;40;1800
+Café con leche;30/09/2026;25;3200
+Chocolate caliente;30/09/2026;8;3500
+Pandebono;30/09/2026;39;2000
+Croissant;30/09/2026;7;4500
+Torta porción;30/09/2026;7;6000
+Gaseosa 400 ml;30/09/2026;5;3500
+Agua 600 ml;30/09/2026;7;2500
+Café tinto;01/10/2026;44;1800
+Café con leche;01/10/2026;32;3200
+Chocolate caliente;01/10/2026;7;3500
+Pandebono;01/10/2026;38;2000
+Croissant;01/10/2026;11;4500
+Torta porción;01/10/2026;7;6000
+Gaseosa 400 ml;01/10/2026;8;3500
+Agua 600 ml;01/10/2026;6;2500
+Café tinto;02/10/2026;39;1800
+Café con leche;02/10/2026;23;3200
+Chocolate caliente;02/10/2026;13;3500
+Pandebono;02/10/2026;37;2000
+Croissant;02/10/2026;10;4500
+Torta porción;02/10/2026;7;6000
+Gaseosa 400 ml;02/10/2026;6;3500
+Agua 600 ml;02/10/2026;7;2500
+Café tinto;03/10/2026;38;1800
+Café con leche;03/10/2026;15;3200
+Chocolate caliente;03/10/2026;8;3500
+Pandebono;03/10/2026;28;2000
+Croissant;03/10/2026;7;4500
+Torta porción;03/10/2026;6;6000
+Gaseosa 400 ml;03/10/2026;6;3500
+Agua 600 ml;03/10/2026;7;2500
+Café tinto;04/10/2026;32;1800
+Café con leche;04/10/2026;12;3200
+Chocolate caliente;04/10/2026;6;3500
+Pandebono;04/10/2026;11;2000
+Croissant;04/10/2026;6;4500
+Torta porción;04/10/2026;3;6000
+Gaseosa 400 ml;04/10/2026;3;3500
+Agua 600 ml;04/10/2026;3;2500
+Café tinto;05/10/2026;42;1800
+Café con leche;05/10/2026;31;3200
+Chocolate caliente;05/10/2026;9;3500
+Pandebono;05/10/2026;28;2000
+Croissant;05/10/2026;9;4500
+Torta porción;05/10/2026;6;6000
+Gaseosa 400 ml;05/10/2026;8;3500
+Agua 600 ml;05/10/2026;6;2500
+Café tinto;06/10/2026;47;1800
+Café con leche;06/10/2026;21;3200
+Chocolate caliente;06/10/2026;6;3500
+Pandebono;06/10/2026;29;2000
+Croissant;06/10/2026;11;4500
+Torta porción;06/10/2026;7;6000
+Gaseosa 400 ml;06/10/2026;7;3500
+Agua 600 ml;06/10/2026;7;2500
+Café tinto;07/10/2026;31;1800
+Café con leche;07/10/2026;26;3200
+Chocolate caliente;07/10/2026;7;3500
+Pandebono;07/10/2026;25;2000
+Croissant;07/10/2026;10;4500
+Torta porción;07/10/2026;5;6000
+Gaseosa 400 ml;07/10/2026;6;3500
+Agua 600 ml;07/10/2026;8;2500
+Café tinto;08/10/2026;36;1800
+Café con leche;08/10/2026;28;3200
+Chocolate caliente;08/10/2026;8;3500
+Pandebono;08/10/2026;35;2000
+Croissant;08/10/2026;10;4500
+Torta porción;08/10/2026;7;6000
+Gaseosa 400 ml;08/10/2026;6;3500
+Agua 600 ml;08/10/2026;6;2500
+Café tinto;09/10/2026;36;1800
+Café con leche;09/10/2026;29;3200
+Chocolate caliente;09/10/2026;7;3500
+Pandebono;09/10/2026;28;2000
+Croissant;09/10/2026;10;4500
+Torta porción;09/10/2026;6;6000
+Gaseosa 400 ml;09/10/2026;6;3500
+Agua 600 ml;09/10/2026;10;2500
+Café tinto;10/10/2026;37;1800
+Café con leche;10/10/2026;24;3200
+Chocolate caliente;10/10/2026;7;3500
+Pandebono;10/10/2026;36;2000
+Croissant;10/10/2026;8;4500
+Torta porción;10/10/2026;5;6000
+Torta de cumpleaños;10/10/2026;1;45000
+Gaseosa 400 ml;10/10/2026;5;3500
+Agua 600 ml;10/10/2026;7;2500
+Café tinto;11/10/2026;27;1800
+Café con leche;11/10/2026;15;3200
+Chocolate caliente;11/10/2026;8;3500
+Pandebono;11/10/2026;18;2000
+Croissant;11/10/2026;8;4500
+Torta porción;11/10/2026;4;6000
+Gaseosa 400 ml;11/10/2026;4;3500
+Agua 600 ml;11/10/2026;4;2500
+Café tinto;12/10/2026;56;1800
+Café con leche;12/10/2026;22;3200
+Chocolate caliente;12/10/2026;8;3500
+Pandebono;12/10/2026;98;2000
+Croissant;12/10/2026;10;4500
+Torta porción;12/10/2026;5;6000
+Gaseosa 400 ml;12/10/2026;6;3500
+Agua 600 ml;12/10/2026;6;2500
+Café tinto;13/10/2026;28;1800
+Café con leche;13/10/2026;61;3200
+Chocolate caliente;13/10/2026;7;3500
+Pandebono;13/10/2026;34;2000
+Croissant;13/10/2026;8;4500
+Torta porción;13/10/2026;6;6000
+Gaseosa 400 ml;13/10/2026;8;3500
+Agua 600 ml;13/10/2026;6;2500
+Café tinto;14/10/2026;41;1800
+Café con leche;14/10/2026;28;3200
+Chocolate caliente;14/10/2026;6;3500
+Pandebono;14/10/2026;29;2000
+Croissant;14/10/2026;6;4500
+Torta porción;14/10/2026;8;6000
+Gaseosa 400 ml;14/10/2026;6;3500
+Agua 600 ml;14/10/2026;8;2500
+Café tinto;15/10/2026;50;1800
+Café con leche;15/10/2026;24;3200
+Chocolate caliente;15/10/2026;10;3500
+Pandebono;15/10/2026;39;2000
+Croissant;15/10/2026;9;4500
+Torta porción;15/10/2026;7;6000
+Gaseosa 400 ml;15/10/2026;7;3500
+Agua 600 ml;15/10/2026;8;2500
+Café tinto;16/10/2026;43;1800
+Café con leche;16/10/2026;31;3200
+Chocolate caliente;16/10/2026;9;3500
+Pandebono;16/10/2026;32;2000
+Croissant;16/10/2026;6;4500
+Torta porción;16/10/2026;6;6000
+Gaseosa 400 ml;16/10/2026;5;3500
+Agua 600 ml;16/10/2026;7;2500
+Café tinto;17/10/2026;47;1800
+Café con leche;17/10/2026;20;3200
+Chocolate caliente;17/10/2026;5;3500
+Pandebono;17/10/2026;27;2000
+Croissant;17/10/2026;7;4500
+Torta porción;17/10/2026;5;6000
+Torta de cumpleaños;17/10/2026;1;45000
+Gaseosa 400 ml;17/10/2026;7;3500
+Agua 600 ml;17/10/2026;6;2500
+Café tinto;18/10/2026;26;1800
+Café con leche;18/10/2026;16;3200
+Chocolate caliente;18/10/2026;5;3500
+Pandebono;18/10/2026;19;2000
+Croissant;18/10/2026;5;4500
+Torta porción;18/10/2026;4;6000
+Gaseosa 400 ml;18/10/2026;3;3500
+Agua 600 ml;18/10/2026;6;2500
+Café tinto;19/10/2026;50;1800
+Café con leche;19/10/2026;31;3200
+Chocolate caliente;19/10/2026;11;3500
+Pandebono;19/10/2026;36;2000
+Croissant;19/10/2026;12;4500
+Torta porción;19/10/2026;7;6000
+Gaseosa 400 ml;19/10/2026;5;3500
+Agua 600 ml;19/10/2026;10;2500
+Café tinto;20/10/2026;35;1800
+Café con leche;20/10/2026;27;3200
+Chocolate caliente;20/10/2026;7;3500
+Pandebono;20/10/2026;24;2000
+Croissant;20/10/2026;6;4500
+Torta porción;20/10/2026;6;6000
+Gaseosa 400 ml;20/10/2026;6;3500
+Agua 600 ml;20/10/2026;7;2500
+Café tinto;21/10/2026;35;1800
+Café con leche;21/10/2026;30;3200
+Chocolate caliente;21/10/2026;8;3500
+Pandebono;21/10/2026;32;2000
+Croissant;21/10/2026;6;4500
+Torta porción;21/10/2026;6;6000
+Gaseosa 400 ml;21/10/2026;5;3500
+Agua 600 ml;21/10/2026;6;2500
+Café tinto;22/10/2026;45;1800
+Café con leche;22/10/2026;24;3200
+Chocolate caliente;22/10/2026;10;3500
+Pandebono;22/10/2026;27;2000
+Croissant;22/10/2026;8;4500
+Torta porción;22/10/2026;5;6000
+Gaseosa 400 ml;22/10/2026;4;3500
+Agua 600 ml;22/10/2026;8;2500
+Café tinto;23/10/2026;40;1800
+Café con leche;23/10/2026;24;3200
+Chocolate caliente;23/10/2026;10;3500
+Pandebono;23/10/2026;27;2000
+Croissant;23/10/2026;10;4500
+Torta porción;23/10/2026;7;6000
+Gaseosa 400 ml;23/10/2026;6;3500
+Agua 600 ml;23/10/2026;10;2500
+Café tinto;24/10/2026;42;1800
+Café con leche;24/10/2026;21;3200
+Chocolate caliente;24/10/2026;7;3500
+Pandebono;24/10/2026;33;2000
+Croissant;24/10/2026;9;4500
+Torta porción;24/10/2026;5;6000
+Gaseosa 400 ml;24/10/2026;4;3500
+Agua 600 ml;24/10/2026;4;2500
+Café tinto;25/10/2026;25;1800
+Café con leche;25/10/2026;24;3200
+Chocolate caliente;25/10/2026;5;3500
+Pandebono;25/10/2026;27;2000
+Croissant;25/10/2026;5;4500
+Torta porción;25/10/2026;2;6000
+Gaseosa 400 ml;25/10/2026;4;3500
+Agua 600 ml;25/10/2026;5;2500
+Café tinto;26/10/2026;47;1800
+Café con leche;26/10/2026;24;3200
+Chocolate caliente;26/10/2026;7;3500
+Pandebono;26/10/2026;31;2000
+Croissant;26/10/2026;14;4500
+Torta porción;26/10/2026;7;6000
+Gaseosa 400 ml;26/10/2026;8;3500
+Agua 600 ml;26/10/2026;7;2500
+Café tinto;27/10/2026;40;1800
+Café con leche;27/10/2026;25;3200
+Chocolate caliente;27/10/2026;6;3500
+Pandebono;27/10/2026;35;2000
+Croissant;27/10/2026;10;4500
+Torta porción;27/10/2026;5;6000
+Gaseosa 400 ml;27/10/2026;7;3500
+Agua 600 ml;27/10/2026;7;2500
+Café tinto;28/10/2026;51;1800
+Café con leche;28/10/2026;28;3200
+Chocolate caliente;28/10/2026;8;3500
+Pandebono;28/10/2026;31;2000
+Croissant;28/10/2026;12;4500
+Torta porción;28/10/2026;5;6000
+Gaseosa 400 ml;28/10/2026;5;3500
+Agua 600 ml;28/10/2026;7;2500
+Café tinto;29/10/2026;47;1800
+Café con leche;29/10/2026;27;3200
+Chocolate caliente;29/10/2026;9;3500
+Pandebono;29/10/2026;35;2000
+Croissant;29/10/2026;6;4500
+Torta porción;29/10/2026;5;6000
+Gaseosa 400 ml;29/10/2026;4;3500
+Agua 600 ml;29/10/2026;6;2500
+Café tinto;30/10/2026;38;1800
+Café con leche;30/10/2026;26;3200
+Chocolate caliente;30/10/2026;6;3500
+Pandebono;30/10/2026;33;2000
+Croissant;30/10/2026;12;4500
+Torta porción;30/10/2026;7;6000
+Gaseosa 400 ml;30/10/2026;6;3500
+Agua 600 ml;30/10/2026;11;2500
+Café tinto;31/10/2026;29;1800
+Café con leche;31/10/2026;20;3200
+Chocolate caliente;31/10/2026;5;3500
+Pandebono;31/10/2026;32;2000
+Croissant;31/10/2026;9;4500
+Torta porción;31/10/2026;5;6000
+Torta de cumpleaños;31/10/2026;1;45000
+Gaseosa 400 ml;31/10/2026;5;3500
+Agua 600 ml;31/10/2026;6;2500
+Café tinto;01/11/2026;17;1800
+Café con leche;01/11/2026;22;3200
+Chocolate caliente;01/11/2026;5;3500
+Pandebono;01/11/2026;18;2000
+Croissant;01/11/2026;6;4500
+Torta porción;01/11/2026;4;6000
+Gaseosa 400 ml;01/11/2026;3;3500
+Agua 600 ml;01/11/2026;6;2500
+Café tinto;02/11/2026;47;1800
+Café con leche;02/11/2026;30;3200
+Chocolate caliente;02/11/2026;6;3500
+Pandebono;02/11/2026;36;2000
+Croissant;02/11/2026;10;4500
+Torta porción;02/11/2026;6;6000
+Gaseosa 400 ml;02/11/2026;6;3500
+Agua 600 ml;02/11/2026;9;2500
+Café tinto;03/11/2026;45;1800
+Café con leche;03/11/2026;24;3200
+Chocolate caliente;03/11/2026;7;3500
+Pandebono;03/11/2026;30;2000
+Croissant;03/11/2026;7;4500
+Torta porción;03/11/2026;6;6000
+Gaseosa 400 ml;03/11/2026;6;3500
+Agua 600 ml;03/11/2026;5;2500
+Café tinto;04/11/2026;47;1800
+Café con leche;04/11/2026;21;3200
+Chocolate caliente;04/11/2026;6;3500
+Pandebono;04/11/2026;104;2000
+Croissant;04/11/2026;8;4500
+Torta porción;04/11/2026;6;6000
+Gaseosa 400 ml;04/11/2026;5;3500
+Agua 600 ml;04/11/2026;8;2500
+Café tinto;05/11/2026;32;1800
+Café con leche;05/11/2026;48;3200
+Chocolate caliente;05/11/2026;6;3500
+Pandebono;05/11/2026;25;2000
+Croissant;05/11/2026;9;4500
+Torta porción;05/11/2026;7;6000
+Gaseosa 400 ml;05/11/2026;6;3500
+Agua 600 ml;05/11/2026;8;2500
+Café tinto;06/11/2026;32;1800
+Café con leche;06/11/2026;30;3200
+Chocolate caliente;06/11/2026;6;3500
+Pandebono;06/11/2026;38;2000
+Croissant;06/11/2026;5;4500
+Torta porción;06/11/2026;7;6000
+Gaseosa 400 ml;06/11/2026;6;3500
+Agua 600 ml;06/11/2026;8;2500
+Café tinto;07/11/2026;41;1800
+Café con leche;07/11/2026;25;3200
+Chocolate caliente;07/11/2026;8;3500
+Pandebono;07/11/2026;32;2000
+Croissant;07/11/2026;5;4500
+Torta porción;07/11/2026;5;6000
+Gaseosa 400 ml;07/11/2026;6;3500
+Agua 600 ml;07/11/2026;8;2500

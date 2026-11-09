@@ -1,0 +1,801 @@
+﻿producto;fecha;cantidad;precio
+Empanada;13/07/2026;28;2500
+Pastel de pollo;13/07/2026;22;3000
+Arepa con queso;13/07/2026;9;2800
+Gaseosa 400 ml;13/07/2026;24;3000
+Agua 600 ml;13/07/2026;13;2000
+Jugo en caja;13/07/2026;17;2200
+Papas fritas;13/07/2026;13;2500
+Chocolatina;13/07/2026;20;1200
+Galletas de avena;13/07/2026;8;1800
+Yogur;13/07/2026;6;2600
+Empanada;14/07/2026;36;2500
+Pastel de pollo;14/07/2026;25;3000
+Arepa con queso;14/07/2026;10;2800
+Gaseosa 400 ml;14/07/2026;18;3000
+Agua 600 ml;14/07/2026;12;2000
+Jugo en caja;14/07/2026;16;2200
+Papas fritas;14/07/2026;9;2500
+Chocolatina;14/07/2026;19;1200
+Galletas de avena;14/07/2026;6;1800
+Yogur;14/07/2026;8;2600
+Empanada;15/07/2026;28;2500
+Pastel de pollo;15/07/2026;15;3000
+Arepa con queso;15/07/2026;13;2800
+Gaseosa 400 ml;15/07/2026;17;3000
+Agua 600 ml;15/07/2026;17;2000
+Jugo en caja;15/07/2026;15;2200
+Papas fritas;15/07/2026;12;2500
+Chocolatina;15/07/2026;23;1200
+Galletas de avena;15/07/2026;8;1800
+Yogur;15/07/2026;8;2600
+Empanada;16/07/2026;40;2500
+Pastel de pollo;16/07/2026;14;3000
+Arepa con queso;16/07/2026;12;2800
+Gaseosa 400 ml;16/07/2026;26;3000
+Agua 600 ml;16/07/2026;11;2000
+Jugo en caja;16/07/2026;18;2200
+Papas fritas;16/07/2026;11;2500
+Chocolatina;16/07/2026;19;1200
+Galletas de avena;16/07/2026;9;1800
+Yogur;16/07/2026;6;2600
+Empanada;17/07/2026;45;2500
+Pastel de pollo;17/07/2026;21;3000
+Arepa con queso;17/07/2026;12;2800
+Gaseosa 400 ml;17/07/2026;28;3000
+Agua 600 ml;17/07/2026;20;2000
+Jugo en caja;17/07/2026;12;2200
+Papas fritas;17/07/2026;12;2500
+Chocolatina;17/07/2026;27;1200
+Galletas de avena;17/07/2026;10;1800
+Yogur;17/07/2026;5;2600
+Empanada;20/07/2026;32;2500
+Pastel de pollo;20/07/2026;19;3000
+Arepa con queso;20/07/2026;13;2800
+Gaseosa 400 ml;20/07/2026;21;3000
+Agua 600 ml;20/07/2026;8;2000
+Jugo en caja;20/07/2026;19;2200
+Papas fritas;20/07/2026;10;2500
+Chocolatina;20/07/2026;21;1200
+Galletas de avena;20/07/2026;10;1800
+Yogur;20/07/2026;7;2600
+Empanada;21/07/2026;34;2500
+Pastel de pollo;21/07/2026;19;3000
+Arepa con queso;21/07/2026;14;2800
+Gaseosa 400 ml;21/07/2026;22;3000
+Agua 600 ml;21/07/2026;15;2000
+Jugo en caja;21/07/2026;15;2200
+Papas fritas;21/07/2026;11;2500
+Chocolatina;21/07/2026;20;1200
+Galletas de avena;21/07/2026;8;1800
+Yogur;21/07/2026;6;2600
+Empanada;22/07/2026;38;2500
+Pastel de pollo;22/07/2026;20;3000
+Arepa con queso;22/07/2026;10;2800
+Gaseosa 400 ml;22/07/2026;14;3000
+Agua 600 ml;22/07/2026;14;2000
+Jugo en caja;22/07/2026;15;2200
+Papas fritas;22/07/2026;11;2500
+Chocolatina;22/07/2026;26;1200
+Galletas de avena;22/07/2026;7;1800
+Yogur;22/07/2026;6;2600
+Empanada;23/07/2026;39;2500
+Pastel de pollo;23/07/2026;17;3000
+Arepa con queso;23/07/2026;13;2800
+Gaseosa 400 ml;23/07/2026;23;3000
+Agua 600 ml;23/07/2026;13;2000
+Jugo en caja;23/07/2026;15;2200
+Papas fritas;23/07/2026;12;2500
+Chocolatina;23/07/2026;26;1200
+Galletas de avena;23/07/2026;8;1800
+Yogur;23/07/2026;6;2600
+Empanada;24/07/2026;36;2500
+Pastel de pollo;24/07/2026;27;3000
+Arepa con queso;24/07/2026;11;2800
+Gaseosa 400 ml;24/07/2026;23;3000
+Agua 600 ml;24/07/2026;20;2000
+Jugo en caja;24/07/2026;23;2200
+Papas fritas;24/07/2026;9;2500
+Chocolatina;24/07/2026;24;1200
+Galletas de avena;24/07/2026;9;1800
+Yogur;24/07/2026;8;2600
+Empanada;27/07/2026;33;2500
+Pastel de pollo;27/07/2026;17;3000
+Arepa con queso;27/07/2026;12;2800
+Gaseosa 400 ml;27/07/2026;18;3000
+Agua 600 ml;27/07/2026;13;2000
+Jugo en caja;27/07/2026;17;2200
+Papas fritas;27/07/2026;7;2500
+Chocolatina;27/07/2026;29;1200
+Galletas de avena;27/07/2026;8;1800
+Yogur;27/07/2026;5;2600
+Empanada;28/07/2026;51;2500
+Pastel de pollo;28/07/2026;13;3000
+Arepa con queso;28/07/2026;7;2800
+Gaseosa 400 ml;28/07/2026;17;3000
+Agua 600 ml;28/07/2026;9;2000
+Jugo en caja;28/07/2026;14;2200
+Papas fritas;28/07/2026;10;2500
+Chocolatina;28/07/2026;21;1200
+Galletas de avena;28/07/2026;7;1800
+Yogur;28/07/2026;5;2600
+Empanada;29/07/2026;43;2500
+Pastel de pollo;29/07/2026;27;3000
+Arepa con queso;29/07/2026;13;2800
+Gaseosa 400 ml;29/07/2026;26;3000
+Agua 600 ml;29/07/2026;16;2000
+Jugo en caja;29/07/2026;18;2200
+Papas fritas;29/07/2026;8;2500
+Chocolatina;29/07/2026;20;1200
+Galletas de avena;29/07/2026;9;1800
+Yogur;29/07/2026;7;2600
+Empanada;30/07/2026;34;2500
+Pastel de pollo;30/07/2026;19;3000
+Arepa con queso;30/07/2026;9;2800
+Gaseosa 400 ml;30/07/2026;24;3000
+Agua 600 ml;30/07/2026;17;2000
+Jugo en caja;30/07/2026;12;2200
+Papas fritas;30/07/2026;11;2500
+Chocolatina;30/07/2026;24;1200
+Galletas de avena;30/07/2026;9;1800
+Yogur;30/07/2026;5;2600
+Empanada;31/07/2026;52;2500
+Pastel de pollo;31/07/2026;20;3000
+Arepa con queso;31/07/2026;13;2800
+Gaseosa 400 ml;31/07/2026;18;3000
+Agua 600 ml;31/07/2026;15;2000
+Jugo en caja;31/07/2026;19;2200
+Papas fritas;31/07/2026;11;2500
+Chocolatina;31/07/2026;20;1200
+Galletas de avena;31/07/2026;10;1800
+Yogur;31/07/2026;6;2600
+Empanada;03/08/2026;91;2500
+Pastel de pollo;03/08/2026;22;3000
+Arepa con queso;03/08/2026;17;2800
+Gaseosa 400 ml;03/08/2026;20;3000
+Agua 600 ml;03/08/2026;17;2000
+Jugo en caja;03/08/2026;17;2200
+Papas fritas;03/08/2026;6;2500
+Chocolatina;03/08/2026;22;1200
+Galletas de avena;03/08/2026;7;1800
+Yogur;03/08/2026;5;2600
+Empanada;04/08/2026;39;2500
+Pastel de pollo;04/08/2026;21;3000
+Arepa con queso;04/08/2026;14;2800
+Gaseosa 400 ml;04/08/2026;43;3000
+Agua 600 ml;04/08/2026;17;2000
+Jugo en caja;04/08/2026;16;2200
+Papas fritas;04/08/2026;9;2500
+Chocolatina;04/08/2026;21;1200
+Galletas de avena;04/08/2026;8;1800
+Yogur;04/08/2026;6;2600
+Empanada;05/08/2026;47;2500
+Pastel de pollo;05/08/2026;16;3000
+Arepa con queso;05/08/2026;11;2800
+Gaseosa 400 ml;05/08/2026;27;3000
+Agua 600 ml;05/08/2026;12;2000
+Jugo en caja;05/08/2026;10;2200
+Papas fritas;05/08/2026;12;2500
+Chocolatina;05/08/2026;18;1200
+Galletas de avena;05/08/2026;10;1800
+Yogur;05/08/2026;5;2600
+Empanada;06/08/2026;35;2500
+Pastel de pollo;06/08/2026;17;3000
+Arepa con queso;06/08/2026;10;2800
+Gaseosa 400 ml;06/08/2026;27;3000
+Agua 600 ml;06/08/2026;17;2000
+Jugo en caja;06/08/2026;19;2200
+Papas fritas;06/08/2026;10;2500
+Chocolatina;06/08/2026;17;1200
+Galletas de avena;06/08/2026;9;1800
+Yogur;06/08/2026;6;2600
+Empanada;07/08/2026;37;2500
+Pastel de pollo;07/08/2026;24;3000
+Arepa con queso;07/08/2026;16;2800
+Gaseosa 400 ml;07/08/2026;25;3000
+Agua 600 ml;07/08/2026;19;2000
+Jugo en caja;07/08/2026;18;2200
+Papas fritas;07/08/2026;11;2500
+Chocolatina;07/08/2026;27;1200
+Galletas de avena;07/08/2026;10;1800
+Yogur;07/08/2026;5;2600
+Empanada;10/08/2026;46;2500
+Pastel de pollo;10/08/2026;16;3000
+Arepa con queso;10/08/2026;8;2800
+Gaseosa 400 ml;10/08/2026;18;3000
+Agua 600 ml;10/08/2026;14;2000
+Jugo en caja;10/08/2026;7;2200
+Papas fritas;10/08/2026;10;2500
+Chocolatina;10/08/2026;23;1200
+Galletas de avena;10/08/2026;6;1800
+Yogur;10/08/2026;6;2600
+Empanada;11/08/2026;37;2500
+Pastel de pollo;11/08/2026;15;3000
+Arepa con queso;11/08/2026;11;2800
+Gaseosa 400 ml;11/08/2026;20;3000
+Agua 600 ml;11/08/2026;16;2000
+Jugo en caja;11/08/2026;21;2200
+Papas fritas;11/08/2026;6;2500
+Chocolatina;11/08/2026;18;1200
+Galletas de avena;11/08/2026;6;1800
+Yogur;11/08/2026;5;2600
+Empanada;12/08/2026;36;2500
+Pastel de pollo;12/08/2026;17;3000
+Arepa con queso;12/08/2026;13;2800
+Gaseosa 400 ml;12/08/2026;22;3000
+Agua 600 ml;12/08/2026;12;2000
+Jugo en caja;12/08/2026;18;2200
+Papas fritas;12/08/2026;12;2500
+Chocolatina;12/08/2026;22;1200
+Galletas de avena;12/08/2026;9;1800
+Yogur;12/08/2026;7;2600
+Empanada;13/08/2026;36;2500
+Pastel de pollo;13/08/2026;16;3000
+Arepa con queso;13/08/2026;11;2800
+Gaseosa 400 ml;13/08/2026;25;3000
+Agua 600 ml;13/08/2026;15;2000
+Jugo en caja;13/08/2026;12;2200
+Papas fritas;13/08/2026;9;2500
+Chocolatina;13/08/2026;17;1200
+Galletas de avena;13/08/2026;9;1800
+Yogur;13/08/2026;5;2600
+Empanada;14/08/2026;55;2500
+Pastel de pollo;14/08/2026;24;3000
+Arepa con queso;14/08/2026;16;2800
+Gaseosa 400 ml;14/08/2026;29;3000
+Agua 600 ml;14/08/2026;20;2000
+Jugo en caja;14/08/2026;13;2200
+Papas fritas;14/08/2026;11;2500
+Chocolatina;14/08/2026;20;1200
+Galletas de avena;14/08/2026;9;1800
+Yogur;14/08/2026;9;2600
+Empanada;17/08/2026;37;2500
+Pastel de pollo;17/08/2026;16;3000
+Arepa con queso;17/08/2026;14;2800
+Gaseosa 400 ml;17/08/2026;26;3000
+Agua 600 ml;17/08/2026;17;2000
+Jugo en caja;17/08/2026;21;2200
+Papas fritas;17/08/2026;10;2500
+Chocolatina;17/08/2026;23;1200
+Galletas de avena;17/08/2026;6;1800
+Yogur;17/08/2026;7;2600
+Empanada;18/08/2026;37;2500
+Pastel de pollo;18/08/2026;20;3000
+Arepa con queso;18/08/2026;15;2800
+Gaseosa 400 ml;18/08/2026;20;3000
+Agua 600 ml;18/08/2026;13;2000
+Jugo en caja;18/08/2026;17;2200
+Papas fritas;18/08/2026;10;2500
+Chocolatina;18/08/2026;25;1200
+Galletas de avena;18/08/2026;6;1800
+Yogur;18/08/2026;6;2600
+Empanada;19/08/2026;33;2500
+Pastel de pollo;19/08/2026;19;3000
+Arepa con queso;19/08/2026;10;2800
+Gaseosa 400 ml;19/08/2026;25;3000
+Agua 600 ml;19/08/2026;17;2000
+Jugo en caja;19/08/2026;18;2200
+Papas fritas;19/08/2026;8;2500
+Chocolatina;19/08/2026;23;1200
+Galletas de avena;19/08/2026;6;1800
+Yogur;19/08/2026;7;2600
+Empanada;20/08/2026;40;2500
+Pastel de pollo;20/08/2026;16;3000
+Arepa con queso;20/08/2026;17;2800
+Gaseosa 400 ml;20/08/2026;21;3000
+Agua 600 ml;20/08/2026;15;2000
+Jugo en caja;20/08/2026;11;2200
+Papas fritas;20/08/2026;11;2500
+Chocolatina;20/08/2026;17;1200
+Galletas de avena;20/08/2026;8;1800
+Yogur;20/08/2026;7;2600
+Empanada;21/08/2026;34;2500
+Pastel de pollo;21/08/2026;15;3000
+Arepa con queso;21/08/2026;17;2800
+Gaseosa 400 ml;21/08/2026;27;3000
+Agua 600 ml;21/08/2026;20;2000
+Jugo en caja;21/08/2026;25;2200
+Papas fritas;21/08/2026;14;2500
+Chocolatina;21/08/2026;24;1200
+Galletas de avena;21/08/2026;9;1800
+Yogur;21/08/2026;7;2600
+Empanada;24/08/2026;107;2500
+Pastel de pollo;24/08/2026;20;3000
+Arepa con queso;24/08/2026;12;2800
+Gaseosa 400 ml;24/08/2026;20;3000
+Agua 600 ml;24/08/2026;13;2000
+Jugo en caja;24/08/2026;20;2200
+Papas fritas;24/08/2026;11;2500
+Chocolatina;24/08/2026;15;1200
+Galletas de avena;24/08/2026;8;1800
+Yogur;24/08/2026;4;2600
+Empanada;25/08/2026;40;2500
+Pastel de pollo;25/08/2026;19;3000
+Arepa con queso;25/08/2026;11;2800
+Gaseosa 400 ml;25/08/2026;41;3000
+Agua 600 ml;25/08/2026;16;2000
+Jugo en caja;25/08/2026;20;2200
+Papas fritas;25/08/2026;8;2500
+Chocolatina;25/08/2026;18;1200
+Galletas de avena;25/08/2026;9;1800
+Yogur;25/08/2026;6;2600
+Empanada;26/08/2026;32;2500
+Pastel de pollo;26/08/2026;22;3000
+Arepa con queso;26/08/2026;16;2800
+Gaseosa 400 ml;26/08/2026;23;3000
+Agua 600 ml;26/08/2026;12;2000
+Jugo en caja;26/08/2026;8;2200
+Papas fritas;26/08/2026;12;2500
+Chocolatina;26/08/2026;19;1200
+Galletas de avena;26/08/2026;10;1800
+Yogur;26/08/2026;7;2600
+Empanada;27/08/2026;22;2500
+Pastel de pollo;27/08/2026;20;3000
+Arepa con queso;27/08/2026;12;2800
+Gaseosa 400 ml;27/08/2026;26;3000
+Agua 600 ml;27/08/2026;16;2000
+Jugo en caja;27/08/2026;13;2200
+Papas fritas;27/08/2026;10;2500
+Chocolatina;27/08/2026;27;1200
+Galletas de avena;27/08/2026;8;1800
+Yogur;27/08/2026;4;2600
+Empanada;28/08/2026;48;2500
+Pastel de pollo;28/08/2026;22;3000
+Arepa con queso;28/08/2026;15;2800
+Gaseosa 400 ml;28/08/2026;22;3000
+Agua 600 ml;28/08/2026;21;2000
+Jugo en caja;28/08/2026;17;2200
+Papas fritas;28/08/2026;12;2500
+Chocolatina;28/08/2026;19;1200
+Galletas de avena;28/08/2026;8;1800
+Yogur;28/08/2026;6;2600
+Empanada;31/08/2026;30;2500
+Pastel de pollo;31/08/2026;21;3000
+Arepa con queso;31/08/2026;13;2800
+Gaseosa 400 ml;31/08/2026;19;3000
+Agua 600 ml;31/08/2026;15;2000
+Jugo en caja;31/08/2026;14;2200
+Papas fritas;31/08/2026;9;2500
+Chocolatina;31/08/2026;17;1200
+Galletas de avena;31/08/2026;8;1800
+Yogur;31/08/2026;5;2600
+Empanada;01/09/2026;32;2500
+Pastel de pollo;01/09/2026;22;3000
+Arepa con queso;01/09/2026;14;2800
+Gaseosa 400 ml;01/09/2026;21;3000
+Agua 600 ml;01/09/2026;19;2000
+Jugo en caja;01/09/2026;15;2200
+Papas fritas;01/09/2026;6;2500
+Chocolatina;01/09/2026;18;1200
+Galletas de avena;01/09/2026;7;1800
+Yogur;01/09/2026;8;2600
+Empanada;02/09/2026;99;2500
+Pastel de pollo;02/09/2026;24;3000
+Arepa con queso;02/09/2026;10;2800
+Gaseosa 400 ml;02/09/2026;18;3000
+Agua 600 ml;02/09/2026;9;2000
+Jugo en caja;02/09/2026;18;2200
+Papas fritas;02/09/2026;10;2500
+Chocolatina;02/09/2026;19;1200
+Galletas de avena;02/09/2026;5;1800
+Yogur;02/09/2026;6;2600
+Empanada;03/09/2026;39;2500
+Pastel de pollo;03/09/2026;16;3000
+Arepa con queso;03/09/2026;14;2800
+Gaseosa 400 ml;03/09/2026;41;3000
+Agua 600 ml;03/09/2026;18;2000
+Jugo en caja;03/09/2026;17;2200
+Papas fritas;03/09/2026;11;2500
+Chocolatina;03/09/2026;18;1200
+Galletas de avena;03/09/2026;6;1800
+Yogur;03/09/2026;5;2600
+Empanada;04/09/2026;44;2500
+Pastel de pollo;04/09/2026;26;3000
+Arepa con queso;04/09/2026;11;2800
+Gaseosa 400 ml;04/09/2026;34;3000
+Agua 600 ml;04/09/2026;16;2000
+Jugo en caja;04/09/2026;24;2200
+Papas fritas;04/09/2026;13;2500
+Chocolatina;04/09/2026;32;1200
+Galletas de avena;04/09/2026;8;1800
+Yogur;04/09/2026;8;2600
+Empanada;07/09/2026;28;2500
+Pastel de pollo;07/09/2026;19;3000
+Arepa con queso;07/09/2026;14;2800
+Gaseosa 400 ml;07/09/2026;23;3000
+Agua 600 ml;07/09/2026;15;2000
+Jugo en caja;07/09/2026;13;2200
+Papas fritas;07/09/2026;8;2500
+Chocolatina;07/09/2026;22;1200
+Galletas de avena;07/09/2026;8;1800
+Yogur;07/09/2026;5;2600
+Empanada;08/09/2026;45;2500
+Pastel de pollo;08/09/2026;15;3000
+Arepa con queso;08/09/2026;12;2800
+Gaseosa 400 ml;08/09/2026;25;3000
+Agua 600 ml;08/09/2026;15;2000
+Jugo en caja;08/09/2026;13;2200
+Papas fritas;08/09/2026;10;2500
+Chocolatina;08/09/2026;18;1200
+Galletas de avena;08/09/2026;7;1800
+Yogur;08/09/2026;7;2600
+Empanada;09/09/2026;42;2500
+Pastel de pollo;09/09/2026;22;3000
+Arepa con queso;09/09/2026;10;2800
+Gaseosa 400 ml;09/09/2026;25;3000
+Agua 600 ml;09/09/2026;11;2000
+Jugo en caja;09/09/2026;18;2200
+Papas fritas;09/09/2026;10;2500
+Chocolatina;09/09/2026;23;1200
+Galletas de avena;09/09/2026;11;1800
+Yogur;09/09/2026;6;2600
+Empanada;10/09/2026;39;2500
+Pastel de pollo;10/09/2026;16;3000
+Arepa con queso;10/09/2026;17;2800
+Gaseosa 400 ml;10/09/2026;22;3000
+Agua 600 ml;10/09/2026;13;2000
+Jugo en caja;10/09/2026;21;2200
+Papas fritas;10/09/2026;11;2500
+Chocolatina;10/09/2026;18;1200
+Galletas de avena;10/09/2026;8;1800
+Yogur;10/09/2026;5;2600
+Empanada;11/09/2026;42;2500
+Pastel de pollo;11/09/2026;20;3000
+Arepa con queso;11/09/2026;18;2800
+Gaseosa 400 ml;11/09/2026;27;3000
+Agua 600 ml;11/09/2026;18;2000
+Jugo en caja;11/09/2026;17;2200
+Papas fritas;11/09/2026;10;2500
+Chocolatina;11/09/2026;25;1200
+Galletas de avena;11/09/2026;11;1800
+Yogur;11/09/2026;5;2600
+Empanada;14/09/2026;34;2500
+Pastel de pollo;14/09/2026;15;3000
+Arepa con queso;14/09/2026;17;2800
+Gaseosa 400 ml;14/09/2026;21;3000
+Agua 600 ml;14/09/2026;14;2000
+Jugo en caja;14/09/2026;17;2200
+Papas fritas;14/09/2026;10;2500
+Chocolatina;14/09/2026;25;1200
+Galletas de avena;14/09/2026;9;1800
+Yogur;14/09/2026;7;2600
+Empanada;15/09/2026;30;2500
+Pastel de pollo;15/09/2026;18;3000
+Arepa con queso;15/09/2026;16;2800
+Gaseosa 400 ml;15/09/2026;17;3000
+Agua 600 ml;15/09/2026;13;2000
+Jugo en caja;15/09/2026;15;2200
+Papas fritas;15/09/2026;10;2500
+Chocolatina;15/09/2026;17;1200
+Galletas de avena;15/09/2026;8;1800
+Yogur;15/09/2026;7;2600
+Empanada;16/09/2026;43;2500
+Pastel de pollo;16/09/2026;19;3000
+Arepa con queso;16/09/2026;13;2800
+Gaseosa 400 ml;16/09/2026;25;3000
+Agua 600 ml;16/09/2026;16;2000
+Jugo en caja;16/09/2026;21;2200
+Papas fritas;16/09/2026;15;2500
+Chocolatina;16/09/2026;17;1200
+Galletas de avena;16/09/2026;9;1800
+Yogur;16/09/2026;7;2600
+Empanada;17/09/2026;37;2500
+Pastel de pollo;17/09/2026;23;3000
+Arepa con queso;17/09/2026;13;2800
+Gaseosa 400 ml;17/09/2026;15;3000
+Agua 600 ml;17/09/2026;12;2000
+Jugo en caja;17/09/2026;14;2200
+Papas fritas;17/09/2026;12;2500
+Chocolatina;17/09/2026;17;1200
+Galletas de avena;17/09/2026;9;1800
+Yogur;17/09/2026;6;2600
+Empanada;18/09/2026;52;2500
+Pastel de pollo;18/09/2026;21;3000
+Arepa con queso;18/09/2026;14;2800
+Gaseosa 400 ml;18/09/2026;31;3000
+Agua 600 ml;18/09/2026;18;2000
+Jugo en caja;18/09/2026;18;2200
+Papas fritas;18/09/2026;8;2500
+Chocolatina;18/09/2026;28;1200
+Galletas de avena;18/09/2026;11;1800
+Yogur;18/09/2026;7;2600
+Empanada;21/09/2026;39;2500
+Pastel de pollo;21/09/2026;19;3000
+Arepa con queso;21/09/2026;10;2800
+Gaseosa 400 ml;21/09/2026;17;3000
+Agua 600 ml;21/09/2026;16;2000
+Jugo en caja;21/09/2026;15;2200
+Papas fritas;21/09/2026;11;2500
+Chocolatina;21/09/2026;25;1200
+Galletas de avena;21/09/2026;7;1800
+Yogur;21/09/2026;7;2600
+Empanada;22/09/2026;37;2500
+Pastel de pollo;22/09/2026;15;3000
+Arepa con queso;22/09/2026;15;2800
+Gaseosa 400 ml;22/09/2026;26;3000
+Agua 600 ml;22/09/2026;12;2000
+Jugo en caja;22/09/2026;13;2200
+Papas fritas;22/09/2026;9;2500
+Chocolatina;22/09/2026;18;1200
+Galletas de avena;22/09/2026;9;1800
+Yogur;22/09/2026;6;2600
+Empanada;23/09/2026;28;2500
+Pastel de pollo;23/09/2026;14;3000
+Arepa con queso;23/09/2026;13;2800
+Gaseosa 400 ml;23/09/2026;26;3000
+Agua 600 ml;23/09/2026;16;2000
+Jugo en caja;23/09/2026;20;2200
+Papas fritas;23/09/2026;12;2500
+Chocolatina;23/09/2026;17;1200
+Galletas de avena;23/09/2026;9;1800
+Yogur;23/09/2026;6;2600
+Empanada;24/09/2026;32;2500
+Pastel de pollo;24/09/2026;19;3000
+Arepa con queso;24/09/2026;11;2800
+Gaseosa 400 ml;24/09/2026;28;3000
+Agua 600 ml;24/09/2026;12;2000
+Jugo en caja;24/09/2026;15;2200
+Papas fritas;24/09/2026;11;2500
+Chocolatina;24/09/2026;22;1200
+Galletas de avena;24/09/2026;8;1800
+Yogur;24/09/2026;7;2600
+Empanada;25/09/2026;35;2500
+Pastel de pollo;25/09/2026;29;3000
+Arepa con queso;25/09/2026;9;2800
+Gaseosa 400 ml;25/09/2026;25;3000
+Agua 600 ml;25/09/2026;19;2000
+Jugo en caja;25/09/2026;18;2200
+Papas fritas;25/09/2026;11;2500
+Chocolatina;25/09/2026;26;1200
+Galletas de avena;25/09/2026;7;1800
+Yogur;25/09/2026;8;2600
+Empanada;28/09/2026;27;2500
+Pastel de pollo;28/09/2026;20;3000
+Arepa con queso;28/09/2026;15;2800
+Gaseosa 400 ml;28/09/2026;22;3000
+Agua 600 ml;28/09/2026;16;2000
+Jugo en caja;28/09/2026;17;2200
+Papas fritas;28/09/2026;12;2500
+Chocolatina;28/09/2026;19;1200
+Galletas de avena;28/09/2026;10;1800
+Yogur;28/09/2026;8;2600
+Empanada;29/09/2026;35;2500
+Pastel de pollo;29/09/2026;16;3000
+Arepa con queso;29/09/2026;13;2800
+Gaseosa 400 ml;29/09/2026;25;3000
+Agua 600 ml;29/09/2026;11;2000
+Jugo en caja;29/09/2026;24;2200
+Papas fritas;29/09/2026;13;2500
+Chocolatina;29/09/2026;27;1200
+Galletas de avena;29/09/2026;8;1800
+Yogur;29/09/2026;5;2600
+Empanada;30/09/2026;30;2500
+Pastel de pollo;30/09/2026;23;3000
+Arepa con queso;30/09/2026;10;2800
+Gaseosa 400 ml;30/09/2026;20;3000
+Agua 600 ml;30/09/2026;15;2000
+Jugo en caja;30/09/2026;18;2200
+Papas fritas;30/09/2026;12;2500
+Chocolatina;30/09/2026;14;1200
+Galletas de avena;30/09/2026;8;1800
+Yogur;30/09/2026;7;2600
+Empanada;01/10/2026;82;2500
+Pastel de pollo;01/10/2026;19;3000
+Arepa con queso;01/10/2026;14;2800
+Gaseosa 400 ml;01/10/2026;22;3000
+Agua 600 ml;01/10/2026;11;2000
+Jugo en caja;01/10/2026;17;2200
+Papas fritas;01/10/2026;8;2500
+Chocolatina;01/10/2026;19;1200
+Galletas de avena;01/10/2026;8;1800
+Yogur;01/10/2026;6;2600
+Empanada;02/10/2026;49;2500
+Pastel de pollo;02/10/2026;25;3000
+Arepa con queso;02/10/2026;11;2800
+Gaseosa 400 ml;02/10/2026;43;3000
+Agua 600 ml;02/10/2026;15;2000
+Jugo en caja;02/10/2026;19;2200
+Papas fritas;02/10/2026;16;2500
+Chocolatina;02/10/2026;21;1200
+Galletas de avena;02/10/2026;11;1800
+Yogur;02/10/2026;7;2600
+Empanada;12/10/2026;27;2500
+Pastel de pollo;12/10/2026;13;3000
+Arepa con queso;12/10/2026;13;2800
+Gaseosa 400 ml;12/10/2026;22;3000
+Agua 600 ml;12/10/2026;12;2000
+Jugo en caja;12/10/2026;17;2200
+Papas fritas;12/10/2026;10;2500
+Chocolatina;12/10/2026;20;1200
+Galletas de avena;12/10/2026;8;1800
+Yogur;12/10/2026;6;2600
+Empanada;13/10/2026;23;2500
+Pastel de pollo;13/10/2026;23;3000
+Arepa con queso;13/10/2026;10;2800
+Gaseosa 400 ml;13/10/2026;25;3000
+Agua 600 ml;13/10/2026;14;2000
+Jugo en caja;13/10/2026;13;2200
+Papas fritas;13/10/2026;9;2500
+Chocolatina;13/10/2026;19;1200
+Galletas de avena;13/10/2026;9;1800
+Yogur;13/10/2026;6;2600
+Empanada;14/10/2026;103;2500
+Pastel de pollo;14/10/2026;20;3000
+Arepa con queso;14/10/2026;10;2800
+Gaseosa 400 ml;14/10/2026;14;3000
+Agua 600 ml;14/10/2026;18;2000
+Jugo en caja;14/10/2026;14;2200
+Papas fritas;14/10/2026;10;2500
+Chocolatina;14/10/2026;24;1200
+Galletas de avena;14/10/2026;6;1800
+Yogur;14/10/2026;5;2600
+Empanada;15/10/2026;78;2500
+Pastel de pollo;15/10/2026;22;3000
+Arepa con queso;15/10/2026;13;2800
+Gaseosa 400 ml;15/10/2026;45;3000
+Agua 600 ml;15/10/2026;12;2000
+Jugo en caja;15/10/2026;13;2200
+Papas fritas;15/10/2026;13;2500
+Chocolatina;15/10/2026;24;1200
+Galletas de avena;15/10/2026;9;1800
+Yogur;15/10/2026;6;2600
+Empanada;16/10/2026;108;2500
+Pastel de pollo;16/10/2026;25;3000
+Arepa con queso;16/10/2026;14;2800
+Gaseosa 400 ml;16/10/2026;55;3000
+Agua 600 ml;16/10/2026;16;2000
+Jugo en caja;16/10/2026;21;2200
+Papas fritas;16/10/2026;16;2500
+Chocolatina;16/10/2026;25;1200
+Galletas de avena;16/10/2026;11;1800
+Yogur;16/10/2026;7;2600
+Empanada;19/10/2026;44;2500
+Pastel de pollo;19/10/2026;22;3000
+Arepa con queso;19/10/2026;12;2800
+Gaseosa 400 ml;19/10/2026;25;3000
+Agua 600 ml;19/10/2026;14;2000
+Jugo en caja;19/10/2026;17;2200
+Papas fritas;19/10/2026;11;2500
+Chocolatina;19/10/2026;25;1200
+Galletas de avena;19/10/2026;12;1800
+Yogur;19/10/2026;6;2600
+Empanada;20/10/2026;110;2500
+Pastel de pollo;20/10/2026;17;3000
+Arepa con queso;20/10/2026;10;2800
+Gaseosa 400 ml;20/10/2026;23;3000
+Agua 600 ml;20/10/2026;16;2000
+Jugo en caja;20/10/2026;12;2200
+Papas fritas;20/10/2026;10;2500
+Chocolatina;20/10/2026;14;1200
+Galletas de avena;20/10/2026;8;1800
+Yogur;20/10/2026;7;2600
+Empanada;21/10/2026;36;2500
+Pastel de pollo;21/10/2026;21;3000
+Arepa con queso;21/10/2026;13;2800
+Gaseosa 400 ml;21/10/2026;40;3000
+Agua 600 ml;21/10/2026;19;2000
+Jugo en caja;21/10/2026;21;2200
+Papas fritas;21/10/2026;9;2500
+Chocolatina;21/10/2026;24;1200
+Galletas de avena;21/10/2026;10;1800
+Yogur;21/10/2026;5;2600
+Empanada;22/10/2026;37;2500
+Pastel de pollo;22/10/2026;21;3000
+Arepa con queso;22/10/2026;11;2800
+Gaseosa 400 ml;22/10/2026;20;3000
+Agua 600 ml;22/10/2026;18;2000
+Jugo en caja;22/10/2026;16;2200
+Papas fritas;22/10/2026;8;2500
+Chocolatina;22/10/2026;25;1200
+Galletas de avena;22/10/2026;8;1800
+Yogur;22/10/2026;6;2600
+Empanada;23/10/2026;53;2500
+Pastel de pollo;23/10/2026;16;3000
+Arepa con queso;23/10/2026;12;2800
+Gaseosa 400 ml;23/10/2026;22;3000
+Agua 600 ml;23/10/2026;19;2000
+Jugo en caja;23/10/2026;21;2200
+Papas fritas;23/10/2026;8;2500
+Chocolatina;23/10/2026;22;1200
+Galletas de avena;23/10/2026;9;1800
+Yogur;23/10/2026;9;2600
+Empanada;26/10/2026;32;2500
+Pastel de pollo;26/10/2026;25;3000
+Arepa con queso;26/10/2026;9;2800
+Gaseosa 400 ml;26/10/2026;25;3000
+Agua 600 ml;26/10/2026;10;2000
+Jugo en caja;26/10/2026;15;2200
+Papas fritas;26/10/2026;10;2500
+Chocolatina;26/10/2026;28;1200
+Galletas de avena;26/10/2026;10;1800
+Yogur;26/10/2026;6;2600
+Empanada;27/10/2026;40;2500
+Pastel de pollo;27/10/2026;23;3000
+Arepa con queso;27/10/2026;11;2800
+Gaseosa 400 ml;27/10/2026;19;3000
+Agua 600 ml;27/10/2026;13;2000
+Jugo en caja;27/10/2026;17;2200
+Papas fritas;27/10/2026;8;2500
+Chocolatina;27/10/2026;17;1200
+Galletas de avena;27/10/2026;6;1800
+Yogur;27/10/2026;7;2600
+Empanada;28/10/2026;27;2500
+Pastel de pollo;28/10/2026;19;3000
+Arepa con queso;28/10/2026;13;2800
+Gaseosa 400 ml;28/10/2026;24;3000
+Agua 600 ml;28/10/2026;16;2000
+Jugo en caja;28/10/2026;19;2200
+Papas fritas;28/10/2026;9;2500
+Chocolatina;28/10/2026;21;1200
+Galletas de avena;28/10/2026;7;1800
+Yogur;28/10/2026;5;2600
+Empanada;29/10/2026;32;2500
+Pastel de pollo;29/10/2026;18;3000
+Arepa con queso;29/10/2026;9;2800
+Gaseosa 400 ml;29/10/2026;22;3000
+Agua 600 ml;29/10/2026;14;2000
+Jugo en caja;29/10/2026;16;2200
+Papas fritas;29/10/2026;11;2500
+Chocolatina;29/10/2026;18;1200
+Galletas de avena;29/10/2026;8;1800
+Yogur;29/10/2026;3;2600
+Empanada;30/10/2026;38;2500
+Pastel de pollo;30/10/2026;24;3000
+Arepa con queso;30/10/2026;17;2800
+Gaseosa 400 ml;30/10/2026;26;3000
+Agua 600 ml;30/10/2026;20;2000
+Jugo en caja;30/10/2026;19;2200
+Papas fritas;30/10/2026;10;2500
+Chocolatina;30/10/2026;19;1200
+Galletas de avena;30/10/2026;7;1800
+Yogur;30/10/2026;8;2600
+Empanada;02/11/2026;36;2500
+Pastel de pollo;02/11/2026;17;3000
+Arepa con queso;02/11/2026;10;2800
+Gaseosa 400 ml;02/11/2026;23;3000
+Agua 600 ml;02/11/2026;17;2000
+Jugo en caja;02/11/2026;16;2200
+Papas fritas;02/11/2026;7;2500
+Chocolatina;02/11/2026;18;1200
+Galletas de avena;02/11/2026;8;1800
+Yogur;02/11/2026;5;2600
+Empanada;03/11/2026;30;2500
+Pastel de pollo;03/11/2026;21;3000
+Arepa con queso;03/11/2026;12;2800
+Gaseosa 400 ml;03/11/2026;17;3000
+Agua 600 ml;03/11/2026;21;2000
+Jugo en caja;03/11/2026;16;2200
+Papas fritas;03/11/2026;6;2500
+Chocolatina;03/11/2026;16;1200
+Galletas de avena;03/11/2026;7;1800
+Yogur;03/11/2026;6;2600
+Empanada;04/11/2026;41;2500
+Pastel de pollo;04/11/2026;17;3000
+Arepa con queso;04/11/2026;14;2800
+Gaseosa 400 ml;04/11/2026;25;3000
+Agua 600 ml;04/11/2026;21;2000
+Jugo en caja;04/11/2026;16;2200
+Papas fritas;04/11/2026;13;2500
+Chocolatina;04/11/2026;24;1200
+Galletas de avena;04/11/2026;8;1800
+Yogur;04/11/2026;7;2600
+Empanada;05/11/2026;36;2500
+Pastel de pollo;05/11/2026;16;3000
+Arepa con queso;05/11/2026;14;2800
+Gaseosa 400 ml;05/11/2026;24;3000
+Agua 600 ml;05/11/2026;10;2000
+Jugo en caja;05/11/2026;16;2200
+Papas fritas;05/11/2026;14;2500
+Chocolatina;05/11/2026;20;1200
+Galletas de avena;05/11/2026;6;1800
+Yogur;05/11/2026;5;2600
+Empanada;06/11/2026;49;2500
+Pastel de pollo;06/11/2026;17;3000
+Arepa con queso;06/11/2026;14;2800
+Gaseosa 400 ml;06/11/2026;21;3000
+Agua 600 ml;06/11/2026;17;2000
+Jugo en caja;06/11/2026;22;2200
+Papas fritas;06/11/2026;15;2500
+Chocolatina;06/11/2026;25;1200
+Galletas de avena;06/11/2026;10;1800
+Yogur;06/11/2026;8;2600
