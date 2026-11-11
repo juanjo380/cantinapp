@@ -3,12 +3,13 @@
 Documento de contexto acumulado del proyecto. Nivel técnico general, con el
 detalle necesario para construir el frontend sobre esta API.
 
-Última actualización (2026-11-08): **CSV de ventas sin duplicados**, plantillas CSV,
-predicción **semanal + AUTO** con backtest, **medición de acierto**, **trabajo diario** (alertas
-automáticas + correo-resumen) y **datos de ejemplo**. Bitácora y pendientes en la **sección 12**.
+Última actualización (2026-11-11): **ventas y métricas por sede**, sede asignada a cada persona del
+equipo, **solo el dueño** edita negocio y sedes, registro de **cuenta sin negocio** para invitados,
+**reactivar productos** y **buscador de productos** en modal. Antes (2026-11-08): CSV sin duplicados,
+predicción semanal + AUTO, trabajo diario y datos de ejemplo. Bitácora y pendientes en la **sección 12**.
 
 > ⚠️ **Pendiente bloqueante antes de desplegar:** ejecutar en el SQL Editor de Supabase, en
-> orden, `db/migrations/001` → `002` → `003` → `004` → `005` → `006` → `007` → `008` (ver sección 4).
+> orden, `db/migrations/001` → … → `008` (reportadas como ejecutadas el 2026-11-08) y **`009`** (ver sección 4).
 > **El backend se despliega después de las migraciones**: sin ellas responde 500.
 > **Antes del deploy, crear `CRON_SECRET` (≥ 32 caracteres) en Render**: fuera de development la app
 > no arranca sin él. Correos reales: `MAIL_BACKEND=brevo`, `BREVO_API_KEY`, `MAIL_FROM` y
@@ -92,7 +93,7 @@ Configurada en `backend/app/core/config.py` (variables de entorno / `.env`).
 Ejecutar `db/schema.sql` en el SQL Editor de Supabase **antes** de levantar la API.
 
 **Tablas:** `businesses`, `users`, `user_consents`, `business_members`, `business_locations`,
-`email_codes`, `business_invitations`, `categories`, `suppliers`, `products`,
+`email_codes`, `business_invitations`, `categories`, `suppliers`, `products`, `product_components`,
 `sales_imports`, `sales`, `inventory_movements`, `forecasts`,
 `recommendations`, `product_cooccurrences`, `alerts`.
 
@@ -109,16 +110,21 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `006_forecast_backtest.sql` | CHECK de `forecasts.model_type` con `SEASONAL_WEEKLY`; `requested_model`, `backtest_wape`, `backtest_mae` | **PENDIENTE** (sin ella toda predicción nueva falla) |
 | `007_alerts_notified.sql` | `alerts.notified_at` (correo-resumen diario) | **PENDIENTE** (sin ella el trabajo diario da 500) |
 | `008_demo_data.sql` | CHECK de `sales.source` con `DEMO`; `products.is_demo` | **PENDIENTE** (sin ella `/api/demo` da 500) |
+| `009_sedes_ventas_equipo.sql` | `user_consents.business_id` admite NULL (cuentas sin negocio); `location_id` en `sales`, `business_members` y `business_invitations` con FK compuesta `(business_id, location_id)` → `business_locations` (en invitaciones `ON DELETE CASCADE`); índice parcial de ventas por sede | **PENDIENTE** (antes del backend: `get_current_user` lee `business_members.location_id`, sin ella todo da 500). **No** es idempotente: correrla dos veces falla (sin efectos, va en una transacción) |
+| `010_compuestos.sql` | `businesses.composites_enabled` (default false); tabla `product_components` (receta: `product_id`, `component_id`, `quantity` entero > 0, FK compuestas `ON DELETE CASCADE`, RLS + `REVOKE`); reemplaza `fn_sale_inventory` y `fn_sale_restore_inventory` (descuentan/devuelven componentes si el negocio lo activó) y `v_inventory` (stock de un compuesto = cuántos se pueden armar) | **PENDIENTE** (después de 009, antes del backend: login y `/auth/me` leen `businesses.composites_enabled`, sin ella dan 500). **No** es idempotente |
 
 Todas las migraciones 005–008 son idempotentes (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`).
 **Ninguna se ha probado contra una BD real**: el backfill de la 005 replica en SQL la fórmula de
 `sales/domain/dedup.py` (`producto|AAAA-MM-DD|cantidad|precio con 2 decimales|n`).
 
-**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (cambiar rol, quitar/salirse; desde 004 el alta es solo por `/api/business/invitations`). Dueño y admin editan; el dueño no se puede quitar ni cambiar.
+Estado reportado por el autor (2026-11-08): 001–008 ya corrieron en Supabase. Faltan la 009 y la 010.
+
+**Multi-negocio (desde 003):** el JWT lleva el negocio activo (`bid`, puede ser null) y `get_current_user` verifica en **cada request** que el usuario sea miembro (`business_members`); si no, **403** (no 401). Cambiar de negocio = `POST /api/auth/switch` (token nuevo). Nuevos endpoints: `PUT /api/auth/me`, `PUT /api/auth/password`, `POST /api/auth/switch`, `POST /api/auth/businesses`; módulo `business`: `GET|PUT /api/business`, CRUD `/api/business/locations`, `/api/business/members` (cambiar rol, quitar/salirse; desde 004 el alta es solo por `/api/business/invitations`). Desde 2026-11-11 perfil y sedes los edita solo el dueño; dueño y admin gestionan el equipo; el dueño no se puede quitar ni cambiar.
 
 Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esquema completo".
 
-**Vistas:** `v_inventory` (estado NORMAL/BAJO/AGOTADO calculado),
+**Vistas:** `v_inventory` (estado NORMAL/BAJO/AGOTADO calculado; desde 010, para un compuesto el stock es
+`MIN(stock del componente / cantidad)`),
 `v_daily_sales` (ventas agregadas por día).
 
 **Decisiones clave del esquema:**
@@ -134,6 +140,9 @@ Verificación: `python -m scripts.check_db` (desde `backend/`) debe decir "Esque
 5. **Estado de inventario** se calcula en la vista, nunca se almacena.
 6. **Triggers:** aplicar movimiento al stock (atómico, con bloqueo de fila),
    stock inicial, descuento por venta, reversión al borrar venta, `updated_at`.
+   Desde 010, si el producto vendido tiene receta y el negocio tiene `composites_enabled`, el trigger
+   descuenta cada componente (`-cantidad × unidades de receta`) en vez del producto; el CHECK de stock no
+   negativo protege cada componente (venta manual → 422, CSV → error de fila «Stock insuficiente»).
 7. **RLS activado sin políticas** + permisos revocados a `anon`/`authenticated`:
    la API REST de Supabase no puede leer/escribir; solo el backend (rol postgres).
 
@@ -180,6 +189,8 @@ productos e inventario; dashboard puede llamar a todos. Sin ciclos ni saltos de 
 ## 6. Autenticación y multitenancy
 
 - **RF-01/02:** registro crea negocio + usuario **dueño (OWNER)** + 3 filas de consentimiento
+  (desde 009, sin `business_name` crea **solo la cuenta**, sin negocio ni membresía, para quien
+  entrará por invitación; sus consentimientos quedan con `business_id` NULL)
   (`TERMS`, `PRIVACY` —incluye cookies— y `ML_ANONYMOUS`, versión `LEGAL_VERSION`); login devuelve JWT.
   Términos y privacidad son obligatorios (si no, 422). La versión debe coincidir con `UPDATED`
   de `frontend/src/components/auth/LegalDialog.jsx`.
@@ -196,13 +207,17 @@ productos e inventario; dashboard puede llamar a todos. Sin ciclos ni saltos de 
 - **Multitenancy (RNF-01):** `shared/api/dependencies.py`:
   - `get_current_account`: valida token y usuario (perfil, cambio de negocio).
   - `get_current_user`: además verifica **en cada request** que el usuario sea miembro del
-    negocio del token y expone `business_id` y `role`. **Todos** los endpoints de negocio lo usan
+    negocio del token y expone `business_id`, `role` y `location_id` (sede asignada; siempre `None`
+    para el dueño). `CurrentUser.scoped_location(pedida)` devuelve la sede asignada o, si no tiene, la
+    pedida (`None` = todas): así se filtran ventas, análisis y dashboard. **Todos** los endpoints de negocio lo usan
     y filtran por ese `business_id`. Nunca se acepta `business_id` desde el cliente.
 - Errores: 401 si falta/expira/está mal el token; **403** si no hay negocio activo o ya no es
   miembro (la sesión sigue válida: el cliente debe elegir otro); 404 en recursos de otro negocio
   (no se revela su existencia).
-- **Permisos** (módulo `business`, en los handlers): dueño y admin editan perfil, sedes y equipo;
-  el miembro solo consulta y puede salirse. Al dueño no se le cambia el rol ni se le quita.
+- **Permisos** (módulo `business`, en los handlers, desde 2026-11-11): **solo el dueño** edita el perfil
+  del negocio, las sedes y la autorización de datos (ML); dueño y admin gestionan el equipo
+  (invitar, rol, sede, quitar); el miembro solo consulta y puede salirse. Al dueño no se le cambia el
+  rol ni se le quita. Un admin **con sede** solo invita a su sede y solo gestiona a gente de su sede.
 
 **Header obligatorio en endpoints protegidos:**
 ```
@@ -230,7 +245,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Auth | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|---|
-| POST | `/register` | 🔓 | `{ business_name, email, password (min 8), full_name?, accept_terms, accept_privacy, allow_ml_data }` | 201 AuthResponse |
+| POST | `/register` | 🔓 | `{ business_name? (vacío = cuenta sin negocio), email, password (min 8), full_name?, accept_terms, accept_privacy, allow_ml_data }` | 201 AuthResponse |
 | POST | `/login` | 🔓 | `{ email, password }` | AuthResponse (abre el último negocio usado) |
 | POST | `/logout` | 🔒 | — | 204 (JWT sin estado: el cliente descarta el token) |
 | GET | `/me` | 🔒 | — | SessionOut (negocio del token; `business_id: null` si ya no es miembro) |
@@ -241,7 +256,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | POST | `/switch` | 🔒 | `{ business_id }` | AuthResponse con **token nuevo** (404 si no es miembro) |
 | POST | `/businesses` | 🔒 | `{ name }` | 201 AuthResponse: crea negocio (dueño) y lo activa |
 
-- **SessionOut:** `{ user{ id, business_id, email, full_name, phone, job_title }, business_id, business_name, role, profile_completed, businesses[{ business_id, business_name, role, profile_completed }] }`
+- **SessionOut:** `{ user{ id, business_id, email, full_name, phone, job_title }, business_id, business_name, role, profile_completed, businesses[{ business_id, business_name, role, profile_completed, location_id }] }` (`location_id` = sede asignada en ese negocio; null = todas)
 - **AuthResponse:** SessionOut + `{ token, token_type:"bearer" }`.
 - `profile_completed`: el negocio tiene tipo, teléfono, dirección, ciudad y departamento, y el usuario tiene nombre.
 
@@ -249,19 +264,22 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
-| GET / PUT | (raíz) | `{ name?, legal_name?, tax_id?, business_type?, phone?, email?, address?, city?, department? }` | BusinessOut |
+| GET / PUT | (raíz) | `{ name?, legal_name?, tax_id?, business_type?, phone?, email?, address?, city?, department?, composites_enabled? }` | BusinessOut (incluye `composites_enabled`) |
 | GET / POST | `/locations` | `{ name, address?, city?, phone?, is_main }` | sedes (la primera queda principal) |
 | PUT / DELETE | `/locations/{id}` | igual que POST | LocationOut / 204 |
 | GET | `/members` | — | MemberOut[] (al equipo se entra solo por invitación) |
-| GET / POST | `/invitations` | `{ email, role: ADMIN\|MEMBER }` (cuenta ya registrada; solo admin) | POST: 201 con `code` de seguridad (solo esta vez); envía el enlace al correo. 404 sin cuenta, 409 si ya es miembro, 503 si el correo falla |
+| GET / POST | `/invitations` | `{ email, role: ADMIN\|MEMBER, location_id? }` (cuenta ya registrada; dueño o admin) | POST: 201 con `code` de seguridad (solo esta vez); envía el enlace al correo. 404 sin cuenta, 409 si ya es miembro, 503 si el correo falla |
 | DELETE | `/invitations/{id}` | — | 204 (anular) |
 | GET | `/invitations/preview?token=` | sesión de la cuenta invitada (sin negocio) | `{ business_name, role, invited_by_name, expires_at }`; 403 si es para otro correo |
 | POST | `/invitations/accept` | `{ token, code }` (sesión de la cuenta invitada) | AuthResponse ya dentro del negocio; 5 intentos de código, vence en 48 h |
-| PATCH / DELETE | `/members/{user_id}` | `{ role }` | MemberOut / 204 (salirse uno mismo está permitido) |
+| PATCH / DELETE | `/members/{user_id}` | `{ role, location_id }` (se envían juntos; `location_id` null = todas las sedes) | MemberOut (incluye `location_id`) / 204 (salirse uno mismo está permitido) |
 
 - `tax_id` (NIT) se normaliza y, si trae dígito de verificación, se valida (módulo 11 de la DIAN).
 - `business_type`: `TIENDA, MINIMERCADO, CANTINA_ESCOLAR, CAFETERIA, RESTAURANTE, PANADERIA, DROGUERIA, OTRO` (debe coincidir con `BUSINESS_TYPES` de `frontend/src/pages/Profile.jsx`).
-- Las sedes son **datos de perfil**: inventario y ventas siguen siendo del negocio completo.
+- Desde 009 **cada venta guarda su sede** (`sales.location_id`, NULL = sin sede, como las anteriores); el
+  **inventario sigue siendo del negocio**. Predicción y reabastecimiento usan las ventas de todo el negocio.
+- `GET|PUT|POST|DELETE` de perfil y sedes: solo el dueño (403 al resto). Borrar una sede con ventas o
+  personas asignadas → 409; sus invitaciones pendientes se borran en cascada.
 - Email único global (sin distinguir mayúsculas). Registro con email repetido → 409.
 - Abrir `/api/auth/register` en el navegador devuelve `405 Method Not Allowed`
   (el navegador hace GET; la ruta solo acepta POST). Es normal: significa que la ruta existe.
@@ -277,15 +295,20 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | DELETE | `/{product_id}` | — | 204 (borrado lógico: `is_active=false`) |
 | POST | `/import` | `multipart/form-data` (campo `file`) | 201 ProductImportOut `{ file_name, total_rows, imported_rows, error_rows, status, errors[] }` |
 | GET | `/import/template` 🔓 | — | `plantilla-productos.csv` (UTF-8 con BOM, `;`, 3 filas de ejemplo) |
+| GET | `/composites` | — | CompositeOut[] `{ product_id, name, price, available, components[{ component_id, name, quantity, stock_quantity }] }` |
+| PUT | `/{product_id}/components` | `{ components: [{ component_id, quantity>=1 }] }` (máx. 50, sin repetidos; vacía = deja de ser compuesto) | 204; 422 si la sección está apagada, si es componente de sí mismo o si la receta quedaría anidada; 404 si un componente no existe o está inactivo |
 
 - **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
 - **Ambos CSV (productos y ventas):** separador `,` o `;`, UTF-8 o Windows-1252 (Excel), coma decimal (`2500,50`), máximo 5 MB. Utilidades en `shared/application/csv_utils.py` y `shared/api/uploads.py`.
 
 - **ProductCreate:** `{ name, category?, supplier?, price>=0, quantity>=0 (stock inicial), min_stock>=0, lead_time_days>=0 }`
-- **ProductUpdate:** todos opcionales (`name`, `category`, `supplier`, `price`, `min_stock`, `lead_time_days`). **No** cambia stock (para eso, movimientos de inventario).
+- **ProductUpdate:** todos opcionales (`name`, `category`, `supplier`, `price`, `min_stock`, `lead_time_days`, `is_active` — `true` reactiva un producto desactivado). **No** cambia stock (para eso, movimientos de inventario).
 - **ProductOut:** `{ id, name, category, supplier, price, stock_quantity, min_stock, lead_time_days, is_active }`
 - **ProductListOut:** `{ items[], total, limit, offset }`
 - `sort`: `name`, `-name`, `price`, `-price`, `stock`, `-stock`, `created`, `-created`.
+- **Compuestos (desde 010):** un solo nivel (un componente no puede tener receta, y un producto que ya es
+  componente no puede volverse compuesto). Cualquier miembro edita recetas, como el resto de productos.
+  La venta manual de un compuesto omite la validación de stock propio (`has_recipe`) y la deja al trigger.
 - `category`/`supplier` son texto libre; categorías y proveedores se crean
   automáticamente por nombre (catálogos internos).
 
@@ -294,9 +317,12 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | Método | Ruta | Parámetros | Respuesta |
 |---|---|---|---|
 | POST | `/` | body SaleCreate | 201 SaleOut |
-| POST | `/import` | `multipart/form-data` (campo `file`), query `affects_inventory=false`, `skip_duplicates=true`, `confirm_reimport=false` | 201 ImportOut; **409** si ese mismo archivo ya se importó (salvo `confirm_reimport=true`) |
+| POST | `/import` | `multipart/form-data` (campo `file`), query `affects_inventory=false`, `skip_duplicates=true`, `confirm_reimport=false`, `location_id?` (sede de todas las filas) | 201 ImportOut; **409** si ese mismo archivo ya se importó (salvo `confirm_reimport=true`) |
 | GET | `/import/template` 🔓 | — | `plantilla-ventas.csv` (UTF-8 con BOM, `;`, fechas DD/MM/AAAA y AAAA-MM-DD) |
-| GET | `/` | `product_id?`, `date_from?`, `date_to?`, `limit=50 (1-500)`, `offset=0` | SaleListOut |
+| GET | `/` | `product_id?`, `location_id?`, `date_from?`, `date_to?`, `limit=50 (1-500)`, `offset=0` | SaleListOut (cada venta trae `location_id` y `location_name`) |
+
+- **Sede (desde 009):** `SaleCreate` acepta `location_id?`. Si el usuario tiene sede asignada, el backend usa
+  **siempre** la suya (al registrar, importar y listar) e ignora la pedida. Una sede de otro negocio → 404 (FK compuesta).
 
 - **SaleCreate:** `{ product_id, sale_date (YYYY-MM-DD), quantity>0, unit_price? (si falta, usa el precio del producto) }`
 - **SaleOut:** `{ id, product_id, product_name, sale_date, quantity, unit_price, total_amount, source ("MANUAL"/"CSV"/"DEMO"), affects_inventory }`
@@ -337,8 +363,10 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Parámetros | Respuesta |
 |---|---|---|---|
-| GET | `/sales` | `period=daily` (daily/weekly/monthly/yearly), `date_from?`, `date_to?`, `product_id?` | SalesSeriesOut |
-| GET | `/top-products` | `order=top` (top/bottom), `limit=10 (1-100)`, `date_from?`, `date_to?` | ProductRankingListOut |
+| GET | `/sales` | `period=daily` (daily/weekly/monthly/yearly), `date_from?`, `date_to?`, `product_id?`, `location_id?` | SalesSeriesOut |
+| GET | `/top-products` | `order=top` (top/bottom), `limit=10 (1-100)`, `date_from?`, `date_to?`, `location_id?` | ProductRankingListOut |
+
+- `location_id?` también en `/classification`. Con sede asignada se fuerza la del usuario (igual en el dashboard).
 
 - Por defecto el rango es **últimos 30 días** si no se envía `date_from`/`date_to`.
 - **SalesSeriesOut:** `{ period, date_from, date_to, series[{ period, units, revenue }] }`
@@ -406,7 +434,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Parámetros | Respuesta |
 |---|---|---|---|
-| GET | `/` | `trend_days=30 (1-365)` | DashboardOut |
+| GET | `/` | `trend_days=30 (1-365)`, `location_id?` (filtra ventas del mes y tendencia; el stock es del negocio) | DashboardOut |
 
 - **DashboardOut:** `{ total_products, total_stock, inventory_value, current_period{ units_sold, revenue }, low_stock_products[{ product_id, name, stock_quantity, min_stock, status }], trend[{ date, units }] }`
 
@@ -697,6 +725,7 @@ npm run build
 | `/analisis` | Analítica | `GET /api/analytics/{sales,top-products}` |
 | `/reabastecimiento` | Predicción + recomendación + acierto + co-ocurrencia + datos de ejemplo | `POST /api/forecasting`, `GET /api/forecasting/accuracy`, `/api/recommendations`, `GET /api/recommendations/cooccurrence`, `POST .../cooccurrence/recompute`, `/api/demo` |
 | `/alertas` | Alertas | `/api/alerts`, `/generate`, `PATCH /{id}/review` |
+| `/compuestos` | Recetas de productos compuestos (solo en el menú si `session.composites_enabled`) | `GET /api/products/composites`, `PUT /api/products/{id}/components` |
 | `/perfil?tab=yo\|negocio\|sedes\|equipo` | Perfil del usuario, del negocio, sedes y equipo | `/api/auth/{me,password}`, `/api/business/*` |
 
 - **Registro:** casillas de Términos y de Política de privacidad y cookies (obligatorias) y de
@@ -924,10 +953,70 @@ cada fase. El esquema OpenAPI incluye las rutas nuevas y oculta la interna.
 masivo de ventas de ejemplo, el borrado en cascada de `/api/demo`, el envío real por Brevo, ni el workflow
 de GitHub Actions. Tampoco se probaron las pantallas en un navegador.
 
+### 2026-11-11 — Lista de tareas: roles, sedes, registro de invitados, buscador de productos (sin commit)
+
+Sale de `main` en `2bd840b`. Todo en el árbol de trabajo, **sin commit**.
+
+| # | Tarea | Cambio |
+|---|---|---|
+| 1 | Reactivar productos | `ProductUpdate.is_active`; acción «Activar» en Productos |
+| 2 | Cuenta para quien será invitado | `/register` con `business_name` opcional; enlace «¿Te invitaron a un negocio? Crea solo tu cuenta» en Registro; si llega desde `/invitacion` entra en ese modo y vuelve a la invitación. Login → Registro conserva el destino |
+| 3 | Bloque «Completa tu perfil» poco visible | Ícono `ManageAccounts`, fondo `bg-brand-tint` y texto más oscuro mientras el perfil está incompleto (`AppLayout.jsx`) |
+| 4 | Modal para buscar productos | `components/ui/ProductPicker.jsx`: búsqueda, categoría, orden y paginación en servidor; reemplaza los selects de producto en Ventas (filtro y registrar venta) y Análisis |
+| 5 | Admin no edita el negocio | `_require_owner` en perfil, sedes y autorización ML; `isOwner` en el contexto de auth; el admin sigue invitando |
+| 6 | Ventas por sede | Migración 009; `CurrentUser.location_id` + `scoped_location`; filtro en ventas, análisis (3 rutas) y dashboard; `components/ui/LocationFilter.jsx` + `hooks/useLocationScope.js` (con sede asignada muestra un sello en vez del selector); columna «Sede» en Ventas para quien ve todas; sede (por defecto la principal) al registrar venta y al cargar CSV |
+| 7 | Asignar sede al empleado | Sede en la invitación (se aplica al aceptar) y selector de sede por persona en Equipo; `businessApi.changeRole` → `updateMember(userId, role, locationId)` |
+
+**Decisiones:**
+- Sede NULL = «todas las sedes» (compatibilidad con miembros y ventas anteriores). El dueño siempre ve todas.
+- El inventario **no** se dividió por sede (lo eligió el autor); la propuesta de `docs/propuesta-inventario-por-sede.md` sigue abierta.
+- No se borra una sede con ventas o personas asignadas (409) para no ampliar sin querer lo que ve un empleado.
+- La autorización de datos ML pasó también a solo-dueño (es dato del negocio).
+- Las categorías del buscador salen de los primeros 200 productos (`shortcut:` en `ProductPicker.jsx`).
+
+**Verificación hecha:** 88 tests de pytest (3 nuevos: permisos de dueño, reglas por sede, registro sin
+negocio), `import app.main`, `npx eslint src` y `npx vite build` en verde.
+**No verificado:** la migración 009 y las consultas SQL nuevas contra Postgres (los tests usan repositorios
+falsos) y las pantallas en el navegador. El autor dijo que lo verifica él.
+**Ojo:** durante la sesión el editor reformateó (Prettier) `BusinessDialog.jsx`, `OnboardingDialog.jsx` y
+`package-lock.json`; no son cambios de esta tarea, revisar antes del commit.
+
+### 2026-11-11 (tarde) — Productos compuestos (rama `feature/juan.ruiz/CrearUniones/Compuetos`, sin commit)
+
+Pedido: una sección «Compuestos» que se activa desde Perfil → Negocio, para que un restaurante maneje el
+stock de cocina con recetas (una hamburguesa lleva pan, carne...).
+
+| Capa | Cambio |
+|---|---|
+| BD | Migración `010_compuestos.sql` (ver sección 4), aplicada también en `schema.sql`; `product_components` añadida al `TRUNCATE` de `reset_datos.sql` |
+| Negocio | `composites_enabled` en `PROFILE_FIELDS`, `BusinessProfile`, `BusinessRecord`, `BusinessUpdate`/`BusinessOut`; se cambia con `PUT /api/business` (solo dueño) |
+| Sesión | `composites_enabled` en `Membership`, `Session`, `SessionOut` y `_session_out`: el menú lo lee de la sesión |
+| Productos | Repositorio: `composites_enabled`, `has_recipe`, `list_composites`, `with_recipe`, `used_as_component`, `set_components`; handler `set_recipe` con las validaciones; endpoints `GET /composites` y `PUT /{id}/components` |
+| Ventas | `register_sale` no exige stock propio a un compuesto (lo valida el trigger) |
+| Frontend | `pages/Composites.jsx` (tabla con receta y «Se pueden armar», diálogo de receta con `ProductPickerField` por componente, quitar receta; si está apagada muestra cómo activarla); ruta `/compuestos`; ítem «Compuestos» (`LunchDiningOutlined`) en `AppLayout` filtrado por `compositesEnabled`; `CompositesSection` en Perfil → Negocio (interruptor, llama a `refresh()`); `productsApi.composites` / `setRecipe`; `compositesEnabled` en el contexto de auth |
+| Tests | `tests/test_composites.py`: reglas de la receta y venta manual de un compuesto sin stock propio |
+
+**Decisiones:**
+- Activar la sección es **solo del dueño** (coherente con «solo el dueño edita el negocio»). El autor pidió
+  «el administrador»: si se quiere admin, endpoint aparte con `_require_admin`. **Pendiente de confirmar.**
+- Un producto es compuesto si tiene filas en `product_components`; no hay columna `is_composite`.
+- Con la sección apagada las recetas se conservan pero se ignoran (trigger, vista y venta manual).
+- Cantidades enteras, igual que el stock: ingredientes por peso se manejan en gramos.
+- `shortcut:` en `fn_sale_restore_inventory`: al borrar una venta se devuelve según la receta **vigente**, no
+  la del momento de la venta.
+
+**Verificación hecha:** 90 tests de pytest (2 nuevos), `npx eslint` de los archivos tocados y `vite build`
+en verde. El `venv` del repo apunta a un Python de otra máquina: se usó un venv temporal con Python 3.12.
+**No verificado:** la migración 010, los triggers y las consultas SQL nuevas contra Postgres; las pantallas en
+el navegador.
+**Limitaciones conocidas:** predicción y reabastecimiento siguen viendo la venta del compuesto, no proyectan
+consumo de componentes; en Ventas, «Stock disponible» de un compuesto muestra 0 (`ProductOut` lee
+`products.stock_quantity`, no la vista).
+
 ### Próxima sesión — pendientes
 
 1. **Desplegar en orden:**
-   1. Supabase: migraciones `001` → `002` → `003` → `004` → `005` → `006` → `007` → `008`.
+   1. Supabase: migraciones `001` → … → `008` (reportadas como ejecutadas el 2026-11-08), **`009`** y **`010`**.
    2. Render: `CRON_SECRET` (≥ 32, **antes** del deploy), variables de correo y `FRONTEND_URL`.
    3. GitHub: secrets `CANTINAPP_API_URL` y `CRON_SECRET`.
    4. Merge a `main` (Render + Vercel). Ejecutar el workflow «Trabajo diario» a mano (*Run workflow*) y
@@ -936,7 +1025,11 @@ de GitHub Actions. Tampoco se probaron las pantallas en un navegador.
       predicción AUTO, datos de ejemplo (cargar y borrar) y co-ocurrencia.
 2. Probar en un teléfono real (ver 11.8).
 3. Decidir sobre `docs/propuesta-inventario-por-sede.md` (sección 7 de ese documento: decisiones abiertas).
-4. Posibles siguientes pasos: verificar el correo al registrarse, invitar a quien aún no tiene cuenta,
+4. Posibles siguientes pasos: verificar el correo al registrarse, invitar a quien aún no tiene cuenta (hoy
+   debe registrarse primero con «¿Te invitaron?»), endpoint de categorías para el buscador, sede en la
+   vista previa de la invitación y en invitaciones pendientes,
    transferir el negocio a otro dueño, mostrar en Alertas cuáles se resolvieron solas.
+   Compuestos: confirmar si el admin también puede activarlos; mostrar en Ventas el stock armable;
+   proyectar consumo de componentes en reabastecimiento.
 5. Decidir si se borra `frontend/public/DarioGomez.png` y actualizar o retirar `DESIGN.md`.
 6. Sigue abierto: `CORS_ORIGINS` en Render.
