@@ -46,3 +46,4 @@ class SaleRecord(Base):
     row_hash: Mapped[str | None]
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    location_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # sede; None = sin sede

@@ -9,3 +9,4 @@ from app.shared.application.cqrs import Query
 class DashboardQuery(Query):
     business_id: UUID
     trend_days: int = 30
+    location_id: UUID | None = None  # ventas de una sede; el stock es del negocio

@@ -16,6 +16,8 @@ from app.modules.business.application.commands import (
     ChangeRoleCommand,
     InviteMemberCommand,
     RemoveMemberCommand,
+    SaveLocationCommand,
+    UpdateBusinessCommand,
 )
 from app.modules.business.domain.entities import Invitation, Member, nit_check_digit, normalize_nit
 from app.shared.api.dependencies import CurrentUser
@@ -84,26 +86,34 @@ class FakeRepo:
         self.owner, self.member = uuid4(), uuid4()
         self.outsider = uuid4()
         self.roles = {self.owner: "OWNER", self.member: "MEMBER"}
+        self.locations = {}  # user_id -> sede asignada
 
     async def get_member(self, business_id, user_id):
         role = self.roles.get(user_id)
-        return role and Member(user_id, "x@y.co", None, None, role, datetime.now())
+        return role and Member(user_id, "x@y.co", None, None, role, datetime.now(), self.locations.get(user_id))
 
     async def find_user_id(self, email):
         return self.outsider if email == "nuevo@y.co" else None
 
-    async def add_member(self, business_id, user_id, role):
+    async def add_member(self, business_id, user_id, role, location_id=None):
         self.roles[user_id] = role
+        self.locations[user_id] = location_id
 
-    async def set_role(self, business_id, user_id, role):
+    async def set_role(self, business_id, user_id, role, location_id):
         self.roles[user_id] = role
+        self.locations[user_id] = location_id
 
     async def remove_member(self, business_id, user_id):
         del self.roles[user_id]
 
     # invitaciones: un solo slot basta para el test
-    async def add_invitation(self, *, business_id, email, role, invited_by, token_hash, code_hash, expires_at):
-        self.invitation = Invitation(uuid4(), business_id, "Tienda", email, role, "Dueña", expires_at, datetime.now(), code_hash)
+    async def add_invitation(
+        self, *, business_id, email, role, location_id, invited_by, token_hash, code_hash, expires_at
+    ):
+        self.invitation = Invitation(
+            uuid4(), business_id, "Tienda", email, role, "Dueña", expires_at, datetime.now(), code_hash,
+            location_id=location_id,
+        )
         self.token_hash = token_hash
         return self.invitation
 
@@ -118,7 +128,34 @@ class FakeRepo:
 
 
 def actor(repo, user_id):
-    return CurrentUser(user_id=user_id, business_id=BID, email="x@y.co", full_name=None, role=repo.roles[user_id])
+    return CurrentUser(
+        user_id=user_id,
+        business_id=BID,
+        email="x@y.co",
+        full_name=None,
+        role=repo.roles[user_id],
+        location_id=repo.locations.get(user_id),
+    )
+
+
+def test_location_admin_only_manages_and_sees_their_location():
+    repo = FakeRepo()
+    sede_a, sede_b = uuid4(), uuid4()
+    owner = actor(repo, repo.owner)
+    _, token, code = run(handlers.invite_member(repo, InviteMemberCommand(owner, "nuevo@y.co", "ADMIN", sede_a)))
+    run(handlers.accept_invitation(repo, AcceptInvitationCommand(repo.outsider, "nuevo@y.co", token, code)))
+    assert repo.locations[repo.outsider] == sede_a  # entra con la sede de la invitación
+    admin = actor(repo, repo.outsider)
+
+    # sus ventas y métricas: siempre las de su sede, pida lo que pida; el dueño elige
+    assert admin.scoped_location(sede_b) == sede_a and admin.scoped_location(None) == sede_a
+    assert owner.scoped_location(sede_b) == sede_b and owner.scoped_location(None) is None
+
+    with pytest.raises(ForbiddenError):  # el miembro sin sede no es de su sede
+        run(handlers.change_role(repo, ChangeRoleCommand(admin, repo.member, "MEMBER", sede_a)))
+    run(handlers.change_role(repo, ChangeRoleCommand(owner, repo.member, "MEMBER", sede_a)))
+    run(handlers.change_role(repo, ChangeRoleCommand(admin, repo.member, "MEMBER", sede_b)))
+    assert repo.locations[repo.member] == sede_a  # un admin con sede solo asigna la suya
 
 
 def test_only_admins_manage_team_and_owner_is_untouchable():
@@ -144,6 +181,22 @@ def test_only_admins_manage_team_and_owner_is_untouchable():
 
     run(handlers.remove_member(repo, RemoveMemberCommand(member, repo.member)))  # pero sí puede salirse
     assert repo.member not in repo.roles
+
+
+def test_only_the_owner_edits_business_profile_and_locations():
+    repo = FakeRepo()
+    accept_invitation(repo, "ADMIN")
+    admin = actor(repo, repo.outsider)
+    with pytest.raises(ForbiddenError):
+        run(handlers.update_business(repo, UpdateBusinessCommand(admin, {"name": "Otro"})))
+    with pytest.raises(ForbiddenError):
+        run(handlers.save_location(repo, SaveLocationCommand(admin, None, {"name": "Sede 2"})))
+    with pytest.raises(ForbiddenError):
+        run(handlers.delete_location(repo, admin, uuid4()))
+    with pytest.raises(ForbiddenError):
+        run(handlers.set_ml_data_sharing(repo, admin, True))
+    with pytest.raises(ConflictError):  # el admin sí puede invitar: pasa el permiso y choca porque ya es miembro
+        run(handlers.invite_member(repo, InviteMemberCommand(admin, "nuevo@y.co", "MEMBER")))
 
 
 def accept_invitation(repo, role):

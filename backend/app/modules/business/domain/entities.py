@@ -62,6 +62,7 @@ class Member:
     job_title: str | None
     role: str
     created_at: datetime
+    location_id: UUID | None = None  # sede asignada; None = todas
 
 
 @dataclass
@@ -78,3 +79,4 @@ class Invitation:
     created_at: datetime
     code_hash: str = ""
     attempts: int = 0
+    location_id: UUID | None = None

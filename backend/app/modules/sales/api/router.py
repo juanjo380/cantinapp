@@ -35,6 +35,7 @@ async def create_sale(
             quantity=body.quantity,
             unit_price=body.unit_price,
             created_by=user.user_id,
+            location_id=user.scoped_location(body.location_id),
         )
     )
     return SaleOut(**sale.__dict__)
@@ -46,6 +47,7 @@ async def import_sales(
     affects_inventory: bool = Query(False, description="Si es true descuenta del stock actual"),
     skip_duplicates: bool = Query(True, description="Omite filas que ya se importaron en el negocio"),
     confirm_reimport: bool = Query(False, description="Carga un archivo ya importado (si no, 409)"),
+    location_id: UUID | None = Query(None, description="Sede de las ventas del archivo"),
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
@@ -59,6 +61,7 @@ async def import_sales(
             created_by=user.user_id,
             skip_duplicates=skip_duplicates,
             confirm_reimport=confirm_reimport,
+            location_id=user.scoped_location(location_id),
         )
     )
     return ImportOut(**summary.__dict__)
@@ -67,6 +70,7 @@ async def import_sales(
 @router.get("", response_model=SaleListOut)
 async def list_sales(
     product_id: UUID | None = None,
+    location_id: UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = Query(50, ge=1, le=500),
@@ -77,6 +81,7 @@ async def list_sales(
     items, total = await SalesFacade(uow).list(
         user.business_id,
         product_id=product_id,
+        location_id=user.scoped_location(location_id),
         date_from=date_from,
         date_to=date_to,
         limit=limit,

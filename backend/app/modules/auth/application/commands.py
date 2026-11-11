@@ -7,7 +7,7 @@ from app.shared.application.cqrs import Command
 
 @dataclass
 class RegisterCommand(Command):
-    business_name: str
+    business_name: str | None  # None/vacío = cuenta sin negocio (llegará por invitación)
     email: str
     password: str
     full_name: str | None = None

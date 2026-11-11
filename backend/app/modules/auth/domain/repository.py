@@ -16,11 +16,11 @@ class UserRepository(Protocol):
         ...
 
     async def add(
-        self, *, business_id: UUID, email: str, password_hash: str, full_name: str | None
+        self, *, business_id: UUID | None, email: str, password_hash: str, full_name: str | None
     ) -> User: ...
 
     async def add_consents(
-        self, *, business_id: UUID, user_id: UUID, version: str, consents: dict[str, bool]
+        self, *, business_id: UUID | None, user_id: UUID, version: str, consents: dict[str, bool]
     ) -> None:
         """Registra una fila por documento (prueba de la autorización, Ley 1581)."""
         ...

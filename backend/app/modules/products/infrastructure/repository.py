@@ -127,7 +127,7 @@ class SqlProductRepository(ProductRepository):
             record.category_id = await self._resolve_category(product.business_id, changes["category"])
         if "supplier" in changes:
             record.supplier_id = await self._resolve_supplier(product.business_id, changes["supplier"])
-        for field in ("name", "price", "min_stock", "lead_time_days"):
+        for field in ("name", "price", "min_stock", "lead_time_days", "is_active"):
             if changes.get(field) is not None:
                 setattr(record, field, changes[field])
         await self.session.flush()

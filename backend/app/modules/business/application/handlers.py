@@ -1,5 +1,6 @@
 """Reglas del negocio: quién puede editar el perfil, las sedes y el equipo.
-Dueño y admin administran; el miembro solo consulta (y puede salirse). Al dueño no se le toca."""
+Perfil y sedes: solo el dueño. Equipo: dueño y admin. El miembro solo consulta (y puede salirse).
+Al dueño no se le toca."""
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -26,21 +27,32 @@ def _require_admin(actor: CurrentUser) -> None:
         raise ForbiddenError("Solo el dueño o un administrador del negocio puede hacer esto")
 
 
+def _require_same_location(actor: CurrentUser, member: Member) -> None:
+    """Un admin con sede asignada solo gestiona a la gente de su sede."""
+    if actor.location_id and member.location_id != actor.location_id:
+        raise ForbiddenError("Solo puedes gestionar a las personas de tu sede")
+
+
+def _require_owner(actor: CurrentUser) -> None:
+    if not actor.is_owner:
+        raise ForbiddenError("Solo el dueño del negocio puede hacer esto")
+
+
 async def update_business(repo: BusinessProfileRepository, command: UpdateBusinessCommand) -> BusinessProfile:
-    _require_admin(command.actor)
+    _require_owner(command.actor)
     return await repo.update(command.actor.business_id, command.changes)
 
 
 async def set_ml_data_sharing(repo: BusinessProfileRepository, actor: CurrentUser, granted: bool) -> bool:
     """Autorización ML_ANONYMOUS del negocio: queda una fila nueva en user_consents (prueba, Ley 1581)."""
-    _require_admin(actor)
+    _require_owner(actor)
     if await repo.ml_data_sharing(actor.business_id) != granted:
         await repo.set_ml_data_sharing(actor.business_id, actor.user_id, granted, LEGAL_VERSION)
     return granted
 
 
 async def save_location(repo: BusinessProfileRepository, command: SaveLocationCommand) -> Location:
-    _require_admin(command.actor)
+    _require_owner(command.actor)
     business_id = command.actor.business_id
     if command.location_id and await repo.get_location(business_id, command.location_id) is None:
         raise NotFoundError("Sede no encontrada")
@@ -51,9 +63,11 @@ async def save_location(repo: BusinessProfileRepository, command: SaveLocationCo
 
 
 async def delete_location(repo: BusinessProfileRepository, actor: CurrentUser, location_id: UUID) -> None:
-    _require_admin(actor)
+    _require_owner(actor)
     if await repo.get_location(actor.business_id, location_id) is None:
         raise NotFoundError("Sede no encontrada")
+    if await repo.location_in_use(actor.business_id, location_id):
+        raise ConflictError("La sede ya tiene ventas o personas asignadas: no se puede eliminar")
     await repo.delete_location(actor.business_id, location_id)
 
 
@@ -75,6 +89,7 @@ async def invite_member(repo: BusinessProfileRepository, command: InviteMemberCo
         business_id=business_id,
         email=command.email,
         role=command.role,
+        location_id=command.actor.location_id or command.location_id,  # un admin con sede solo invita a la suya
         invited_by=command.actor.user_id,
         token_hash=hash_secret(token),
         code_hash=hash_secret(code),
@@ -121,7 +136,7 @@ async def accept_invitation(repo: BusinessProfileRepository, command: AcceptInvi
             else "Código incorrecto. La invitación quedó anulada; pide una nueva a quien te invitó."
         )
     if await repo.get_member(invitation.business_id, command.user_id) is None:
-        await repo.add_member(invitation.business_id, command.user_id, invitation.role)
+        await repo.add_member(invitation.business_id, command.user_id, invitation.role, invitation.location_id)
     await repo.accept_invitation(invitation.id)
     return invitation.business_id
 
@@ -137,13 +152,15 @@ async def _target(repo: BusinessProfileRepository, business_id: UUID, user_id: U
 
 async def change_role(repo: BusinessProfileRepository, command: ChangeRoleCommand) -> Member:
     _require_admin(command.actor)
-    await _target(repo, command.actor.business_id, command.user_id)
-    await repo.set_role(command.actor.business_id, command.user_id, command.role)
+    _require_same_location(command.actor, await _target(repo, command.actor.business_id, command.user_id))
+    location_id = command.actor.location_id or command.location_id
+    await repo.set_role(command.actor.business_id, command.user_id, command.role, location_id)
     return await repo.get_member(command.actor.business_id, command.user_id)
 
 
 async def remove_member(repo: BusinessProfileRepository, command: RemoveMemberCommand) -> None:
+    target = await _target(repo, command.actor.business_id, command.user_id)
     if command.user_id != command.actor.user_id:  # salirse uno mismo no requiere ser admin
         _require_admin(command.actor)
-    await _target(repo, command.actor.business_id, command.user_id)
+        _require_same_location(command.actor, target)
     await repo.remove_member(command.actor.business_id, command.user_id)

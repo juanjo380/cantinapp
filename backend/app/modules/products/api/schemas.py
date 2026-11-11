@@ -22,6 +22,7 @@ class ProductUpdate(BaseModel):
     price: Decimal | None = Field(default=None, ge=0)
     min_stock: int | None = Field(default=None, ge=0)
     lead_time_days: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None  # reactivar un producto desactivado
 
 
 class ProductOut(BaseModel):

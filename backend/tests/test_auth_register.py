@@ -36,8 +36,8 @@ class FakeBusinesses:
         return Business(id=uuid4(), name=name)
 
 
-def register(users, consents, memberships=None):
-    command = RegisterCommand(business_name="Tienda", email="a@b.co", password="secreta123", consents=consents)
+def register(users, consents, memberships=None, business_name="Tienda"):
+    command = RegisterCommand(business_name=business_name, email="a@b.co", password="secreta123", consents=consents)
     return asyncio.run(handlers.register_user(users, FakeBusinesses(), memberships or FakeMemberships(), command))
 
 
@@ -48,6 +48,14 @@ def test_register_records_every_document_with_version():
     version, consents = users.consents
     assert version == handlers.LEGAL_VERSION
     assert consents == {"TERMS": True, "PRIVACY": True, "ML_ANONYMOUS": False}
+
+
+def test_register_without_business_creates_only_the_account():
+    users, memberships = FakeUsers(), FakeMemberships()
+    user, business = register(users, {"TERMS": True, "PRIVACY": True}, memberships, business_name="  ")
+    assert business is None and user.business_id is None
+    assert memberships.added == []
+    assert users.consents is not None  # las autorizaciones se guardan igual
 
 
 def test_register_rejects_missing_required_consent_before_creating_anything():

@@ -155,6 +155,7 @@ function AuthProvider({ children }) {
       user: session?.user ?? null,
       businessName: session?.business_name ?? '',
       isAdmin: ['OWNER', 'ADMIN'].includes(session?.role),
+      isOwner: session?.role === 'OWNER',
       initializing,
       needsPick,
       setNeedsPick,

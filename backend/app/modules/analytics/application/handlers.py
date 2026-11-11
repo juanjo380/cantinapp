@@ -18,6 +18,7 @@ async def sales_series(analytics: AnalyticsRepository, query: SalesSeriesQuery):
         date_from=query.date_from,
         date_to=query.date_to,
         product_id=query.product_id,
+        location_id=query.location_id,
     )
 
 
@@ -30,18 +31,24 @@ async def product_ranking(analytics: AnalyticsRepository, query: ProductRankingQ
         limit=query.limit,
         date_from=query.date_from,
         date_to=query.date_to,
+        location_id=query.location_id,
     )
 
 
 _ALL_PRODUCTS = 500  # shortcut: tope de productos en la clasificación; paginar si un negocio tiene más
 
 
-async def classification(analytics: AnalyticsRepository, business_id, date_from, date_to):
+async def classification(analytics: AnalyticsRepository, business_id, date_from, date_to, location_id=None):
     if date_from > date_to:
         raise UnprocessableError("date_from no puede ser mayor que date_to")
     length = (date_to - date_from).days + 1
     current = await analytics.product_ranking(
-        business_id, order="top", limit=_ALL_PRODUCTS, date_from=date_from, date_to=date_to
+        business_id,
+        order="top",
+        limit=_ALL_PRODUCTS,
+        date_from=date_from,
+        date_to=date_to,
+        location_id=location_id,
     )
     previous = await analytics.product_ranking(
         business_id,
@@ -49,5 +56,6 @@ async def classification(analytics: AnalyticsRepository, business_id, date_from,
         limit=_ALL_PRODUCTS,
         date_from=date_from - timedelta(days=length),
         date_to=date_from - timedelta(days=1),
+        location_id=location_id,
     )
     return abc_classify(current, previous)

@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.business.infrastructure.models import LocationRecord
 from app.modules.products.infrastructure.models import ProductRecord
 from app.modules.sales.domain.entities import Sale, SaleImport
 from app.modules.sales.domain.repository import SaleRepository
@@ -31,6 +32,7 @@ class SqlSaleRepository(SaleRepository):
         import_id: UUID | None = None,
         created_by: UUID | None = None,
         row_hash: str | None = None,
+        location_id: UUID | None = None,
     ) -> Sale:
         record = SaleRecord(
             business_id=business_id,
@@ -43,6 +45,7 @@ class SqlSaleRepository(SaleRepository):
             import_id=import_id,
             row_hash=row_hash,
             created_by=created_by,
+            location_id=location_id,
         )
         self.session.add(record)
         await self.session.flush()
@@ -125,6 +128,7 @@ class SqlSaleRepository(SaleRepository):
         business_id: UUID,
         *,
         product_id: UUID | None = None,
+        location_id: UUID | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         limit: int = 50,
@@ -133,6 +137,8 @@ class SqlSaleRepository(SaleRepository):
         conditions = [SaleRecord.business_id == business_id]
         if product_id:
             conditions.append(SaleRecord.product_id == product_id)
+        if location_id:
+            conditions.append(SaleRecord.location_id == location_id)
         if date_from:
             conditions.append(SaleRecord.sale_date >= date_from)
         if date_to:
@@ -149,8 +155,11 @@ class SqlSaleRepository(SaleRepository):
                 SaleRecord.total_amount,
                 SaleRecord.source,
                 SaleRecord.affects_inventory,
+                SaleRecord.location_id,
+                LocationRecord.name.label("location_name"),
             )
             .join(ProductRecord, ProductRecord.id == SaleRecord.product_id)
+            .outerjoin(LocationRecord, LocationRecord.id == SaleRecord.location_id)
             .where(*conditions)
             .order_by(SaleRecord.sale_date.desc(), SaleRecord.created_at.desc())
         )

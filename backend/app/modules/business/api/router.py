@@ -127,7 +127,7 @@ async def invite_member(
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
     invitation, code = await BusinessFacade(uow).invite(
-        InviteMemberCommand(actor=user, email=body.email, role=body.role)
+        InviteMemberCommand(actor=user, email=body.email, role=body.role, location_id=body.location_id)
     )
     return {**invitation.__dict__, "code": code}
 
@@ -173,7 +173,9 @@ async def change_role(
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
-    member = await BusinessFacade(uow).change_role(ChangeRoleCommand(actor=user, user_id=user_id, role=body.role))
+    member = await BusinessFacade(uow).change_role(
+        ChangeRoleCommand(actor=user, user_id=user_id, role=body.role, location_id=body.location_id)
+    )
     return member.__dict__
 
 

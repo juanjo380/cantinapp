@@ -47,8 +47,8 @@ export default function Login() {
       footer={
         <>
           ¿No tienes cuenta?{' '}
-          <RouterLink to="/registro" className="sketch-link">
-            Crea tu negocio
+          <RouterLink to="/registro" state={location.state} className="sketch-link">
+            Regístrate
           </RouterLink>
         </>
       }

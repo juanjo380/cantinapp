@@ -24,6 +24,7 @@ class InviteMemberCommand(Command):
     actor: CurrentUser
     email: str
     role: str
+    location_id: UUID | None = None  # sede con la que entra; None = todas
 
 
 @dataclass
@@ -41,6 +42,7 @@ class ChangeRoleCommand(Command):
     actor: CurrentUser
     user_id: UUID
     role: str
+    location_id: UUID | None = None
 
 
 @dataclass

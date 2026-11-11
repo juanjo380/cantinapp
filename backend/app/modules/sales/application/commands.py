@@ -15,6 +15,7 @@ class CreateSaleCommand(Command):
     quantity: int
     unit_price: Decimal | None
     created_by: UUID
+    location_id: UUID | None = None
 
 
 @dataclass
@@ -26,3 +27,4 @@ class ImportSalesCommand(Command):
     created_by: UUID
     skip_duplicates: bool = True  # omite filas cuya huella ya existe en el negocio
     confirm_reimport: bool = False  # el usuario aceptó cargar un archivo que ya había importado
+    location_id: UUID | None = None  # sede de todas las filas del archivo

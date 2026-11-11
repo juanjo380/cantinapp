@@ -69,7 +69,7 @@ CREATE INDEX ix_users_business ON users (business_id);
 -- Autorizaciones del registro (migracion 002). Solo insercion: la vigente es la mas reciente.
 CREATE TABLE user_consents (
     id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    business_id  uuid        NOT NULL REFERENCES businesses (id),
+    business_id  uuid        REFERENCES businesses (id),  -- NULL: cuenta sin negocio (migracion 009)
     user_id      uuid        NOT NULL REFERENCES users (id),
     document     text        NOT NULL CHECK (document IN ('TERMS', 'PRIVACY', 'COOKIES', 'ML_ANONYMOUS')),
     version      text        NOT NULL,
@@ -103,6 +103,10 @@ CREATE TABLE business_locations (
     UNIQUE (business_id, id)
 );
 CREATE UNIQUE INDEX ux_business_locations_main ON business_locations (business_id) WHERE is_main;
+-- Sede asignada a cada persona del equipo (migracion 009). NULL = todas las sedes.
+ALTER TABLE business_members ADD COLUMN location_id uuid;
+ALTER TABLE business_members ADD CONSTRAINT fk_business_members_location
+    FOREIGN KEY (business_id, location_id) REFERENCES business_locations (business_id, id);
 
 -- Códigos por correo (migracion 004): un solo uso, solo se guarda el hash
 CREATE TABLE email_codes (
@@ -123,6 +127,7 @@ CREATE TABLE business_invitations (
     business_id  uuid        NOT NULL REFERENCES businesses (id),
     email        text        NOT NULL,
     role         text        NOT NULL CHECK (role IN ('ADMIN', 'MEMBER')),
+    location_id  uuid,                                -- sede con la que entra (migracion 009)
     invited_by   uuid        NOT NULL REFERENCES users (id),
     token_hash   text        NOT NULL UNIQUE,
     code_hash    text        NOT NULL,
@@ -130,7 +135,8 @@ CREATE TABLE business_invitations (
     expires_at   timestamptz NOT NULL,
     accepted_at  timestamptz,
     revoked_at   timestamptz,
-    created_at   timestamptz NOT NULL DEFAULT now()
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    FOREIGN KEY (business_id, location_id) REFERENCES business_locations (business_id, id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX ux_business_invitations_pending
     ON business_invitations (business_id, lower(email)) WHERE accepted_at IS NULL AND revoked_at IS NULL;
@@ -225,10 +231,13 @@ CREATE TABLE sales (
     row_hash          text,                     -- huella de fila CSV (dedup.py); NULL = manual o duplicado a proposito
     created_by        uuid          REFERENCES users (id),
     created_at        timestamptz   NOT NULL DEFAULT now(),
+    location_id       uuid,                     -- sede (migracion 009); NULL = sin sede
     UNIQUE (business_id, id),
     FOREIGN KEY (business_id, product_id) REFERENCES products      (business_id, id),
-    FOREIGN KEY (business_id, import_id)  REFERENCES sales_imports (business_id, id)
+    FOREIGN KEY (business_id, import_id)  REFERENCES sales_imports (business_id, id),
+    CONSTRAINT fk_sales_location FOREIGN KEY (business_id, location_id) REFERENCES business_locations (business_id, id)
 );
+CREATE INDEX ix_sales_business_location_date ON sales (business_id, location_id, sale_date) WHERE location_id IS NOT NULL;
 CREATE UNIQUE INDEX ux_sales_business_row_hash ON sales (business_id, row_hash) WHERE row_hash IS NOT NULL;
 -- Indices para analisis historico y prediccion (RNF-05)
 CREATE INDEX ix_sales_business_product_date ON sales (business_id, product_id, sale_date);

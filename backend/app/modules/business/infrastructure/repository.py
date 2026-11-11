@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -79,6 +79,18 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             delete(LocationRecord).where(LocationRecord.business_id == business_id, LocationRecord.id == location_id)
         )
 
+    async def location_in_use(self, business_id: UUID, location_id: UUID) -> bool:
+        params = {"bid": business_id, "lid": location_id}
+        return bool(
+            await self.session.scalar(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM sales WHERE business_id = :bid AND location_id = :lid)"
+                    " OR EXISTS (SELECT 1 FROM business_members WHERE business_id = :bid AND location_id = :lid)"
+                ),
+                params,
+            )
+        )
+
     def _members_query(self, business_id: UUID):
         return (
             select(MembershipRecord, UserRecord)
@@ -95,6 +107,7 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             job_title=user.job_title,
             role=membership.role,
             created_at=membership.created_at,
+            location_id=membership.location_id,
         )
 
     async def list_members(self, business_id: UUID) -> list[Member]:
@@ -114,15 +127,19 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             )
         ).scalar_one_or_none()
 
-    async def add_member(self, business_id: UUID, user_id: UUID, role: str) -> None:
-        self.session.add(MembershipRecord(business_id=business_id, user_id=user_id, role=role))
+    async def add_member(
+        self, business_id: UUID, user_id: UUID, role: str, location_id: UUID | None = None
+    ) -> None:
+        self.session.add(
+            MembershipRecord(business_id=business_id, user_id=user_id, role=role, location_id=location_id)
+        )
         await self.session.flush()
 
-    async def set_role(self, business_id: UUID, user_id: UUID, role: str) -> None:
+    async def set_role(self, business_id: UUID, user_id: UUID, role: str, location_id: UUID | None) -> None:
         await self.session.execute(
             update(MembershipRecord)
             .where(MembershipRecord.business_id == business_id, MembershipRecord.user_id == user_id)
-            .values(role=role)
+            .values(role=role, location_id=location_id)
         )
 
     async def remove_member(self, business_id: UUID, user_id: UUID) -> None:
@@ -156,6 +173,7 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             created_at=record.created_at,
             code_hash=record.code_hash,
             attempts=record.attempts,
+            location_id=record.location_id,
         )
 
     def _pending(self, business_id: UUID):
@@ -171,6 +189,7 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
         business_id: UUID,
         email: str,
         role: str,
+        location_id: UUID | None,
         invited_by: UUID,
         token_hash: str,
         code_hash: str,
@@ -185,6 +204,7 @@ class SqlBusinessProfileRepository(BusinessProfileRepository):
             business_id=business_id,
             email=email.lower(),
             role=role,
+            location_id=location_id,
             invited_by=invited_by,
             token_hash=token_hash,
             code_hash=code_hash,

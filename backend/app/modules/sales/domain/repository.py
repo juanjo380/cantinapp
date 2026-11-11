@@ -23,6 +23,7 @@ class SaleRepository(Protocol):
         import_id: UUID | None = None,
         created_by: UUID | None = None,
         row_hash: str | None = None,
+        location_id: UUID | None = None,
     ) -> Sale: ...
 
     async def open_import(
@@ -50,6 +51,7 @@ class SaleRepository(Protocol):
         business_id: UUID,
         *,
         product_id: UUID | None = None,
+        location_id: UUID | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         limit: int = 50,
