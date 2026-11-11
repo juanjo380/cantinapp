@@ -13,8 +13,10 @@ import CsvImportDialog from '../components/ui/CsvImportDialog'
 import DataTable from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
 import DemoData from '../components/ui/DemoData'
+import LocationFilter from '../components/ui/LocationFilter'
+import { useLocationScope } from '../hooks/useLocationScope'
 import PageHeader from '../components/ui/PageHeader'
-import SelectField from '../components/ui/SelectField'
+import ProductPickerField from '../components/ui/ProductPicker'
 import { Stamp } from '../components/ui/Stamp'
 import { Empty, Notice } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
@@ -50,9 +52,12 @@ const SALE_COLUMNS = [
     ),
   },
 ]
+const LOCATION_COLUMN = { key: 'location_name', header: 'Sede', hideOnMobile: true, render: (s) => s.location_name || '—' }
 
 export default function Sales() {
-  const [productId, setProductId] = useState('')
+  const [product, setProduct] = useState(null)
+  const [location, setLocation] = useState('')
+  const { locations, own } = useLocationScope()
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const pager = usePagination()
@@ -63,12 +68,13 @@ export default function Sales() {
   const { data, loading, error, reload } = useApi(
     () =>
       salesApi.list({
-        product_id: productId || undefined,
+        product_id: product?.id,
+        location_id: location || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
         ...pager.params,
       }),
-    [productId, dateFrom, dateTo, pager.page, pager.rowsPerPage],
+    [product, location, dateFrom, dateTo, pager.page, pager.rowsPerPage],
   )
 
   const filter = (setter) => (value) => {
@@ -99,14 +105,8 @@ export default function Sales() {
       )}
 
       <div className="filter-row">
-        <SelectField
-          size="small"
-          label="Producto"
-          options={[['', 'Todos'], ...products.items.map((p) => [p.id, p.name])]}
-          value={productId}
-          onChange={filter(setProductId)}
-          className="min-w-56"
-        />
+        <ProductPickerField size="small" allowAll value={product} onChange={filter(setProduct)} className="min-w-56" />
+        <LocationFilter value={location} onChange={filter(setLocation)} />
         <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => filter(setDateFrom)(e.target.value)} slotProps={dateLabel} />
         <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => filter(setDateTo)(e.target.value)} slotProps={dateLabel} />
       </div>
@@ -115,7 +115,7 @@ export default function Sales() {
 
       <DataTable
         label="Ventas"
-        columns={SALE_COLUMNS}
+        columns={locations.length && !own ? [...SALE_COLUMNS, LOCATION_COLUMN] : SALE_COLUMNS}
         rows={data?.items}
         loading={loading}
         error={error}
@@ -130,7 +130,6 @@ export default function Sales() {
 
       {dialog === 'manual' && (
         <ManualSaleDialog
-          products={products.items}
           onClose={() => setDialog(null)}
           onSaved={(text) => {
             setDialog(null)
@@ -152,8 +151,11 @@ export default function Sales() {
   )
 }
 
-function ManualSaleDialog({ products, onClose, onSaved }) {
-  const [form, setForm] = useState({ product_id: '', sale_date: todayISO(), quantity: '1', unit_price: '' })
+function ManualSaleDialog({ onClose, onSaved }) {
+  const { main } = useLocationScope()
+  const [product, setProduct] = useState(null)
+  const [location, setLocation] = useState(null) // null = la sede principal
+  const [form, setForm] = useState({ sale_date: todayISO(), quantity: '1', unit_price: '' })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -168,7 +170,7 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
 
   async function onSave() {
     const next = {}
-    if (!form.product_id) next.product_id = 'Elige un producto.'
+    if (!product) next.product_id = 'Elige un producto.'
     if (!form.sale_date) next.sale_date = 'Elige la fecha.'
     if (!form.quantity || Number(form.quantity) <= 0) next.quantity = 'Cantidad mayor que 0.'
     if (form.unit_price !== '' && Number(form.unit_price) < 0) next.unit_price = 'Precio 0 o más.'
@@ -179,7 +181,8 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
     setServerError('')
     try {
       await salesApi.create({
-        product_id: form.product_id,
+        product_id: product.id,
+        location_id: (location ?? main) || undefined,
         sale_date: form.sale_date,
         quantity: Number(form.quantity),
         unit_price: form.unit_price === '' ? undefined : Number(form.unit_price),
@@ -206,13 +209,15 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
       submitting={saving}
       error={serverError}
     >
-      <SelectField
-        label="Producto"
-        options={products.map((p) => [p.id, `${p.name} · stock ${p.stock_quantity}`])}
-        {...field('product_id')}
-        onChange={(value) => setForm((f) => ({ ...f, product_id: value }))}
+      <ProductPickerField
+        value={product}
+        onChange={setProduct}
+        error={Boolean(errors.product_id)}
+        helperText={errors.product_id || (product && `Stock disponible: ${product.stock_quantity}`)}
+        fullWidth
         autoFocus
       />
+      <LocationFilter size="medium" value={location ?? main} onChange={setLocation} allLabel="Sin sede" fullWidth />
       <TextField type="date" label="Fecha" {...field('sale_date')} slotProps={dateLabel} />
       <TextField type="number" label="Cantidad" {...field('quantity')} />
       <TextField
@@ -227,10 +232,14 @@ function ManualSaleDialog({ products, onClose, onSaved }) {
 
 function SalesCsvDialog({ onClose, onDone }) {
   const [affectsInventory, setAffectsInventory] = useState(false)
+  const { main } = useLocationScope()
+  const [location, setLocation] = useState(null) // null = la sede principal
   return (
     <CsvImportDialog
       title="Cargar historial por CSV"
-      upload={(file, { confirmReimport }) => salesApi.importCsv(file, affectsInventory, confirmReimport)}
+      upload={(file, { confirmReimport }) =>
+        salesApi.importCsv(file, affectsInventory, confirmReimport, location ?? main)
+      }
       templateUrl={salesApi.templateUrl}
       onClose={onClose}
       onDone={onDone}
@@ -256,6 +265,14 @@ function SalesCsvDialog({ onClose, onDone }) {
           se usa el del producto.
         </p>
       </div>
+      <LocationFilter
+        size="medium"
+        label="Sede de estas ventas"
+        value={location ?? main}
+        onChange={setLocation}
+        allLabel="Sin sede"
+        fullWidth
+      />
       <FormControlLabel
         control={<Switch checked={affectsInventory} onChange={(e) => setAffectsInventory(e.target.checked)} />}
         label="Descontar del inventario"

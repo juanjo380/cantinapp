@@ -17,6 +17,7 @@ class AnalyticsRepository(Protocol):
         date_from: date,
         date_to: date,
         product_id: UUID | None = None,
+        location_id: UUID | None = None,
     ) -> list[SalesSeriesPoint]: ...
 
     async def product_ranking(
@@ -27,6 +28,7 @@ class AnalyticsRepository(Protocol):
         limit: int,
         date_from: date,
         date_to: date,
+        location_id: UUID | None = None,
     ) -> list[ProductRanking]: ...
 
     async def daily_series(

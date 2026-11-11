@@ -49,6 +49,7 @@ class MembershipRecord(Base):
     business_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     role: Mapped[str]
+    location_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # sede asignada; None = todas
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
@@ -56,7 +57,7 @@ class ConsentRecord(Base):
     __tablename__ = "user_consents"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    business_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    business_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # sin negocio: cuenta creada para recibir invitaciones
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     document: Mapped[str]
     version: Mapped[str]

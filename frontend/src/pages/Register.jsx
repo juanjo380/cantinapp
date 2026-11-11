@@ -7,7 +7,7 @@ import LockIcon from '@mui/icons-material/LockOutlined'
 import MailIcon from '@mui/icons-material/MailOutlined'
 import StoreIcon from '@mui/icons-material/StorefrontOutlined'
 import { useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import AuthShell from '../components/auth/AuthShell'
 import LegalDialog from '../components/auth/LegalDialog'
@@ -23,6 +23,10 @@ const CONSENTS = [
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from
+  // Quien llega desde el enlace de una invitación solo necesita su cuenta, no un negocio propio.
+  const [withBusiness, setWithBusiness] = useState(!from?.startsWith('/invitacion'))
   const [form, setForm] = useState({ business_name: '', email: '', password: '', confirm: '' })
   const [consent, setConsent] = useState({ terms: false, privacy: false, ml: false })
   const [legal, setLegal] = useState(null)
@@ -35,7 +39,7 @@ export default function Register() {
   async function onSubmit(event) {
     event.preventDefault()
     const next = {}
-    if (!form.business_name.trim()) next.business_name = 'Escribe el nombre de tu negocio.'
+    if (withBusiness && !form.business_name.trim()) next.business_name = 'Escribe el nombre de tu negocio.'
     if (!form.email.trim()) next.email = 'Escribe tu correo.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = 'Correo no válido.'
     if (form.password.length < 8) next.password = 'La contraseña debe tener 8 caracteres o más.'
@@ -50,14 +54,15 @@ export default function Register() {
     try {
       // El nombre del usuario se pide después, en la personalización del perfil.
       await register({
-        business_name: form.business_name.trim(),
+        business_name: withBusiness ? form.business_name.trim() : null,
         email: form.email.trim(),
         password: form.password,
         accept_terms: consent.terms,
         accept_privacy: consent.privacy,
         allow_ml_data: consent.ml,
       })
-      navigate('/', { replace: true, state: { onboarding: true } }) // AppLayout muestra la bienvenida
+      if (withBusiness) navigate('/', { replace: true, state: { onboarding: true } }) // AppLayout muestra la bienvenida
+      else navigate(from || '/', { replace: true })
     } catch (err) {
       setServerError(
         err.status === 409 ? 'Ese correo ya está registrado. Inicia sesión.' : err.message,
@@ -70,12 +75,16 @@ export default function Register() {
   return (
     <AuthShell
       wide
-      title="Crea tu negocio"
-      subtitle="Empieza a controlar tu inventario y tus compras."
+      title={withBusiness ? 'Crea tu negocio' : 'Crea tu cuenta'}
+      subtitle={
+        withBusiness
+          ? 'Empieza a controlar tu inventario y tus compras.'
+          : 'Con esta cuenta podrás aceptar la invitación del negocio que te agregue a su equipo.'
+      }
       footer={
         <>
           ¿Ya tienes cuenta?{' '}
-          <RouterLink to="/login" className="sketch-link">
+          <RouterLink to="/login" state={location.state} className="sketch-link">
             Inicia sesión
           </RouterLink>
         </>
@@ -84,16 +93,18 @@ export default function Register() {
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {serverError && <Alert severity="error">{serverError}</Alert>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <IconField
-            icon={<StoreIcon fontSize="small" />}
-            label="Nombre del negocio"
-            value={form.business_name}
-            onChange={set('business_name')}
-            error={Boolean(errors.business_name)}
-            helperText={errors.business_name}
-            autoComplete="organization"
-            fullWidth
-          />
+          {withBusiness && (
+            <IconField
+              icon={<StoreIcon fontSize="small" />}
+              label="Nombre del negocio"
+              value={form.business_name}
+              onChange={set('business_name')}
+              error={Boolean(errors.business_name)}
+              helperText={errors.business_name}
+              autoComplete="organization"
+              fullWidth
+            />
+          )}
           <IconField
             icon={<MailIcon fontSize="small" />}
             label="Correo"
@@ -126,6 +137,16 @@ export default function Register() {
             fullWidth
           />
         </div>
+        <button
+          type="button"
+          className="sketch-link self-start text-sm"
+          onClick={() => {
+            setWithBusiness((v) => !v)
+            setErrors((e) => ({ ...e, business_name: undefined }))
+          }}
+        >
+          {withBusiness ? '¿Te invitaron a un negocio? Crea solo tu cuenta' : 'Prefiero crear mi propio negocio'}
+        </button>
         <fieldset className="flex flex-col">
           <legend className="sr-only">Términos y autorizaciones</legend>
           {CONSENTS.map(([key, before, link, after, required]) => (

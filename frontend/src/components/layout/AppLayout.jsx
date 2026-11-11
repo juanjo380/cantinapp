@@ -8,6 +8,7 @@ import Inventory2Icon from "@mui/icons-material/Inventory2Outlined";
 import LightModeIcon from "@mui/icons-material/LightModeOutlined";
 import LocalShippingIcon from "@mui/icons-material/LocalShippingOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccountsOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import PointOfSaleIcon from "@mui/icons-material/ShoppingCartOutlined";
@@ -77,9 +78,13 @@ function BusinessSwitcher({ onOpen, compact = false }) {
     >
       <StorefrontIcon fontSize="small" className="shrink-0 text-brand-ink" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-bold text-ink">{businessName || "Elige un negocio"}</span>
+        <span className="block truncate text-sm font-bold text-ink">
+          {businessName || "Elige un negocio"}
+        </span>
         {!compact && session?.role && (
-          <span className="block text-xs text-ink-soft">{ROLE_LABELS[session.role]}</span>
+          <span className="block text-xs text-ink-soft">
+            {ROLE_LABELS[session.role]}
+          </span>
         )}
       </span>
       <UnfoldMoreIcon fontSize="small" className="shrink-0 text-ink-soft" />
@@ -105,34 +110,51 @@ function RailFooter({ profileRef, onNavigate }) {
         ref={profileRef}
         to="/perfil"
         onClick={onNavigate}
-        className="-mx-2 mb-4 block px-2 py-1.5 transition-colors hover:bg-brand-tint [border-radius:var(--radius-sketch-sm)]"
+        className={`-mx-2 mb-4 flex items-center gap-3 px-2 py-1.5 transition-colors hover:bg-brand-tint [border-radius:var(--radius-sketch-sm)] ${
+          complete ? "" : "surface border-edge bg-brand-tint"
+        }`}
       >
-        <p
-          className={`truncate ${
-            complete
-              ? "font-display text-lg font-bold text-ink"
-              : "text-stamp font-bold tracking-stamp uppercase text-ink-soft"
-          }`}
-        >
-          {complete ? businessName : "Negocio"}
-        </p>
-        <p className={`mt-0.5 truncate text-sm ${complete ? "text-ink-soft" : "font-bold text-brand-ink"}`}>
-          {complete ? user?.full_name || user?.email : "Completa tu perfil →"}
-        </p>
+        <ManageAccountsIcon className={`shrink-0 ${complete ? "text-ink-soft" : "text-brand-ink"}`} />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate ${
+              complete
+                ? "font-display text-lg font-bold text-ink"
+                : "text-stamp font-bold tracking-stamp uppercase text-ink"
+            }`}
+          >
+            {complete ? businessName : "Negocio"}
+          </span>
+          <span
+            className={`mt-0.5 block truncate text-sm ${complete ? "text-ink-soft" : "font-bold text-brand-ink"}`}
+          >
+            {complete ? user?.full_name || user?.email : "Completa tu perfil →"}
+          </span>
+        </span>
       </NavLink>
       <div className="flex items-center justify-between gap-2">
         <IconButton
           size="small"
           onClick={() => setMode(active === "dark" ? "light" : "dark")}
-          aria-label={active === "dark" ? "Usar tema claro" : "Usar tema oscuro"}
+          aria-label={
+            active === "dark" ? "Usar tema claro" : "Usar tema oscuro"
+          }
           className="surface"
           sx={{
             borderRadius: "var(--radius-sketch)",
             background: "transparent",
-            "&:hover": { backgroundColor: "var(--ink)", color: "var(--ground)", borderRadius: "var(--radius-sketch-alt)" },
+            "&:hover": {
+              backgroundColor: "var(--ink)",
+              color: "var(--ground)",
+              borderRadius: "var(--radius-sketch-alt)",
+            },
           }}
         >
-          {active === "dark" ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+          {active === "dark" ? (
+            <LightModeIcon fontSize="small" />
+          ) : (
+            <DarkModeIcon fontSize="small" />
+          )}
         </IconButton>
         <button
           type="button"
@@ -160,10 +182,12 @@ export default function AppLayout() {
 
   // En escritorio la flecha apunta al bloque «Negocio»; en móvil (barra oculta), al botón de menú.
   const getTarget = useCallback(
-    () => (profileRef.current?.offsetParent ? profileRef.current : menuRef.current),
+    () =>
+      profileRef.current?.offsetParent ? profileRef.current : menuRef.current,
     [],
   );
-  const closeOnboarding = () => navigate(location.pathname, { replace: true, state: null });
+  const closeOnboarding = () =>
+    navigate(location.pathname, { replace: true, state: null });
   const closePicker = () => {
     setPicking(false);
     setNeedsPick(false);
@@ -180,7 +204,11 @@ export default function AppLayout() {
       </aside>
 
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b-2 border-edge bg-ground px-3 py-2.5 md:hidden">
-        <IconButton ref={menuRef} onClick={() => setOpen(true)} aria-label="Abrir menú">
+        <IconButton
+          ref={menuRef}
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menú"
+        >
           <MenuIcon />
         </IconButton>
         <Logo size="sm" />
@@ -213,11 +241,14 @@ export default function AppLayout() {
               title="No tienes un negocio activo"
               action={
                 <Button variant="contained" onClick={() => setPicking(true)}>
-                  {session?.businesses?.length ? "Elegir negocio" : "Crear mi negocio"}
+                  {session?.businesses?.length
+                    ? "Elegir negocio"
+                    : "Crear mi negocio"}
                 </Button>
               }
             >
-              Elige uno de tus negocios o crea uno nuevo para empezar.
+              Elige uno de tus negocios o crea uno nuevo. Si vas a trabajar en otro negocio, pide que te inviten a
+              {` ${session?.user?.email ?? 'tu correo'}`}.
             </Empty>
           )}
         </div>
@@ -228,7 +259,9 @@ export default function AppLayout() {
         <OnboardingDialog
           getTarget={getTarget}
           onClose={closeOnboarding}
-          onStart={() => navigate("/perfil?tab=negocio", { replace: true, state: null })}
+          onStart={() =>
+            navigate("/perfil?tab=negocio", { replace: true, state: null })
+          }
         />
       )}
     </div>

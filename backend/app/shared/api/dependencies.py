@@ -37,10 +37,19 @@ class CurrentUser:
     email: str
     full_name: str | None
     role: str = "MEMBER"
+    location_id: UUID | None = None  # sede asignada; None = todas (el dueño siempre ve todas)
+
+    def scoped_location(self, requested: UUID | None) -> UUID | None:
+        """Sede cuyas ventas y métricas ve: la asignada manda; sin sede asignada, la pedida (None = todas)."""
+        return self.location_id or requested
 
     @property
     def is_admin(self) -> bool:
         return self.role in ADMIN_ROLES
+
+    @property
+    def is_owner(self) -> bool:
+        return self.role == "OWNER"
 
 
 def _decode(credentials: HTTPAuthorizationCredentials | None) -> tuple[UUID, UUID | None, datetime]:
@@ -85,20 +94,21 @@ async def get_current_user(
     # 403 (no 401): la sesión sigue siendo válida, el cliente debe elegir otro negocio.
     if account.business_id is None:
         raise ForbiddenError("Elige o crea un negocio para continuar")
-    role = (
+    member = (
         await session.execute(
-            text("SELECT role FROM business_members WHERE business_id = :bid AND user_id = :uid"),
+            text("SELECT role, location_id FROM business_members WHERE business_id = :bid AND user_id = :uid"),
             {"bid": account.business_id, "uid": account.user_id},
         )
-    ).scalar_one_or_none()
-    if role is None:
+    ).mappings().first()
+    if member is None:
         raise ForbiddenError("Ya no perteneces a este negocio. Elige otro para continuar")
     return CurrentUser(
         user_id=account.user_id,
         business_id=account.business_id,
         email=account.email,
         full_name=account.full_name,
-        role=role,
+        role=member["role"],
+        location_id=None if member["role"] == "OWNER" else member["location_id"],
     )
 
 

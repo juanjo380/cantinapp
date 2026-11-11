@@ -29,6 +29,7 @@ class InvitationRecord(Base):
     business_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     email: Mapped[str]
     role: Mapped[str]
+    location_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     invited_by: Mapped[uuid.UUID] = mapped_column(Uuid)
     token_hash: Mapped[str]
     code_hash: Mapped[str]

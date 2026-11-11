@@ -26,6 +26,7 @@ async def sales_series(
     date_from: date | None = None,
     date_to: date | None = None,
     product_id: UUID | None = None,
+    location_id: UUID | None = None,
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
@@ -38,6 +39,7 @@ async def sales_series(
             date_from=date_from,
             date_to=date_to,
             product_id=product_id,
+            location_id=user.scoped_location(location_id),
         )
     )
     return SalesSeriesOut(
@@ -54,6 +56,7 @@ async def top_products(
     limit: int = Query(10, ge=1, le=100),
     date_from: date | None = None,
     date_to: date | None = None,
+    location_id: UUID | None = None,
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
@@ -66,6 +69,7 @@ async def top_products(
             limit=limit,
             date_from=date_from,
             date_to=date_to,
+            location_id=user.scoped_location(location_id),
         )
     )
     return ProductRankingListOut(order=order, items=[ProductRankingOut(**item.__dict__) for item in items])
@@ -75,12 +79,15 @@ async def top_products(
 async def classification(
     date_from: date | None = None,
     date_to: date | None = None,
+    location_id: UUID | None = None,
     user: CurrentUser = Depends(get_current_user),
     uow: SqlAlchemyUnitOfWork = Depends(get_uow),
 ):
     date_to = date_to or date.today()
     date_from = date_from or (date_to - timedelta(days=29))
-    items = await AnalyticsFacade(uow).classification(user.business_id, date_from, date_to)
+    items = await AnalyticsFacade(uow).classification(
+        user.business_id, date_from, date_to, user.scoped_location(location_id)
+    )
     return ClassificationOut(
         date_from=date_from, date_to=date_to, items=[ClassifiedProductOut(**i.__dict__) for i in items]
     )

@@ -13,6 +13,7 @@ class SalesSeriesQuery(Query):
     date_from: date
     date_to: date
     product_id: UUID | None = None
+    location_id: UUID | None = None  # None = todas las sedes
 
 
 @dataclass
@@ -22,3 +23,4 @@ class ProductRankingQuery(Query):
     limit: int
     date_from: date
     date_to: date
+    location_id: UUID | None = None

@@ -150,7 +150,7 @@ class SqlMembershipRepository(MembershipRepository):
     async def list_for_user(self, user_id: UUID) -> list[Membership]:
         rows = (
             await self.session.execute(
-                select(MembershipRecord.role, BusinessRecord)
+                select(MembershipRecord.role, MembershipRecord.location_id, BusinessRecord)
                 .join(BusinessRecord, BusinessRecord.id == MembershipRecord.business_id)
                 .where(MembershipRecord.user_id == user_id)
                 .order_by(func.lower(BusinessRecord.name))
@@ -162,6 +162,7 @@ class SqlMembershipRepository(MembershipRepository):
                 business_name=business.name,
                 role=role,
                 profile_completed=all(getattr(business, f) for f in PROFILE_REQUIRED_FIELDS),
+                location_id=None if role == "OWNER" else location_id,
             )
-            for role, business in rows
+            for role, location_id, business in rows
         ]

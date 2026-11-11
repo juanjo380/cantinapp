@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add'
 import BlockIcon from '@mui/icons-material/Block'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined'
@@ -67,6 +68,17 @@ export default function Products() {
     }
   }
 
+  async function onActivate(product) {
+    setNotice(null)
+    try {
+      await productsApi.update(product.id, { is_active: true })
+      setNotice({ severity: 'success', text: `"${product.name}" volvió a estar activo.` })
+      reload()
+    } catch (err) {
+      setNotice({ severity: 'error', text: err.message })
+    }
+  }
+
   const columns = [
     {
       key: 'name',
@@ -97,12 +109,14 @@ export default function Products() {
         <RowActions
           actions={[
             { title: 'Editar', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => setEditing(p) },
-            p.is_active && {
-              title: 'Desactivar',
-              color: 'error',
-              icon: <BlockIcon fontSize="small" />,
-              onClick: () => onDeactivate(p),
-            },
+            p.is_active
+              ? {
+                  title: 'Desactivar',
+                  color: 'error',
+                  icon: <BlockIcon fontSize="small" />,
+                  onClick: () => onDeactivate(p),
+                }
+              : { title: 'Activar', icon: <CheckCircleOutlineIcon fontSize="small" />, onClick: () => onActivate(p) },
           ]}
         />
       ),

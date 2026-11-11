@@ -34,7 +34,9 @@ export const businessApi = {
   updateLocation: (id, body) => request(`/business/locations/${id}`, { method: 'PUT', body }),
   removeLocation: (id) => request(`/business/locations/${id}`, { method: 'DELETE' }),
   members: () => request('/business/members'),
-  changeRole: (userId, role) => request(`/business/members/${userId}`, { method: 'PATCH', body: { role } }),
+  // El rol y la sede viajan juntos: location_id null = todas las sedes.
+  updateMember: (userId, role, locationId) =>
+    request(`/business/members/${userId}`, { method: 'PATCH', body: { role, location_id: locationId || null } }),
   removeMember: (userId) => request(`/business/members/${userId}`, { method: 'DELETE' }),
   invitations: () => request('/business/invitations'),
   invite: (body) => request('/business/invitations', { method: 'POST', body }),
@@ -67,10 +69,14 @@ export const inventoryApi = {
 export const salesApi = {
   list: (params) => request(`/sales${qs(params)}`),
   create: (body) => request('/sales', { method: 'POST', body }),
-  importCsv: (file, affectsInventory, confirmReimport = false) => {
+  importCsv: (file, affectsInventory, confirmReimport = false, locationId = undefined) => {
     const form = new FormData()
     form.append('file', file)
-    const params = { affects_inventory: affectsInventory, confirm_reimport: confirmReimport || undefined }
+    const params = {
+      affects_inventory: affectsInventory,
+      confirm_reimport: confirmReimport || undefined,
+      location_id: locationId || undefined,
+    }
     return request(`/sales/import${qs(params)}`, {
       method: 'POST',
       formData: form,

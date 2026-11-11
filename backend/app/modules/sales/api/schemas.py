@@ -11,6 +11,7 @@ class SaleCreate(BaseModel):
     sale_date: date
     quantity: int = Field(gt=0)
     unit_price: Decimal | None = Field(default=None, ge=0)
+    location_id: UUID | None = None  # sede; si el usuario tiene una asignada, se usa esa
 
 
 class SaleOut(BaseModel):
@@ -23,6 +24,8 @@ class SaleOut(BaseModel):
     total_amount: Decimal
     source: str
     affects_inventory: bool
+    location_id: UUID | None = None
+    location_name: str | None = None
 
 
 class SaleListOut(BaseModel):

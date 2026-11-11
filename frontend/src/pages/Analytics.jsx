@@ -12,7 +12,8 @@ import DataTable from '../components/ui/DataTable'
 import { Stamp } from '../components/ui/Stamp'
 import { Empty, ErrorView, Loading } from '../components/ui/States'
 import { useApi } from '../hooks/useApi'
-import { useProductOptions } from '../hooks/useProductOptions'
+import LocationFilter from '../components/ui/LocationFilter'
+import ProductPickerField from '../components/ui/ProductPicker'
 import { daysAgoISO, formatCOP, formatNumber, formatPercent, todayISO } from '../utils/format'
 
 const PERIODS = [
@@ -27,31 +28,21 @@ export default function Analytics() {
   const [period, setPeriod] = useState('daily')
   const [dateFrom, setDateFrom] = useState(daysAgoISO(30))
   const [dateTo, setDateTo] = useState(todayISO())
-  const [productId, setProductId] = useState('')
+  const [product, setProduct] = useState(null)
+  const [location, setLocation] = useState('')
   const [metric, setMetric] = useState('units')
 
-  const products = useProductOptions()
+  // Rango y sede comunes a todas las consultas de la página.
+  const range = { date_from: dateFrom || undefined, date_to: dateTo || undefined, location_id: location || undefined }
   const series = useApi(
-    () =>
-      analyticsApi.sales({
-        period,
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined,
-        product_id: productId || undefined,
-      }),
-    [period, dateFrom, dateTo, productId],
+    () => analyticsApi.sales({ period, ...range, product_id: product?.id }),
+    [period, dateFrom, dateTo, location, product],
   )
-  const top = useApi(
-    () => analyticsApi.topProducts({ order: 'top', limit: 10, date_from: dateFrom || undefined, date_to: dateTo || undefined }),
-    [dateFrom, dateTo],
-  )
-  const classification = useApi(
-    () => analyticsApi.classification({ date_from: dateFrom || undefined, date_to: dateTo || undefined }),
-    [dateFrom, dateTo],
-  )
+  const top = useApi(() => analyticsApi.topProducts({ order: 'top', limit: 10, ...range }), [dateFrom, dateTo, location])
+  const classification = useApi(() => analyticsApi.classification(range), [dateFrom, dateTo, location])
   const bottom = useApi(
-    () => analyticsApi.topProducts({ order: 'bottom', limit: 10, date_from: dateFrom || undefined, date_to: dateTo || undefined }),
-    [dateFrom, dateTo],
+    () => analyticsApi.topProducts({ order: 'bottom', limit: 10, ...range }),
+    [dateFrom, dateTo, location],
   )
 
   const labels = (series.data?.series ?? []).map((point) => point.period)
@@ -67,14 +58,8 @@ export default function Analytics() {
         <SelectField size="small" label="Período" options={PERIODS} value={period} onChange={setPeriod} className="min-w-36" />
         <TextField size="small" type="date" label="Desde" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
         <TextField size="small" type="date" label="Hasta" value={dateTo} onChange={(e) => setDateTo(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <SelectField
-          size="small"
-          label="Producto"
-          options={[['', 'Todos'], ...products.items.map((p) => [p.id, p.name])]}
-          value={productId}
-          onChange={setProductId}
-          className="min-w-48"
-        />
+        <ProductPickerField size="small" allowAll value={product} onChange={setProduct} className="min-w-48" />
+        <LocationFilter value={location} onChange={setLocation} />
         <ToggleButtonGroup
           size="small"
           exclusive

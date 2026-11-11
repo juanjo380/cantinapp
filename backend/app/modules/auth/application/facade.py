@@ -41,7 +41,7 @@ class AuthFacade:
     async def register(self, command: RegisterCommand) -> AuthResult:
         user, business = await handlers.register_user(self.users, self.businesses, self.memberships, command)
         await self.uow.commit()
-        return await self._issue(user.id, [business.id])
+        return await self._issue(user.id, [business.id] if business else [])
 
     async def login(self, command: LoginCommand) -> AuthResult:
         user = await handlers.authenticate(self.users, command)

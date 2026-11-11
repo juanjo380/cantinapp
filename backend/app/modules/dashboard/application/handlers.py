@@ -12,6 +12,8 @@ class DashboardHandlers:
     async def get(self, query: DashboardQuery) -> dict:
         business_id = query.business_id
         params = {"business_id": business_id}
+        sales_params = {**params, **({"location_id": query.location_id} if query.location_id else {})}
+        in_location = "AND location_id = :location_id " if query.location_id else ""
 
         totals = (
             await self.session.execute(
@@ -29,10 +31,10 @@ class DashboardHandlers:
             await self.session.execute(
                 text(
                     "SELECT COALESCE(SUM(quantity), 0)::int AS units, COALESCE(SUM(total_amount), 0) AS revenue "
-                    "FROM sales WHERE business_id = :business_id "
+                    f"FROM sales WHERE business_id = :business_id {in_location}"
                     "AND date_trunc('month', sale_date) = date_trunc('month', CURRENT_DATE)"
                 ),
-                params,
+                sales_params,
             )
         ).mappings().one()
 
@@ -51,9 +53,9 @@ class DashboardHandlers:
                 text(
                     "SELECT sale_date AS date, SUM(quantity)::int AS units FROM sales "
                     "WHERE business_id = :business_id AND sale_date >= CURRENT_DATE - CAST(:days AS int) "
-                    "GROUP BY sale_date ORDER BY sale_date"
+                    f"{in_location}GROUP BY sale_date ORDER BY sale_date"
                 ),
-                {**params, "days": query.trend_days},
+                {**sales_params, "days": query.trend_days},
             )
         ).mappings().all()
 

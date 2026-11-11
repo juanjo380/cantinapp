@@ -69,8 +69,9 @@ async def register_user(
     businesses: BusinessRepository,
     memberships: MembershipRepository,
     command: RegisterCommand,
-) -> tuple[User, Business]:
-    """RF-01: crea negocio + usuario dueño con email único y guarda sus autorizaciones."""
+) -> tuple[User, Business | None]:
+    """RF-01: crea el usuario con email único y guarda sus autorizaciones. Con nombre de negocio,
+    también el negocio con el usuario como dueño; sin él, la cuenta queda lista para recibir invitaciones."""
     if not all(command.consents.get(doc) for doc in REQUIRED_CONSENTS):
         raise UnprocessableError(
             "Debes aceptar los términos y condiciones y la política de privacidad y cookies"
@@ -79,16 +80,19 @@ async def register_user(
         raise ConflictError("El email ya está registrado")
     # PBKDF2 es CPU puro: en un hilo para no bloquear el event loop.
     password_hash = await asyncio.to_thread(hash_password, command.password)
-    business = await businesses.add(command.business_name.strip())
+    name = (command.business_name or "").strip()
+    business = await businesses.add(name) if name else None
+    business_id = business.id if business else None
     user = await users.add(
-        business_id=business.id,
+        business_id=business_id,
         email=command.email.strip().lower(),
         password_hash=password_hash,
         full_name=command.full_name,
     )
-    await memberships.add(business_id=business.id, user_id=user.id, role="OWNER")
+    if business:
+        await memberships.add(business_id=business_id, user_id=user.id, role="OWNER")
     await users.add_consents(
-        business_id=business.id,
+        business_id=business_id,
         user_id=user.id,
         version=LEGAL_VERSION,
         consents={doc: bool(command.consents.get(doc)) for doc in REQUIRED_CONSENTS + OPTIONAL_CONSENTS},

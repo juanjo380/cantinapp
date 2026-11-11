@@ -21,7 +21,8 @@ class _EmailMixin(BaseModel):
 
 
 class RegisterRequest(_EmailMixin):
-    business_name: str = Field(min_length=1, max_length=150)
+    # Sin nombre se crea solo la cuenta: para quien entrará a un negocio por invitación.
+    business_name: str | None = Field(default=None, max_length=150)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=150)
     # Autorizaciones del registro (términos y privacidad son obligatorias; se valida en el handler).
@@ -81,6 +82,7 @@ class MembershipOut(BaseModel):
     business_name: str
     role: str
     profile_completed: bool
+    location_id: UUID | None = None
 
 
 class SessionOut(BaseModel):

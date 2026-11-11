@@ -86,6 +86,7 @@ class LocationOut(BaseModel):
 class InvitationCreate(BaseModel):
     email: str
     role: AssignableRole = "MEMBER"
+    location_id: UUID | None = None  # None = todas las sedes
 
     @field_validator("email")
     @classmethod
@@ -100,6 +101,7 @@ class InvitationOut(BaseModel):
     id: UUID
     email: str
     role: str
+    location_id: UUID | None = None
     invited_by_name: str
     expires_at: datetime
     created_at: datetime
@@ -123,6 +125,7 @@ class InvitationAccept(BaseModel):
 
 class RoleChange(BaseModel):
     role: AssignableRole
+    location_id: UUID | None = None  # se envía siempre junto al rol; None = todas las sedes
 
 
 class MemberOut(BaseModel):
@@ -132,6 +135,7 @@ class MemberOut(BaseModel):
     job_title: str | None
     role: str
     created_at: datetime
+    location_id: UUID | None = None
 
 
 class DataSharing(BaseModel):

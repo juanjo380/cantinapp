@@ -36,6 +36,7 @@ async def register_sale(
         source="MANUAL",
         affects_inventory=True,
         created_by=command.created_by,
+        location_id=command.location_id,
     )
 
 
@@ -95,6 +96,7 @@ async def import_sales(
                     created_by=command.created_by,
                     # sin huella = duplicado intencional: ni bloquea ni lo bloquean cargas futuras
                     row_hash=row_hash if command.skip_duplicates else None,
+                    location_id=command.location_id,
                 )
             imported += 1
         except IntegrityError as exc:
@@ -119,6 +121,7 @@ async def list_sales(
     business_id: UUID,
     *,
     product_id: UUID | None = None,
+    location_id: UUID | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = 50,
@@ -127,6 +130,7 @@ async def list_sales(
     return await sales.list(
         business_id,
         product_id=product_id,
+        location_id=location_id,
         date_from=date_from,
         date_to=date_to,
         limit=limit,

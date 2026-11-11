@@ -56,9 +56,12 @@ class SqlAnalyticsRepository(AnalyticsRepository):
         date_from: date,
         date_to: date,
         product_id: UUID | None = None,
+        location_id: UUID | None = None,
     ) -> list[SalesSeriesPoint]:
         unit = PERIOD_UNITS.get(period, "day")
         condition = "AND product_id = :product_id" if product_id else ""
+        if location_id:
+            condition += " AND location_id = :location_id"
         rows = (
             await self.session.execute(
                 text(
@@ -73,25 +76,40 @@ class SqlAnalyticsRepository(AnalyticsRepository):
                     "date_from": date_from,
                     "date_to": date_to,
                     **({"product_id": product_id} if product_id else {}),
+                    **({"location_id": location_id} if location_id else {}),
                 },
             )
         ).mappings().all()
         return [SalesSeriesPoint(period=r["period"], units=r["units"], revenue=r["revenue"]) for r in rows]
 
     async def product_ranking(
-        self, business_id: UUID, *, order: str, limit: int, date_from: date, date_to: date
+        self,
+        business_id: UUID,
+        *,
+        order: str,
+        limit: int,
+        date_from: date,
+        date_to: date,
+        location_id: UUID | None = None,
     ) -> list[ProductRanking]:
         direction = "ASC" if order == "bottom" else "DESC"
+        condition = "AND s.location_id = :location_id" if location_id else ""
         rows = (
             await self.session.execute(
                 text(
                     "SELECT s.product_id, p.name, SUM(s.quantity)::int AS units, "
                     "COALESCE(SUM(s.total_amount), 0) AS revenue "
                     "FROM sales s JOIN products p ON p.id = s.product_id AND p.business_id = s.business_id "
-                    "WHERE s.business_id = :business_id AND s.sale_date BETWEEN :date_from AND :date_to "
+                    f"WHERE s.business_id = :business_id AND s.sale_date BETWEEN :date_from AND :date_to {condition} "
                     f"GROUP BY 1, 2 ORDER BY units {direction} LIMIT :limit"
                 ),
-                {"business_id": business_id, "date_from": date_from, "date_to": date_to, "limit": limit},
+                {
+                    "business_id": business_id,
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "limit": limit,
+                    **({"location_id": location_id} if location_id else {}),
+                },
             )
         ).mappings().all()
         return [

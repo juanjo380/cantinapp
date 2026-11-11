@@ -19,6 +19,8 @@ import { useAuth } from '../auth/context'
 import { PasswordField } from '../components/ui/IconField'
 import DataTable, { RowAction, RowActions } from '../components/ui/DataTable'
 import FormDialog from '../components/ui/FormDialog'
+import LocationFilter from '../components/ui/LocationFilter'
+import { useLocationScope } from '../hooks/useLocationScope'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import SelectField from '../components/ui/SelectField'
@@ -230,7 +232,7 @@ function BusinessTab() {
 }
 
 function DataSharingSection() {
-  const { isAdmin } = useAuth()
+  const { isOwner } = useAuth()
   const { data, loading, error, reload } = useApi(() => businessApi.dataSharing(), [])
   const [enabled, setEnabled] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -265,10 +267,10 @@ function DataSharingSection() {
           </p>
           <Notice notice={notice} onClose={() => setNotice(null)} />
           <FormControlLabel
-            control={<Switch checked={checked} disabled={!isAdmin || saving} onChange={(e) => onToggle(e.target.checked)} />}
+            control={<Switch checked={checked} disabled={!isOwner || saving} onChange={(e) => onToggle(e.target.checked)} />}
             label="Autorizo el uso anónimo y agregado de los datos de mi negocio"
           />
-          {!isAdmin && <span className="text-xs text-ink-soft">Solo el dueño o un administrador puede cambiarlo.</span>}
+          {!isOwner && <span className="text-xs text-ink-soft">Solo el dueño puede cambiarlo.</span>}
         </div>
       )}
     </Section>
@@ -276,13 +278,13 @@ function DataSharingSection() {
 }
 
 function BusinessForm({ initial }) {
-  const { isAdmin, refresh } = useAuth()
+  const { isOwner, refresh } = useAuth()
   const [form, setForm] = useState(() => Object.fromEntries(BUSINESS_FIELDS.map((f) => [f, initial[f] ?? ''])))
   const [errors, setErrors] = useState({})
   const [notice, setNotice] = useState(null)
   const [saving, setSaving] = useState(false)
   const bind = binder(form, setForm, errors)
-  const field = (name) => ({ ...bind(name), disabled: !isAdmin })
+  const field = (name) => ({ ...bind(name), disabled: !isOwner })
 
   async function onSave(event) {
     event.preventDefault()
@@ -310,8 +312,8 @@ function BusinessForm({ initial }) {
 
   return (
     <form onSubmit={onSave} noValidate className="flex flex-col gap-6">
-      {!isAdmin && (
-        <Alert severity="info">Solo el dueño o un administrador puede editar los datos del negocio.</Alert>
+      {!isOwner && (
+        <Alert severity="info">Solo el dueño puede editar los datos del negocio.</Alert>
       )}
       <Notice notice={notice} onClose={() => setNotice(null)} />
       <Section title="Datos del negocio">
@@ -348,7 +350,7 @@ function BusinessForm({ initial }) {
           <TextField label="Ciudad o municipio" required {...field('city')} />
         </div>
       </Section>
-      {isAdmin && (
+      {isOwner && (
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" variant="contained" disabled={saving}>
             {saving ? 'Guardando…' : 'Guardar negocio'}
@@ -363,7 +365,7 @@ function BusinessForm({ initial }) {
 // --- Sedes ---------------------------------------------------------------------
 
 function LocationsTab() {
-  const { isAdmin } = useAuth()
+  const { isOwner } = useAuth()
   const { data, loading, error, reload } = useApi(() => businessApi.locations(), [])
   const [editing, setEditing] = useState(null) // 'new' | sede
   const [notice, setNotice] = useState(null)
@@ -392,7 +394,7 @@ function LocationsTab() {
     },
     { key: 'address', header: 'Dirección', render: (l) => [l.address, l.city].filter(Boolean).join(', ') || '—' },
     { key: 'phone', header: 'Teléfono', hideOnMobile: true, render: (l) => l.phone || '—' },
-    ...(isAdmin
+    ...(isOwner
       ? [
           {
             key: 'actions',
@@ -415,9 +417,9 @@ function LocationsTab() {
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-xl text-sm text-ink-soft">
-          Registra los puntos de venta de tu negocio. Por ahora el inventario y las ventas son del negocio completo.
+          Registra los puntos de venta de tu negocio. Cada venta queda en su sede; el inventario es del negocio completo.
         </p>
-        {isAdmin && (
+        {isOwner && (
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
             Nueva sede
           </Button>
@@ -433,7 +435,7 @@ function LocationsTab() {
         onRetry={reload}
         empty={
           <Empty icon={<PlaceIcon />} title="Aún no tienes sedes">
-            {isAdmin ? 'Agrega la primera: quedará como sede principal.' : 'Un administrador puede registrarlas.'}
+            {isOwner ? 'Agrega la primera: quedará como sede principal.' : 'El dueño puede registrarlas.'}
           </Empty>
         }
       />
@@ -510,6 +512,8 @@ function LocationDialog({ location, onClose, onSaved }) {
 
 function TeamTab() {
   const { user, isAdmin, refresh } = useAuth()
+  const { locations, own } = useLocationScope()
+  const locationName = (id) => locations.find((l) => l.id === id)?.name ?? 'Todas las sedes'
   const { data, loading, error, reload } = useApi(() => businessApi.members(), [])
   const invitations = useApi(() => (isAdmin ? businessApi.invitations() : []), [isAdmin])
   const [adding, setAdding] = useState(false)
@@ -564,11 +568,29 @@ function TeamTab() {
               ['ADMIN', 'Administrador'],
             ]}
             value={m.role}
-            onChange={(role) => act(() => businessApi.changeRole(m.user_id, role), 'Rol actualizado.')}
+            onChange={(role) => act(() => businessApi.updateMember(m.user_id, role, m.location_id), 'Rol actualizado.')}
             className="min-w-40"
           />
         ) : (
           <Stamp tone={m.role === 'OWNER' ? 'ok' : 'neutral'}>{ROLE_LABELS[m.role] ?? m.role}</Stamp>
+        ),
+    },
+    locations.length > 0 && {
+      key: 'location_id',
+      header: 'Sede',
+      // Un admin con sede asignada no reasigna sedes: el backend le fija la suya.
+      render: (m) =>
+        isAdmin && !own && m.role !== 'OWNER' && m.user_id !== user.id ? (
+          <SelectField
+            size="small"
+            label="Sede"
+            options={[['', 'Todas las sedes'], ...locations.map((l) => [l.id, l.name])]}
+            value={m.location_id ?? ''}
+            onChange={(loc) => act(() => businessApi.updateMember(m.user_id, m.role, loc), 'Sede actualizada.')}
+            className="min-w-40"
+          />
+        ) : (
+          <span className="text-sm">{m.role === 'OWNER' ? 'Todas las sedes' : locationName(m.location_id)}</span>
         ),
     },
     { key: 'created_at', header: 'Desde', hideOnMobile: true, render: (m) => formatDate(m.created_at) },
@@ -612,7 +634,7 @@ function TeamTab() {
       <DataTable
         label="Equipo"
         rowKey="user_id"
-        columns={columns}
+        columns={columns.filter(Boolean)}
         rows={data}
         loading={loading}
         error={error}
@@ -671,6 +693,7 @@ function PendingInvitations({ rows, onRevoke }) {
 function InviteDialog({ onClose, onInvited }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('MEMBER')
+  const [location, setLocation] = useState('')
   const [error, setError] = useState('')
   const [serverError, setServerError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -685,7 +708,7 @@ function InviteDialog({ onClose, onInvited }) {
     setSaving(true)
     setServerError('')
     try {
-      setSent(await businessApi.invite({ email: email.trim(), role }))
+      setSent(await businessApi.invite({ email: email.trim(), role, location_id: location || null }))
       onInvited()
     } catch (err) {
       setServerError(err.message)
@@ -727,8 +750,8 @@ function InviteDialog({ onClose, onInvited }) {
       error={serverError}
     >
       <p className="text-sm text-ink-soft">
-        La persona debe tener ya una cuenta en CantinAPP. Le llegará un correo con un enlace y tú verás un código de
-        seguridad para dárselo.
+        La persona debe tener ya una cuenta en CantinAPP (puede crearla en «Regístrate» → «¿Te invitaron a un
+        negocio?»). Le llegará un correo con un enlace y tú verás un código de seguridad para dárselo.
       </p>
       <TextField
         label="Correo de su cuenta"
@@ -741,6 +764,10 @@ function InviteDialog({ onClose, onInvited }) {
         autoFocus
       />
       <SelectField label="Rol" options={ROLE_OPTIONS} value={role} onChange={setRole} fullWidth />
+      <LocationFilter size="medium" value={location} onChange={setLocation} fullWidth />
+      <p className="text-xs text-ink-soft">
+        Con una sede asignada, la persona solo registra y ve las ventas y métricas de esa sede.
+      </p>
     </FormDialog>
   )
 }

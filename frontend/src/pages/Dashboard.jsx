@@ -6,9 +6,11 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import Button from '@mui/material/Button'
 import { useTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { dashboardApi } from '../api/helper'
 import DemoData from '../components/ui/DemoData'
+import LocationFilter from '../components/ui/LocationFilter'
 import PageHeader from '../components/ui/PageHeader'
 import Section from '../components/ui/Section'
 import StatCard from '../components/ui/StatCard'
@@ -19,7 +21,11 @@ import { formatCOP, formatDate, formatNumber } from '../utils/format'
 
 export default function Dashboard() {
   const theme = useTheme()
-  const { data, loading, error, reload } = useApi(() => dashboardApi.get({ trend_days: 30 }), [])
+  const [location, setLocation] = useState('')
+  const { data, loading, error, reload } = useApi(
+    () => dashboardApi.get({ trend_days: 30, location_id: location || undefined }),
+    [location],
+  )
 
   return (
     <>
@@ -28,6 +34,10 @@ export default function Dashboard() {
           Ver recomendaciones
         </Button>
       </PageHeader>
+
+      <div className="filter-row empty:hidden">
+        <LocationFilter value={location} onChange={setLocation} />
+      </div>
 
       {loading && <Loading variant="dashboard" label="Cargando tu negocio…" />}
       {error && !loading && <ErrorView error={error} onRetry={reload} />}

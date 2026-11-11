@@ -31,6 +31,7 @@ class Membership:
     business_name: str
     role: str
     profile_completed: bool
+    location_id: UUID | None = None  # sede asignada (None = todas)
 
 
 @dataclass
