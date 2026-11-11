@@ -1,5 +1,6 @@
 import DarkModeIcon from "@mui/icons-material/DarkModeOutlined";
 import DashboardIcon from "@mui/icons-material/SpaceDashboardOutlined";
+import LunchDiningIcon from "@mui/icons-material/LunchDiningOutlined";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -29,6 +30,8 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: DashboardIcon, end: true },
   { to: "/productos", label: "Productos", icon: Inventory2Icon },
   { to: "/inventario", label: "Inventario", icon: WarehouseIcon },
+  // Solo si el negocio la activó en Perfil -> Negocio.
+  { to: "/compuestos", label: "Compuestos", icon: LunchDiningIcon, composites: true },
   { to: "/ventas", label: "Ventas", icon: PointOfSaleIcon },
   { to: "/analisis", label: "Análisis", icon: InsightsIcon },
   {
@@ -40,9 +43,10 @@ const NAV = [
 ];
 
 function NavList({ onNavigate }) {
+  const { compositesEnabled } = useAuth();
   return (
     <nav className="flex flex-col gap-2" aria-label="Secciones">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
+      {NAV.filter((item) => compositesEnabled || !item.composites).map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}

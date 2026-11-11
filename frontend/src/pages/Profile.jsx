@@ -226,8 +226,53 @@ function BusinessTab() {
   return (
     <div className="flex flex-col gap-6">
       <BusinessForm initial={data} />
+      <CompositesSection />
       <DataSharingSection />
     </div>
+  )
+}
+
+function CompositesSection() {
+  const { isOwner, compositesEnabled, refresh } = useAuth()
+  const [notice, setNotice] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function onToggle(next) {
+    setSaving(true)
+    setNotice(null)
+    try {
+      await businessApi.update({ composites_enabled: next })
+      await refresh() // muestra u oculta la sección en el menú
+      setNotice({
+        severity: 'success',
+        text: next
+          ? 'Listo: arma tus recetas en la sección Compuestos del menú.'
+          : 'Sección desactivada: cada venta vuelve a descontar solo el producto vendido.',
+      })
+    } catch (err) {
+      setNotice({ severity: 'error', text: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Section title="Productos compuestos">
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-ink-soft">
+          Para cocinas y restaurantes: define recetas (una hamburguesa lleva pan, carne y queso) y cada venta del
+          compuesto descuenta sus componentes del inventario.
+        </p>
+        <Notice notice={notice} onClose={() => setNotice(null)} />
+        <FormControlLabel
+          control={
+            <Switch checked={compositesEnabled} disabled={!isOwner || saving} onChange={(e) => onToggle(e.target.checked)} />
+          }
+          label="Activar la sección Compuestos"
+        />
+        {!isOwner && <span className="text-xs text-ink-soft">Solo el dueño puede cambiarlo.</span>}
+      </div>
+    </Section>
   )
 }
 

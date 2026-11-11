@@ -23,6 +23,7 @@ const Analytics = lazy(() => import('./pages/Analytics'))
 const Replenishment = lazy(() => import('./pages/Replenishment'))
 const Alerts = lazy(() => import('./pages/Alerts'))
 const Profile = lazy(() => import('./pages/Profile'))
+const Composites = lazy(() => import('./pages/Composites'))
 const Invitation = lazy(() => import('./pages/Invitation'))
 
 const SESSION_KEY = 'cantinapp.session'
@@ -156,6 +157,7 @@ function AuthProvider({ children }) {
       businessName: session?.business_name ?? '',
       isAdmin: ['OWNER', 'ADMIN'].includes(session?.role),
       isOwner: session?.role === 'OWNER',
+      compositesEnabled: Boolean(session?.composites_enabled),
       initializing,
       needsPick,
       setNeedsPick,
@@ -197,6 +199,7 @@ function ThemedApp() {
                   <Route path="analisis" element={<Analytics />} />
                   <Route path="reabastecimiento" element={<Replenishment />} />
                   <Route path="alertas" element={<Alerts />} />
+                  <Route path="compuestos" element={<Composites />} />
                   <Route path="perfil" element={<Profile />} />
                 </Route>
               </Route>

@@ -20,6 +20,7 @@ TRUNCATE TABLE
     inventory_movements,
     sales,
     sales_imports,
+    product_components,
     products,
     categories,
     suppliers,

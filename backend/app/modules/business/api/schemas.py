@@ -26,6 +26,7 @@ class BusinessUpdate(BaseModel):
     address: str | None = Field(default=None, max_length=200)
     city: str | None = Field(default=None, max_length=100)
     department: str | None = Field(default=None, max_length=100)
+    composites_enabled: bool | None = None  # sección Compuestos (recetas)
 
     _blanks = field_validator(
         "legal_name", "tax_id", "business_type", "phone", "email", "address", "city", "department", mode="before"
@@ -62,6 +63,7 @@ class BusinessOut(BaseModel):
     address: str | None
     city: str | None
     department: str | None
+    composites_enabled: bool
 
 
 class LocationIn(BaseModel):

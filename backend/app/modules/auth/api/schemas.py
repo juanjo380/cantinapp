@@ -91,6 +91,7 @@ class SessionOut(BaseModel):
     business_name: str | None = None
     role: str | None = None  # OWNER | ADMIN | MEMBER en el negocio activo
     profile_completed: bool = False
+    composites_enabled: bool = False
     businesses: list[MembershipOut] = []
 
 

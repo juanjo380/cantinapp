@@ -31,7 +31,8 @@ class Membership:
     business_name: str
     role: str
     profile_completed: bool
-    location_id: UUID | None = None  # sede asignada (None = todas)
+    location_id: UUID | None = None
+    composites_enabled: bool = False  # sede asignada (None = todas)
 
 
 @dataclass
@@ -58,6 +59,7 @@ class Session:
     business_name: str | None = None
     role: str | None = None
     profile_completed: bool = False
+    composites_enabled: bool = False
     businesses: list[Membership] = field(default_factory=list)
 
 
@@ -73,5 +75,6 @@ def build_session(user: User, memberships: list[Membership], preferred: list[UUI
         business_name=active.business_name,
         role=active.role,
         profile_completed=active.profile_completed and bool(user.full_name),
+        composites_enabled=active.composites_enabled,
         businesses=memberships,
     )

@@ -44,6 +44,7 @@ CREATE TABLE businesses (
     address       text,
     city          text,
     department    text,
+    composites_enabled boolean NOT NULL DEFAULT false,  -- migracion 010: recetas activas
     created_at  timestamptz NOT NULL DEFAULT now(),
     updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -193,6 +194,19 @@ CREATE UNIQUE INDEX ux_products_business_name_active
     ON products (business_id, lower(name)) WHERE is_active;
 CREATE INDEX ix_products_business_active ON products (business_id, is_active);
 CREATE INDEX ix_products_business_demo ON products (business_id) WHERE is_demo;
+
+-- Recetas de productos compuestos (migracion 010). Un solo nivel.
+CREATE TABLE product_components (
+    business_id   uuid    NOT NULL,
+    product_id    uuid    NOT NULL,
+    component_id  uuid    NOT NULL,
+    quantity      integer NOT NULL CHECK (quantity > 0),
+    PRIMARY KEY (product_id, component_id),
+    CHECK (product_id <> component_id),
+    FOREIGN KEY (business_id, product_id)   REFERENCES products (business_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (business_id, component_id) REFERENCES products (business_id, id) ON DELETE CASCADE
+);
+CREATE INDEX ix_product_components_component ON product_components (component_id);
 
 -- ---------------------------------------------------------------------------
 -- 4. Ventas  [Modulo Ventas]
@@ -415,7 +429,17 @@ CREATE TRIGGER trg_products_initial_stock
 CREATE OR REPLACE FUNCTION fn_sale_inventory()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF NEW.affects_inventory THEN
+    IF NOT NEW.affects_inventory THEN
+        RETURN NEW;
+    END IF;
+    INSERT INTO inventory_movements
+        (business_id, product_id, movement_type, quantity_change, sale_id, created_by, notes)
+    SELECT NEW.business_id, pc.component_id, 'SALE', -NEW.quantity * pc.quantity, NEW.id, NEW.created_by,
+           'Componente de producto compuesto'
+      FROM product_components pc
+      JOIN businesses b ON b.id = pc.business_id AND b.composites_enabled
+     WHERE pc.business_id = NEW.business_id AND pc.product_id = NEW.product_id;
+    IF NOT FOUND THEN
         INSERT INTO inventory_movements
             (business_id, product_id, movement_type, quantity_change, sale_id, created_by)
         VALUES
@@ -433,11 +457,18 @@ CREATE TRIGGER trg_sales_inventory
 CREATE OR REPLACE FUNCTION fn_sale_restore_inventory()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF OLD.affects_inventory THEN
-        INSERT INTO inventory_movements
-            (business_id, product_id, movement_type, quantity_change, notes)
-        VALUES
-            (OLD.business_id, OLD.product_id, 'ADJUSTMENT', OLD.quantity, 'Reversion por eliminacion de venta');
+    IF NOT OLD.affects_inventory THEN
+        RETURN OLD;
+    END IF;
+    INSERT INTO inventory_movements (business_id, product_id, movement_type, quantity_change, notes)
+    SELECT OLD.business_id, pc.component_id, 'ADJUSTMENT', OLD.quantity * pc.quantity,
+           'Reversion por eliminacion de venta (compuesto)'
+      FROM product_components pc
+      JOIN businesses b ON b.id = pc.business_id AND b.composites_enabled
+     WHERE pc.business_id = OLD.business_id AND pc.product_id = OLD.product_id;
+    IF NOT FOUND THEN
+        INSERT INTO inventory_movements (business_id, product_id, movement_type, quantity_change, notes)
+        VALUES (OLD.business_id, OLD.product_id, 'ADJUSTMENT', OLD.quantity, 'Reversion por eliminacion de venta');
     END IF;
     RETURN OLD;
 END;
@@ -465,17 +496,24 @@ SELECT
     c.name          AS category,
     s.name          AS supplier,
     p.price,
-    p.stock_quantity,
+    COALESCE(k.stock, p.stock_quantity) AS stock_quantity,
     p.min_stock,
     p.lead_time_days,
     CASE
-        WHEN p.stock_quantity = 0            THEN 'AGOTADO'
-        WHEN p.stock_quantity < p.min_stock  THEN 'BAJO'
+        WHEN COALESCE(k.stock, p.stock_quantity) = 0            THEN 'AGOTADO'
+        WHEN COALESCE(k.stock, p.stock_quantity) < p.min_stock  THEN 'BAJO'
         ELSE 'NORMAL'
     END             AS status
 FROM products p
+JOIN businesses b ON b.id = p.business_id
 LEFT JOIN categories c ON c.id = p.category_id
 LEFT JOIN suppliers  s ON s.id = p.supplier_id
+LEFT JOIN LATERAL (
+    SELECT MIN(cp.stock_quantity / pc.quantity) AS stock   -- sin receta: NULL -> stock propio
+      FROM product_components pc
+      JOIN products cp ON cp.id = pc.component_id
+     WHERE pc.product_id = p.id AND b.composites_enabled
+) k ON true
 WHERE p.is_active;
 
 -- HU05: ventas agregadas por dia (base para mensual/anual, tendencias y prediccion)

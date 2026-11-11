@@ -34,6 +34,13 @@ class ProductsFacade:
         await handlers.deactivate_product(self.products, business_id, product_id)
         await self.uow.commit()
 
+    async def composites(self, business_id):
+        return await self.products.list_composites(business_id)
+
+    async def set_recipe(self, business_id, product_id, items: dict) -> None:
+        await handlers.set_recipe(self.products, business_id, product_id, items)
+        await self.uow.commit()
+
     async def get(self, query: GetProductQuery):
         return await handlers.get_product(self.products, query)
 
