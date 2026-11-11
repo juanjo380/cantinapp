@@ -8,7 +8,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.products.domain.entities import Product
@@ -136,6 +136,95 @@ class SqlProductRepository(ProductRepository):
     async def deactivate(self, product: Product) -> None:
         record = await self.session.get(ProductRecord, product.id)
         record.is_active = False
+        await self.session.flush()
+
+    async def composites_enabled(self, business_id: UUID) -> bool:
+        return bool(
+            (
+                await self.session.execute(
+                    text("SELECT composites_enabled FROM businesses WHERE id = :b"), {"b": business_id}
+                )
+            ).scalar_one_or_none()
+        )
+
+    async def has_recipe(self, business_id: UUID, product_id: UUID) -> bool:
+        return (
+            await self.session.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM product_components pc "
+                    "JOIN businesses b ON b.id = pc.business_id AND b.composites_enabled "
+                    "WHERE pc.business_id = :b AND pc.product_id = :p)"
+                ),
+                {"b": business_id, "p": product_id},
+            )
+        ).scalar_one()
+
+    async def list_composites(self, business_id: UUID) -> list[dict]:
+        rows = (
+            await self.session.execute(
+                text(
+                    "SELECT p.id AS product_id, p.name, p.price, pc.component_id, c.name AS component_name, "
+                    "pc.quantity, c.stock_quantity AS component_stock "
+                    "FROM product_components pc "
+                    "JOIN products p ON p.id = pc.product_id "
+                    "JOIN products c ON c.id = pc.component_id "
+                    "WHERE pc.business_id = :b AND p.is_active "
+                    "ORDER BY lower(p.name), lower(c.name)"
+                ),
+                {"b": business_id},
+            )
+        ).mappings().all()
+        composites: dict[UUID, dict] = {}
+        for row in rows:
+            item = composites.setdefault(
+                row["product_id"],
+                {"product_id": row["product_id"], "name": row["name"], "price": row["price"], "components": []},
+            )
+            item["components"].append(
+                {
+                    "component_id": row["component_id"],
+                    "name": row["component_name"],
+                    "quantity": row["quantity"],
+                    "stock_quantity": row["component_stock"],
+                }
+            )
+        for item in composites.values():  # cuántos se pueden armar con el stock actual
+            item["available"] = min(c["stock_quantity"] // c["quantity"] for c in item["components"])
+        return list(composites.values())
+
+    async def with_recipe(self, business_id: UUID, product_ids: list[UUID]) -> set[UUID]:
+        rows = await self.session.execute(
+            text(
+                "SELECT DISTINCT product_id FROM product_components "
+                "WHERE business_id = :b AND product_id = ANY(:ids)"
+            ),
+            {"b": business_id, "ids": product_ids},
+        )
+        return set(rows.scalars())
+
+    async def used_as_component(self, business_id: UUID, product_id: UUID) -> bool:
+        return (
+            await self.session.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM product_components WHERE business_id = :b AND component_id = :p)"
+                ),
+                {"b": business_id, "p": product_id},
+            )
+        ).scalar_one()
+
+    async def set_components(self, business_id: UUID, product_id: UUID, items: dict[UUID, int]) -> None:
+        params = {"b": business_id, "p": product_id}
+        await self.session.execute(
+            text("DELETE FROM product_components WHERE business_id = :b AND product_id = :p"), params
+        )
+        if items:
+            await self.session.execute(
+                text(
+                    "INSERT INTO product_components (business_id, product_id, component_id, quantity) "
+                    "VALUES (:b, :p, :c, :q)"
+                ),
+                [{**params, "c": component_id, "q": quantity} for component_id, quantity in items.items()],
+            )
         await self.session.flush()
 
     async def _resolve_category(self, business_id: UUID, name: str | None) -> UUID | None:

@@ -22,6 +22,7 @@ class BusinessRecord(Base):
     address: Mapped[str | None]
     city: Mapped[str | None]
     department: Mapped[str | None]
+    composites_enabled: Mapped[bool] = mapped_column(default=False)  # migración 010
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 

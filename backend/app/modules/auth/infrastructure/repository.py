@@ -163,6 +163,7 @@ class SqlMembershipRepository(MembershipRepository):
                 role=role,
                 profile_completed=all(getattr(business, f) for f in PROFILE_REQUIRED_FIELDS),
                 location_id=None if role == "OWNER" else location_id,
+                composites_enabled=business.composites_enabled,
             )
             for role, location_id, business in rows
         ]

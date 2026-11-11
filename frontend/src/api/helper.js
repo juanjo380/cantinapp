@@ -57,6 +57,9 @@ export const productsApi = {
     return request('/products/import', { method: 'POST', formData: form })
   },
   templateUrl: apiUrl('/products/import/template'),
+  composites: () => request('/products/composites'),
+  // components: [{ component_id, quantity }]; vacía = deja de ser compuesto.
+  setRecipe: (id, components) => request(`/products/${id}/components`, { method: 'PUT', body: { components } }),
 }
 
 export const inventoryApi = {

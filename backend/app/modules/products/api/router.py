@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.core.exceptions import UnprocessableError
 from app.modules.products.api.schemas import (
+    CompositeOut,
     ProductCreate,
     ProductImportOut,
     ProductListOut,
     ProductOut,
     ProductUpdate,
+    RecipeIn,
 )
 from app.modules.products.application.commands import (
     CreateProductCommand,
@@ -87,6 +89,23 @@ async def import_products(
         )
     )
     return ProductImportOut(**summary.__dict__)
+
+
+@router.get("/composites", response_model=list[CompositeOut])
+async def list_composites(user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
+    return await ProductsFacade(uow).composites(user.business_id)
+
+
+@router.put("/{product_id}/components", status_code=204)
+async def set_recipe(
+    product_id: UUID,
+    body: RecipeIn,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    items = {c.component_id: c.quantity for c in body.components}
+    await ProductsFacade(uow).set_recipe(user.business_id, product_id, items)
+    return None
 
 
 @router.get("/{product_id}", response_model=ProductOut)

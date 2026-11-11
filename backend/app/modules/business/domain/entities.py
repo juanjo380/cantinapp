@@ -6,7 +6,7 @@ from uuid import UUID
 BUSINESS_TYPES = (
     "TIENDA", "MINIMERCADO", "CANTINA_ESCOLAR", "CAFETERIA", "RESTAURANTE", "PANADERIA", "DROGUERIA", "OTRO",
 )
-PROFILE_FIELDS = ("name", "legal_name", "tax_id", "business_type", "phone", "email", "address", "city", "department")
+PROFILE_FIELDS = ("name", "legal_name", "tax_id", "business_type", "phone", "email", "address", "city", "department", "composites_enabled")
 ASSIGNABLE_ROLES = ("ADMIN", "MEMBER")  # el dueño no se asigna: es quien crea el negocio
 
 _NIT_WEIGHTS = (3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71)
@@ -42,6 +42,7 @@ class BusinessProfile:
     address: str | None
     city: str | None
     department: str | None
+    composites_enabled: bool
 
 
 @dataclass

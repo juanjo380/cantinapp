@@ -46,6 +46,7 @@ def _session_out(session: Session) -> dict:
         "business_name": session.business_name,
         "role": session.role,
         "profile_completed": session.profile_completed,
+        "composites_enabled": session.composites_enabled,
         "businesses": [m.__dict__ for m in session.businesses],
     }
 

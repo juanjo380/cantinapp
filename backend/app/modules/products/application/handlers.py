@@ -2,7 +2,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, UnprocessableError
 from app.modules.products.application.commands import (
     CreateProductCommand,
     ImportProductsCommand,
@@ -97,3 +97,24 @@ async def _require(products: ProductRepository, business_id, product_id) -> Prod
     if product is None:
         raise NotFoundError("Producto no encontrado")
     return product
+
+
+async def set_recipe(products: ProductRepository, business_id, product_id, items: dict) -> None:
+    """Guarda la receta de un compuesto (`items`: componente -> unidades). Vacía = deja de ser compuesto."""
+    if not await products.composites_enabled(business_id):
+        raise UnprocessableError("Activa la sección Compuestos en Perfil → Negocio")
+    product = await products.get(business_id, product_id)
+    if product is None or not product.is_active:
+        raise NotFoundError("Producto no encontrado")
+    if product_id in items:
+        raise UnprocessableError("Un producto no puede ser componente de sí mismo")
+    for component_id in items:
+        component = await products.get(business_id, component_id)
+        if component is None or not component.is_active:
+            raise NotFoundError("Componente no encontrado")
+    # Un solo nivel: el trigger de ventas no descuenta recetas anidadas.
+    if items and await products.used_as_component(business_id, product_id):
+        raise UnprocessableError(f"{product.name} ya es componente de otro compuesto")
+    if items and await products.with_recipe(business_id, list(items)):
+        raise UnprocessableError("Un componente no puede ser a su vez un compuesto")
+    await products.set_components(business_id, product_id, items)

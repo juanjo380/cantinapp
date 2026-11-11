@@ -2,7 +2,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProductCreate(BaseModel):
@@ -35,6 +35,37 @@ class ProductOut(BaseModel):
     min_stock: int
     lead_time_days: int
     is_active: bool
+
+
+class ComponentIn(BaseModel):
+    component_id: UUID
+    quantity: int = Field(ge=1, le=10_000)
+
+
+class RecipeIn(BaseModel):
+    components: list[ComponentIn] = Field(max_length=50)  # vacía = deja de ser compuesto
+
+    @field_validator("components")
+    @classmethod
+    def _unique(cls, value):
+        if len({c.component_id for c in value}) != len(value):
+            raise ValueError("Hay componentes repetidos")
+        return value
+
+
+class ComponentOut(BaseModel):
+    component_id: UUID
+    name: str
+    quantity: int
+    stock_quantity: int
+
+
+class CompositeOut(BaseModel):
+    product_id: UUID
+    name: str
+    price: Decimal
+    available: int  # unidades que se pueden armar con el stock actual
+    components: list[ComponentOut]
 
 
 class ProductListOut(BaseModel):
