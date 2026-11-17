@@ -49,8 +49,8 @@ function CompositesList() {
   async function onRemove(composite) {
     setNotice(null)
     try {
-      await productsApi.setRecipe(composite.product_id, [])
-      setNotice({ severity: 'success', text: `"${composite.name}" ya no es compuesto: descuenta su propio stock.` })
+      await productsApi.remove(composite.product_id)
+      setNotice({ severity: 'success', text: `"${composite.name}" desactivado.` })
       reload()
     } catch (err) {
       setNotice({ severity: 'error', text: err.message })
@@ -76,7 +76,11 @@ function CompositesList() {
       header: 'Se pueden armar',
       align: 'right',
       render: (c) =>
-        c.available > 0 ? <span className="font-mono">{c.available}</span> : <Stamp tone="crit">Sin componentes</Stamp>,
+        c.available > 0 ? (
+          <span className="font-mono">{c.available}</span>
+        ) : (
+          <Stamp tone="crit">{c.components.length ? 'Sin stock de componentes' : 'Sin receta'}</Stamp>
+        ),
     },
     {
       key: 'actions',
@@ -85,8 +89,8 @@ function CompositesList() {
       render: (c) => (
         <RowActions
           actions={[
-            { title: 'Editar receta', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => setEditing(c) },
-            { title: 'Quitar receta', color: 'error', icon: <DeleteOutlineIcon fontSize="small" />, onClick: () => onRemove(c) },
+            { title: 'Editar compuesto', icon: <EditOutlinedIcon fontSize="small" />, onClick: () => setEditing(c) },
+            { title: 'Desactivar compuesto', color: 'error', icon: <DeleteOutlineIcon fontSize="small" />, onClick: () => onRemove(c) },
           ]}
         />
       ),
@@ -116,7 +120,7 @@ function CompositesList() {
         onRetry={reload}
         empty={
           <Empty icon={<LunchDiningOutlinedIcon />} title="Todavía no tienes compuestos">
-            Crea el producto (p. ej. «Hamburguesa») y sus ingredientes en Productos; luego arma aquí su receta.
+            Crea aquí lo que vendes (p. ej. «Hamburguesa») con su precio y sus ingredientes, que se registran en Productos.
           </Empty>
         }
       />
@@ -137,11 +141,13 @@ function CompositesList() {
 }
 
 const emptyRow = () => ({ product: null, quantity: '1' })
+const SIMPLE_PRODUCTS = { composite: false } // un compuesto no puede ser componente
 
 function RecipeDialog({ composite, onClose, onSaved }) {
-  const [product, setProduct] = useState(composite && { id: composite.product_id, name: composite.name })
+  const [name, setName] = useState(composite?.name ?? '')
+  const [price, setPrice] = useState(composite ? String(composite.price) : '')
   const [rows, setRows] = useState(() =>
-    composite
+    composite?.components.length
       ? composite.components.map((k) => ({ product: { id: k.component_id, name: k.name }, quantity: String(k.quantity) }))
       : [emptyRow()],
   )
@@ -151,26 +157,29 @@ function RecipeDialog({ composite, onClose, onSaved }) {
 
   async function onSave() {
     const ids = rows.map((r) => r.product?.id)
-    const problem = !product
-      ? 'Elige el producto compuesto.'
-      : rows.some((r) => !r.product)
-        ? 'Elige el producto de cada componente.'
-        : rows.some((r) => !(Number.isInteger(Number(r.quantity)) && Number(r.quantity) >= 1))
-          ? 'Cada cantidad debe ser un número entero mayor que 0.'
-          : new Set(ids).size !== ids.length
-            ? 'Hay componentes repetidos.'
-            : ids.includes(product.id)
-              ? 'Un producto no puede ser componente de sí mismo.'
+    const problem = !name.trim()
+      ? 'Escribe el nombre del compuesto.'
+      : price === '' || Number(price) < 0
+        ? 'El precio debe ser 0 o más.'
+        : rows.some((r) => !r.product)
+          ? 'Elige el producto de cada componente.'
+          : rows.some((r) => !(Number.isInteger(Number(r.quantity)) && Number(r.quantity) >= 1))
+            ? 'Cada cantidad debe ser un número entero mayor que 0.'
+            : new Set(ids).size !== ids.length
+              ? 'Hay componentes repetidos.'
               : null
     setError(problem)
     if (problem) return
     setSaving(true)
+    const components = rows.map((r) => ({ component_id: r.product.id, quantity: Number(r.quantity) }))
     try {
-      await productsApi.setRecipe(
-        product.id,
-        rows.map((r) => ({ component_id: r.product.id, quantity: Number(r.quantity) })),
-      )
-      onSaved(product.name)
+      if (composite) {
+        await productsApi.update(composite.product_id, { name: name.trim(), price: Number(price) })
+        await productsApi.setRecipe(composite.product_id, components)
+      } else {
+        await productsApi.createComposite({ name: name.trim(), price: Number(price), components })
+      }
+      onSaved(name.trim())
     } catch (err) {
       setError(err.message)
       setSaving(false)
@@ -179,7 +188,7 @@ function RecipeDialog({ composite, onClose, onSaved }) {
 
   return (
     <FormDialog
-      title={composite ? `Receta de ${composite.name}` : 'Nuevo compuesto'}
+      title={composite ? `Editar ${composite.name}` : 'Nuevo compuesto'}
       icon={<LunchDiningOutlinedIcon />}
       onClose={onClose}
       onSubmit={onSave}
@@ -187,21 +196,33 @@ function RecipeDialog({ composite, onClose, onSaved }) {
       error={error}
       maxWidth="sm"
     >
-      {!composite && (
-        <ProductPickerField
-          label="Producto que se vende (p. ej. Hamburguesa)"
-          value={product}
-          onChange={setProduct}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TextField
+          label="Nombre (p. ej. Hamburguesa)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoFocus
           fullWidth
         />
-      )}
-      <p className="text-sm text-ink-soft">Componentes por cada unidad vendida:</p>
+        <TextField
+          label="Precio (COP)"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          slotProps={{ htmlInput: { min: 0 } }}
+          fullWidth
+        />
+      </div>
+      <p className="text-sm text-ink-soft">
+        Componentes por cada unidad vendida. El stock del compuesto sale de ellos:
+      </p>
       {rows.map((row, index) => (
         <div key={index} className="flex items-center gap-2">
           <ProductPickerField
             label={`Componente ${index + 1}`}
             value={row.product}
             onChange={(next) => setRow(index, { product: next })}
+            filters={SIMPLE_PRODUCTS}
             className="flex-1"
           />
           <TextField

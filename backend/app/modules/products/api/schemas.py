@@ -35,6 +35,7 @@ class ProductOut(BaseModel):
     min_stock: int
     lead_time_days: int
     is_active: bool
+    is_composite: bool = False
 
 
 class ComponentIn(BaseModel):
@@ -43,7 +44,7 @@ class ComponentIn(BaseModel):
 
 
 class RecipeIn(BaseModel):
-    components: list[ComponentIn] = Field(max_length=50)  # vacía = deja de ser compuesto
+    components: list[ComponentIn] = Field(min_length=1, max_length=50)
 
     @field_validator("components")
     @classmethod
@@ -51,6 +52,13 @@ class RecipeIn(BaseModel):
         if len({c.component_id for c in value}) != len(value):
             raise ValueError("Hay componentes repetidos")
         return value
+
+
+class CompositeCreate(RecipeIn):
+    name: str = Field(min_length=1, max_length=200)
+    category: str | None = Field(default=None, max_length=120)
+    price: Decimal = Field(ge=0)
+    min_stock: int = Field(default=0, ge=0)
 
 
 class ComponentOut(BaseModel):

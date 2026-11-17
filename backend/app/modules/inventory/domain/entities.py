@@ -30,6 +30,7 @@ class InventoryItem:
     min_stock: int
     lead_time_days: int
     status: str
+    is_composite: bool = False  # su stock sale de la receta: no admite movimientos
 
 
 @dataclass

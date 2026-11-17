@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.core.exceptions import UnprocessableError
 from app.modules.products.api.schemas import (
+    CompositeCreate,
     CompositeOut,
     ProductCreate,
     ProductImportOut,
@@ -39,6 +40,7 @@ async def list_products(
     search: str | None = None,
     category: str | None = None,
     active_only: bool = True,
+    composite: bool | None = None,
     sort: str = "name",
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -51,6 +53,7 @@ async def list_products(
             search=search,
             category=category,
             active_only=active_only,
+            composite=composite,
             sort=sort,
             limit=limit,
             offset=offset,
@@ -94,6 +97,20 @@ async def import_products(
 @router.get("/composites", response_model=list[CompositeOut])
 async def list_composites(user: CurrentUser = Depends(get_current_user), uow: SqlAlchemyUnitOfWork = Depends(get_uow)):
     return await ProductsFacade(uow).composites(user.business_id)
+
+
+@router.post("/composites", response_model=ProductOut, status_code=201)
+async def create_composite(
+    body: CompositeCreate,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    command = CreateProductCommand(
+        business_id=user.business_id, name=body.name, category=body.category, price=body.price,
+        quantity=0, min_stock=body.min_stock, lead_time_days=0,
+    )
+    items = {c.component_id: c.quantity for c in body.components}
+    return ProductOut(**(await ProductsFacade(uow).create_composite(command, items)).__dict__)
 
 
 @router.put("/{product_id}/components", status_code=204)

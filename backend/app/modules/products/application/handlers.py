@@ -85,6 +85,7 @@ async def list_products(products: ProductRepository, query: ListProductsQuery) -
         search=query.search,
         category=query.category,
         active_only=query.active_only,
+        composite=query.composite,
         sort=query.sort,
         limit=query.limit,
         offset=query.offset,
@@ -99,22 +100,39 @@ async def _require(products: ProductRepository, business_id, product_id) -> Prod
     return product
 
 
+async def create_composite(products: ProductRepository, command: CreateProductCommand, items: dict) -> Product:
+    """Crea el compuesto (sin stock propio) y su receta en la misma transacción."""
+    if not await products.composites_enabled(command.business_id):
+        raise UnprocessableError("Activa la sección Compuestos en Perfil → Negocio")
+    product = await products.add(
+        business_id=command.business_id,
+        name=command.name,
+        category=command.category,
+        supplier=None,
+        price=command.price,
+        quantity=0,
+        min_stock=command.min_stock,
+        lead_time_days=0,
+        is_composite=True,
+    )
+    await set_recipe(products, command.business_id, product.id, items)
+    return product
+
+
 async def set_recipe(products: ProductRepository, business_id, product_id, items: dict) -> None:
-    """Guarda la receta de un compuesto (`items`: componente -> unidades). Vacía = deja de ser compuesto."""
+    """Guarda la receta de un compuesto (`items`: componente -> unidades por unidad vendida)."""
     if not await products.composites_enabled(business_id):
         raise UnprocessableError("Activa la sección Compuestos en Perfil → Negocio")
     product = await products.get(business_id, product_id)
-    if product is None or not product.is_active:
-        raise NotFoundError("Producto no encontrado")
-    if product_id in items:
-        raise UnprocessableError("Un producto no puede ser componente de sí mismo")
+    if product is None or not product.is_active or not product.is_composite:
+        raise NotFoundError("Compuesto no encontrado")
+    if not items:
+        raise UnprocessableError("Un compuesto necesita al menos un componente")
     for component_id in items:
         component = await products.get(business_id, component_id)
         if component is None or not component.is_active:
             raise NotFoundError("Componente no encontrado")
-    # Un solo nivel: el trigger de ventas no descuenta recetas anidadas.
-    if items and await products.used_as_component(business_id, product_id):
-        raise UnprocessableError(f"{product.name} ya es componente de otro compuesto")
-    if items and await products.with_recipe(business_id, list(items)):
-        raise UnprocessableError("Un componente no puede ser a su vez un compuesto")
+        # Un solo nivel: el trigger de ventas no descuenta recetas anidadas.
+        if component.is_composite:
+            raise UnprocessableError(f"{component.name} es un compuesto y no puede ser componente")
     await products.set_components(business_id, product_id, items)

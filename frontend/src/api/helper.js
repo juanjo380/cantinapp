@@ -58,7 +58,9 @@ export const productsApi = {
   },
   templateUrl: apiUrl('/products/import/template'),
   composites: () => request('/products/composites'),
-  // components: [{ component_id, quantity }]; vacía = deja de ser compuesto.
+  // body: { name, price, category?, components: [{ component_id, quantity }] }
+  createComposite: (body) => request('/products/composites', { method: 'POST', body }),
+  // components: [{ component_id, quantity }], al menos uno.
   setRecipe: (id, components) => request(`/products/${id}/components`, { method: 'PUT', body: { components } }),
 }
 

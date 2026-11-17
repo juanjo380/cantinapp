@@ -34,6 +34,7 @@ class SqlProductRepository(ProductRepository):
         search: str | None = None,
         category: str | None = None,
         active_only: bool = True,
+        composite: bool | None = None,
         sort: str = "name",
         limit: int = 50,
         offset: int = 0,
@@ -43,6 +44,8 @@ class SqlProductRepository(ProductRepository):
         conditions = [ProductRecord.business_id == business_id]
         if active_only:
             conditions.append(ProductRecord.is_active.is_(True))
+        if composite is not None:
+            conditions.append(ProductRecord.is_composite.is_(composite))
         if search:
             conditions.append(ProductRecord.name.ilike(f"%{search}%"))
         if category:
@@ -106,6 +109,7 @@ class SqlProductRepository(ProductRepository):
         quantity: int,
         min_stock: int,
         lead_time_days: int,
+        is_composite: bool = False,
     ) -> Product:
         record = ProductRecord(
             business_id=business_id,
@@ -116,6 +120,7 @@ class SqlProductRepository(ProductRepository):
             stock_quantity=quantity,
             min_stock=min_stock,
             lead_time_days=lead_time_days,
+            is_composite=is_composite,
         )
         self.session.add(record)
         await self.session.flush()
@@ -147,28 +152,16 @@ class SqlProductRepository(ProductRepository):
             ).scalar_one_or_none()
         )
 
-    async def has_recipe(self, business_id: UUID, product_id: UUID) -> bool:
-        return (
-            await self.session.execute(
-                text(
-                    "SELECT EXISTS (SELECT 1 FROM product_components pc "
-                    "JOIN businesses b ON b.id = pc.business_id AND b.composites_enabled "
-                    "WHERE pc.business_id = :b AND pc.product_id = :p)"
-                ),
-                {"b": business_id, "p": product_id},
-            )
-        ).scalar_one()
-
     async def list_composites(self, business_id: UUID) -> list[dict]:
         rows = (
             await self.session.execute(
                 text(
                     "SELECT p.id AS product_id, p.name, p.price, pc.component_id, c.name AS component_name, "
                     "pc.quantity, c.stock_quantity AS component_stock "
-                    "FROM product_components pc "
-                    "JOIN products p ON p.id = pc.product_id "
-                    "JOIN products c ON c.id = pc.component_id "
-                    "WHERE pc.business_id = :b AND p.is_active "
+                    "FROM products p "
+                    "LEFT JOIN product_components pc ON pc.product_id = p.id "
+                    "LEFT JOIN products c ON c.id = pc.component_id "
+                    "WHERE p.business_id = :b AND p.is_composite AND p.is_active "
                     "ORDER BY lower(p.name), lower(c.name)"
                 ),
                 {"b": business_id},
@@ -180,6 +173,8 @@ class SqlProductRepository(ProductRepository):
                 row["product_id"],
                 {"product_id": row["product_id"], "name": row["name"], "price": row["price"], "components": []},
             )
+            if row["component_id"] is None:  # compuesto aún sin receta
+                continue
             item["components"].append(
                 {
                     "component_id": row["component_id"],
@@ -189,28 +184,8 @@ class SqlProductRepository(ProductRepository):
                 }
             )
         for item in composites.values():  # cuántos se pueden armar con el stock actual
-            item["available"] = min(c["stock_quantity"] // c["quantity"] for c in item["components"])
+            item["available"] = min((c["stock_quantity"] // c["quantity"] for c in item["components"]), default=0)
         return list(composites.values())
-
-    async def with_recipe(self, business_id: UUID, product_ids: list[UUID]) -> set[UUID]:
-        rows = await self.session.execute(
-            text(
-                "SELECT DISTINCT product_id FROM product_components "
-                "WHERE business_id = :b AND product_id = ANY(:ids)"
-            ),
-            {"b": business_id, "ids": product_ids},
-        )
-        return set(rows.scalars())
-
-    async def used_as_component(self, business_id: UUID, product_id: UUID) -> bool:
-        return (
-            await self.session.execute(
-                text(
-                    "SELECT EXISTS (SELECT 1 FROM product_components WHERE business_id = :b AND component_id = :p)"
-                ),
-                {"b": business_id, "p": product_id},
-            )
-        ).scalar_one()
 
     async def set_components(self, business_id: UUID, product_id: UUID, items: dict[UUID, int]) -> None:
         params = {"b": business_id, "p": product_id}
@@ -262,4 +237,5 @@ def _to_product(record: ProductRecord, category: str | None = None, supplier: st
         min_stock=record.min_stock,
         lead_time_days=record.lead_time_days,
         is_active=record.is_active,
+        is_composite=record.is_composite,
     )
