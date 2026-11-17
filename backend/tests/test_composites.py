@@ -7,8 +7,9 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.exceptions import UnprocessableError
-from app.modules.products.application.handlers import set_recipe
+from app.core.exceptions import NotFoundError, UnprocessableError
+from app.modules.products.application.commands import CreateProductCommand
+from app.modules.products.application.handlers import create_composite, set_recipe
 from app.modules.sales.application.commands import CreateSaleCommand
 from app.modules.sales.application.handlers import register_sale
 
@@ -21,8 +22,10 @@ class FakeProducts:
         self.items = {}
         self.recipes = {}
 
-    def new(self, name, stock=0):
-        product = SimpleNamespace(id=uuid4(), name=name, price=Decimal("1000"), stock_quantity=stock, is_active=True)
+    def new(self, name, stock=0, composite=False):
+        product = SimpleNamespace(
+            id=uuid4(), name=name, price=Decimal("1000"), stock_quantity=stock, is_active=True, is_composite=composite
+        )
         self.items[product.id] = product
         return product
 
@@ -32,38 +35,49 @@ class FakeProducts:
     async def get(self, business_id, product_id):
         return self.items.get(product_id)
 
-    async def has_recipe(self, business_id, product_id):
-        return self.enabled and bool(self.recipes.get(product_id))
-
-    async def used_as_component(self, business_id, product_id):
-        return any(product_id in r for r in self.recipes.values())
-
-    async def with_recipe(self, business_id, product_ids):
-        return {p for p in product_ids if self.recipes.get(p)}
+    async def add(self, *, name, price, is_composite=False, **_):
+        product = self.new(name, composite=is_composite)
+        product.price = price
+        return product
 
     async def set_components(self, business_id, product_id, items):
         self.recipes[product_id] = items
 
 
+def _command(name="Hamburguesa"):
+    return CreateProductCommand(
+        business_id=BID, name=name, price=Decimal("12000"), quantity=0, min_stock=0, lead_time_days=0
+    )
+
+
+def test_create_composite_with_recipe():
+    repo = FakeProducts()
+    bread, meat = repo.new("Pan", 5), repo.new("Carne", 5)
+    burger = asyncio.run(create_composite(repo, _command(), {bread.id: 1, meat.id: 2}))
+    assert burger.is_composite and burger.stock_quantity == 0
+    assert repo.recipes[burger.id] == {bread.id: 1, meat.id: 2}
+    with pytest.raises(UnprocessableError):  # sección apagada
+        asyncio.run(create_composite(FakeProducts(enabled=False), _command(), {bread.id: 1}))
+
+
 def test_recipe_rules():
     repo = FakeProducts()
-    burger, bread, meat = repo.new("Hamburguesa"), repo.new("Pan", 5), repo.new("Carne", 5)
+    burger, bread, meat = repo.new("Hamburguesa", composite=True), repo.new("Pan", 5), repo.new("Carne", 5)
     asyncio.run(set_recipe(repo, BID, burger.id, {bread.id: 1, meat.id: 1}))
     assert repo.recipes[burger.id] == {bread.id: 1, meat.id: 1}
 
-    combo = repo.new("Combo")
-    for bad in ({combo.id: 1}, {burger.id: 1}):  # a sí mismo / componente que ya es compuesto
-        with pytest.raises(UnprocessableError):
-            asyncio.run(set_recipe(repo, BID, combo.id, bad))
-    with pytest.raises(UnprocessableError):  # un componente no puede volverse compuesto
+    combo = repo.new("Combo", composite=True)
+    with pytest.raises(UnprocessableError):  # un compuesto no puede ser componente
+        asyncio.run(set_recipe(repo, BID, combo.id, {burger.id: 1}))
+    with pytest.raises(UnprocessableError):  # receta vacía
+        asyncio.run(set_recipe(repo, BID, combo.id, {}))
+    with pytest.raises(NotFoundError):  # un producto simple no lleva receta
         asyncio.run(set_recipe(repo, BID, bread.id, {meat.id: 1}))
-    with pytest.raises(UnprocessableError):
-        asyncio.run(set_recipe(FakeProducts(enabled=False), BID, burger.id, {}))
 
 
 def test_composite_sale_skips_own_stock_check():
     repo = FakeProducts()
-    burger, bread = repo.new("Hamburguesa"), repo.new("Pan", 5)
+    burger, bread = repo.new("Hamburguesa", composite=True), repo.new("Pan", 5)
     repo.recipes[burger.id] = {bread.id: 1}
     added = []
 

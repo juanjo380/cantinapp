@@ -26,7 +26,7 @@ async def register_sale(
     if product is None or not product.is_active:
         raise NotFoundError("Producto no encontrado")
     # Un compuesto no tiene stock propio: el trigger valida el de cada componente (422 si falta).
-    is_composite = await products.has_recipe(command.business_id, product.id)
+    is_composite = product.is_composite and await products.composites_enabled(command.business_id)
     if not is_composite and product.stock_quantity < command.quantity:
         raise UnprocessableError(f"Stock insuficiente: disponible {product.stock_quantity}")
     return await sales.add(

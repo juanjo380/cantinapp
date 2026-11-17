@@ -11,6 +11,7 @@ class ListProductsQuery(Query):
     search: str | None = None
     category: str | None = None
     active_only: bool = True
+    composite: bool | None = None  # None = todos; False = solo productos simples
     sort: str = "name"
     limit: int = 50
     offset: int = 0

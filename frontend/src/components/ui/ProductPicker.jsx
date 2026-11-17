@@ -27,8 +27,8 @@ const SORTS = [
 ]
 
 // Campo que abre un modal para buscar y elegir un producto. `value` es el producto elegido (o null).
-// Con `allowAll`, vacío significa «Todos» y se puede limpiar.
-export default function ProductPickerField({ value, onChange, label = 'Producto', allowAll = false, ...props }) {
+// Con `allowAll`, vacío significa «Todos» y se puede limpiar. `filters` se suma a la búsqueda (p. ej. { composite: false }).
+export default function ProductPickerField({ value, onChange, label = 'Producto', allowAll = false, filters, ...props }) {
   const [open, setOpen] = useState(false)
   const openPicker = () => setOpen(true)
   return (
@@ -71,6 +71,7 @@ export default function ProductPickerField({ value, onChange, label = 'Producto'
       />
       {open && (
         <ProductPickerDialog
+          filters={filters}
           onClose={() => setOpen(false)}
           onPick={(product) => {
             onChange(product)
@@ -82,7 +83,7 @@ export default function ProductPickerField({ value, onChange, label = 'Producto'
   )
 }
 
-function ProductPickerDialog({ onClose, onPick }) {
+function ProductPickerDialog({ filters, onClose, onPick }) {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search)
   const [category, setCategory] = useState('')
@@ -98,6 +99,7 @@ function ProductPickerDialog({ onClose, onPick }) {
         search: debouncedSearch || undefined,
         category: category || undefined,
         sort,
+        ...filters,
         ...pager.params,
       }),
     [debouncedSearch, category, sort, pager.page, pager.rowsPerPage],

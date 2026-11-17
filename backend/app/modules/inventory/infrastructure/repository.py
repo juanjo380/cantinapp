@@ -15,7 +15,7 @@ from app.modules.inventory.infrastructure.models import MovementRecord
 _SORT = {"name": "name", "stock": "stock_quantity", "status": "status", "price": "price"}
 
 _ITEM_COLUMNS = """
-    product_id, name, category, supplier, price, stock_quantity, min_stock, lead_time_days, status
+    product_id, name, category, supplier, price, stock_quantity, min_stock, lead_time_days, status, is_composite
 """
 
 
@@ -30,6 +30,7 @@ def _to_item(row) -> InventoryItem:
         min_stock=row["min_stock"],
         lead_time_days=row["lead_time_days"],
         status=row["status"],
+        is_composite=row["is_composite"],
     )
 
 

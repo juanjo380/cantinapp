@@ -16,6 +16,7 @@ class ProductRepository(Protocol):
         search: str | None = None,
         category: str | None = None,
         active_only: bool = True,
+        composite: bool | None = None,
         sort: str = "name",
         limit: int = 50,
         offset: int = 0,
@@ -36,21 +37,16 @@ class ProductRepository(Protocol):
         quantity: int,
         min_stock: int,
         lead_time_days: int,
+        is_composite: bool = False,
     ) -> Product: ...
 
     async def update(self, product: Product, changes: dict) -> Product: ...
 
     async def deactivate(self, product: Product) -> None: ...
 
-    # Compuestos (recetas). `has_recipe` solo cuenta si el negocio tiene la sección activa.
+    # Compuestos (products.is_composite + receta en product_components).
     async def composites_enabled(self, business_id: UUID) -> bool: ...
 
-    async def has_recipe(self, business_id: UUID, product_id: UUID) -> bool: ...
-
     async def list_composites(self, business_id: UUID) -> list[dict]: ...
-
-    async def with_recipe(self, business_id: UUID, product_ids: list[UUID]) -> set[UUID]: ...
-
-    async def used_as_component(self, business_id: UUID, product_id: UUID) -> bool: ...
 
     async def set_components(self, business_id: UUID, product_id: UUID, items: dict[UUID, int]) -> None: ...

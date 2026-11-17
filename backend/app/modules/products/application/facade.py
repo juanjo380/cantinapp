@@ -37,6 +37,11 @@ class ProductsFacade:
     async def composites(self, business_id):
         return await self.products.list_composites(business_id)
 
+    async def create_composite(self, command: CreateProductCommand, items: dict):
+        product = await handlers.create_composite(self.products, command, items)
+        await self.uow.commit()
+        return product
+
     async def set_recipe(self, business_id, product_id, items: dict) -> None:
         await handlers.set_recipe(self.products, business_id, product_id, items)
         await self.uow.commit()

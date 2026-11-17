@@ -181,6 +181,7 @@ CREATE TABLE products (
     lead_time_days  integer       NOT NULL DEFAULT 0 CHECK (lead_time_days >= 0),
     is_active       boolean       NOT NULL DEFAULT true,
     is_demo         boolean       NOT NULL DEFAULT false,      -- migracion 008: datos de ejemplo (DELETE /api/demo)
+    is_composite    boolean       NOT NULL DEFAULT false,      -- migracion 011: stock calculado de su receta
     created_at      timestamptz   NOT NULL DEFAULT now(),
     updated_at      timestamptz   NOT NULL DEFAULT now(),
     CONSTRAINT products_stock_nonnegative CHECK (stock_quantity >= 0),
@@ -503,7 +504,8 @@ SELECT
         WHEN COALESCE(k.stock, p.stock_quantity) = 0            THEN 'AGOTADO'
         WHEN COALESCE(k.stock, p.stock_quantity) < p.min_stock  THEN 'BAJO'
         ELSE 'NORMAL'
-    END             AS status
+    END             AS status,
+    p.is_composite
 FROM products p
 JOIN businesses b ON b.id = p.business_id
 LEFT JOIN categories c ON c.id = p.category_id

@@ -111,6 +111,7 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `007_alerts_notified.sql` | `alerts.notified_at` (correo-resumen diario) | **PENDIENTE** (sin ella el trabajo diario da 500) |
 | `008_demo_data.sql` | CHECK de `sales.source` con `DEMO`; `products.is_demo` | **PENDIENTE** (sin ella `/api/demo` da 500) |
 | `009_sedes_ventas_equipo.sql` | `user_consents.business_id` admite NULL (cuentas sin negocio); `location_id` en `sales`, `business_members` y `business_invitations` con FK compuesta `(business_id, location_id)` → `business_locations` (en invitaciones `ON DELETE CASCADE`); índice parcial de ventas por sede | **PENDIENTE** (antes del backend: `get_current_user` lee `business_members.location_id`, sin ella todo da 500). **No** es idempotente: correrla dos veces falla (sin efectos, va en una transacción) |
+| `011_productos_compuestos.sql` | `products.is_composite` (default false; se marca en los que ya tenían receta); `v_inventory` agrega `is_composite` al final | **PENDIENTE** (después de 010, antes del backend: el ORM de productos lee `is_composite`) |
 | `010_compuestos.sql` | `businesses.composites_enabled` (default false); tabla `product_components` (receta: `product_id`, `component_id`, `quantity` entero > 0, FK compuestas `ON DELETE CASCADE`, RLS + `REVOKE`); reemplaza `fn_sale_inventory` y `fn_sale_restore_inventory` (descuentan/devuelven componentes si el negocio lo activó) y `v_inventory` (stock de un compuesto = cuántos se pueden armar) | **PENDIENTE** (después de 009, antes del backend: login y `/auth/me` leen `businesses.composites_enabled`, sin ella dan 500). **No** es idempotente |
 
 Todas las migraciones 005–008 son idempotentes (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`).
@@ -288,7 +289,7 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 
 | Método | Ruta | Parámetros | Respuesta |
 |---|---|---|---|
-| GET | `/` | `search?`, `category?`, `active_only=true`, `sort=name`, `limit=50 (1-200)`, `offset=0` | ProductListOut |
+| GET | `/` | `search?`, `category?`, `active_only=true`, `composite?` (desde 011: `false` = solo simples), `sort=name`, `limit=50 (1-200)`, `offset=0` | ProductListOut |
 | POST | `/` | body ProductCreate | 201 ProductOut |
 | GET | `/{product_id}` | — | ProductOut |
 | PUT | `/{product_id}` | body ProductUpdate (parcial) | ProductOut |
@@ -296,19 +297,21 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | POST | `/import` | `multipart/form-data` (campo `file`) | 201 ProductImportOut `{ file_name, total_rows, imported_rows, error_rows, status, errors[] }` |
 | GET | `/import/template` 🔓 | — | `plantilla-productos.csv` (UTF-8 con BOM, `;`, 3 filas de ejemplo) |
 | GET | `/composites` | — | CompositeOut[] `{ product_id, name, price, available, components[{ component_id, name, quantity, stock_quantity }] }` |
-| PUT | `/{product_id}/components` | `{ components: [{ component_id, quantity>=1 }] }` (máx. 50, sin repetidos; vacía = deja de ser compuesto) | 204; 422 si la sección está apagada, si es componente de sí mismo o si la receta quedaría anidada; 404 si un componente no existe o está inactivo |
+| POST | `/composites` | `{ name, price>=0, category?, min_stock?, components[1..50] }` (desde 011) | 201 ProductOut con `is_composite=true`, stock propio 0; producto y receta en una transacción |
+| PUT | `/{product_id}/components` | `{ components: [{ component_id, quantity>=1 }] }` (1–50, sin repetidos) | 204; 422 si la sección está apagada, la receta está vacía o un componente es compuesto; 404 si el producto no es un compuesto activo o un componente no existe/está inactivo |
 
 - **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
 - **Ambos CSV (productos y ventas):** separador `,` o `;`, UTF-8 o Windows-1252 (Excel), coma decimal (`2500,50`), máximo 5 MB. Utilidades en `shared/application/csv_utils.py` y `shared/api/uploads.py`.
 
 - **ProductCreate:** `{ name, category?, supplier?, price>=0, quantity>=0 (stock inicial), min_stock>=0, lead_time_days>=0 }`
 - **ProductUpdate:** todos opcionales (`name`, `category`, `supplier`, `price`, `min_stock`, `lead_time_days`, `is_active` — `true` reactiva un producto desactivado). **No** cambia stock (para eso, movimientos de inventario).
-- **ProductOut:** `{ id, name, category, supplier, price, stock_quantity, min_stock, lead_time_days, is_active }`
+- **ProductOut:** `{ id, name, category, supplier, price, stock_quantity, min_stock, lead_time_days, is_active, is_composite }`
 - **ProductListOut:** `{ items[], total, limit, offset }`
 - `sort`: `name`, `-name`, `price`, `-price`, `stock`, `-stock`, `created`, `-created`.
-- **Compuestos (desde 010):** un solo nivel (un componente no puede tener receta, y un producto que ya es
-  componente no puede volverse compuesto). Cualquier miembro edita recetas, como el resto de productos.
-  La venta manual de un compuesto omite la validación de stock propio (`has_recipe`) y la deja al trigger.
+- **Compuestos (desde 011):** son productos con `is_composite=true`, creados solo desde la sección Compuestos
+  (`POST /composites`); Productos los oculta (`composite=false`). Un solo nivel: un componente no puede ser
+  compuesto. Inventario rechaza compras/ajustes sobre un compuesto (422). La venta manual omite la validación
+  de stock propio si `is_composite` y la sección está activa, y la deja al trigger.
 - `category`/`supplier` son texto libre; categorías y proveedores se crean
   automáticamente por nombre (catálogos internos).
 
@@ -999,7 +1002,7 @@ stock de cocina con recetas (una hamburguesa lleva pan, carne...).
 **Decisiones:**
 - Activar la sección es **solo del dueño** (coherente con «solo el dueño edita el negocio»). El autor pidió
   «el administrador»: si se quiere admin, endpoint aparte con `_require_admin`. **Pendiente de confirmar.**
-- Un producto es compuesto si tiene filas en `product_components`; no hay columna `is_composite`.
+- ~~Un producto es compuesto si tiene filas en `product_components`~~ → desde 2026-11-17 hay `products.is_composite` (ver abajo).
 - Con la sección apagada las recetas se conservan pero se ignoran (trigger, vista y venta manual).
 - Cantidades enteras, igual que el stock: ingredientes por peso se manejan en gramos.
 - `shortcut:` en `fn_sale_restore_inventory`: al borrar una venta se devuelve según la receta **vigente**, no
@@ -1013,10 +1016,28 @@ el navegador.
 consumo de componentes; en Ventas, «Stock disponible» de un compuesto muestra 0 (`ProductOut` lee
 `products.stock_quantity`, no la vista).
 
+### 2026-11-17 — Compuestos como tipo de producto (misma rama, sin commit)
+
+Pedido: no obligar a crear el compuesto en Productos; que tenga precio y su stock dependa de los componentes.
+Decisión: columna `products.is_composite` (migración `011`) en vez de tabla nueva, porque ventas, predicciones,
+alertas y co-ocurrencias referencian `products.id`.
+
+| Capa | Cambio |
+|---|---|
+| BD | `011_productos_compuestos.sql` + `schema.sql` |
+| Productos | `POST /api/products/composites` crea producto + receta; `set_recipe` exige `is_composite` y receta no vacía, rechaza componentes compuestos; filtro `composite` en el listado; se quitaron `has_recipe`, `with_recipe`, `used_as_component` |
+| Inventario | `is_composite` en `InventoryItem`/`InventoryItemOut`; `register_movement` devuelve 422 para compuestos |
+| Ventas | `register_sale` usa `product.is_composite` + `composites_enabled` |
+| Frontend | Diálogo de Compuestos con nombre, precio y componentes (crear y editar); «Desactivar» en vez de «Quitar receta»; `ProductPickerField` acepta `filters` (componentes: `{ composite: false }`); Productos lista solo simples |
+
+**Verificación:** 91 tests de pytest, eslint y `vite build` en verde (venv `backend/.venv`). **No verificado:**
+la migración 011 contra Postgres y las pantallas en el navegador.
+**Pendiente:** Inventario sigue mostrando «Registrar compra» en compuestos (el backend responde 422).
+
 ### Próxima sesión — pendientes
 
 1. **Desplegar en orden:**
-   1. Supabase: migraciones `001` → … → `008` (reportadas como ejecutadas el 2026-11-08), **`009`** y **`010`**.
+   1. Supabase: migraciones `001` → … → `008` (reportadas como ejecutadas el 2026-11-08), **`009`**, **`010`** y **`011`**.
    2. Render: `CRON_SECRET` (≥ 32, **antes** del deploy), variables de correo y `FRONTEND_URL`.
    3. GitHub: secrets `CANTINAPP_API_URL` y `CRON_SECRET`.
    4. Merge a `main` (Render + Vercel). Ejecutar el workflow «Trabajo diario» a mano (*Run workflow*) y

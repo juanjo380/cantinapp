@@ -13,8 +13,11 @@ async def register_movement(inventory: InventoryRepository, command: RegisterMov
         raise UnprocessableError("quantity_change no puede ser cero")
     if command.movement_type == "PURCHASE" and command.quantity_change < 0:
         raise UnprocessableError("Una compra debe tener cantidad positiva")
-    if await inventory.get(command.business_id, command.product_id) is None:
+    item = await inventory.get(command.business_id, command.product_id)
+    if item is None:
         raise NotFoundError("Producto no encontrado")
+    if item.is_composite:
+        raise UnprocessableError("Un compuesto no tiene stock propio: registra la compra de sus componentes")
     return await inventory.add_movement(
         business_id=command.business_id,
         product_id=command.product_id,

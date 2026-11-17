@@ -16,6 +16,7 @@ class Product:
     min_stock: int
     lead_time_days: int
     is_active: bool
+    is_composite: bool = False  # stock calculado de su receta (sección Compuestos)
 
 
 @dataclass

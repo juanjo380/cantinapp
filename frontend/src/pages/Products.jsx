@@ -49,6 +49,7 @@ export default function Products() {
         search: debouncedSearch || undefined,
         sort,
         active_only: activeOnly,
+        composite: false, // los compuestos se manejan en su propia sección
         ...pager.params,
       }),
     [debouncedSearch, sort, activeOnly, pager.page, pager.rowsPerPage],
