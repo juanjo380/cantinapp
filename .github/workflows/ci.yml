@@ -62,5 +62,3 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           build-args: VITE_API_URL=https://cantinapp.onrender.com
           tags: ghcr.io/juanjo380/cantinapp-${{ matrix.app }}:latest,ghcr.io/juanjo380/cantinapp-${{ matrix.app }}:${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.app }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
