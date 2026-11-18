@@ -1,0 +1,19 @@
+# Uso local: docker compose up --build
+# Backend en http://localhost:8000, frontend en http://localhost:5173.
+# La base de datos sigue siendo Supabase (credenciales en backend/.env).
+services:
+  backend:
+    build: ./backend
+    env_file: backend/.env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
