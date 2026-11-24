@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.products.domain.discounts import ActiveDiscount, DiscountCandidate, discount_percent
 from app.modules.products.domain.entities import Product
 from app.modules.products.domain.repository import ProductRepository
 from app.modules.products.infrastructure.models import CategoryRecord, ProductRecord, SupplierRecord
@@ -142,6 +143,106 @@ class SqlProductRepository(ProductRepository):
         record = await self.session.get(ProductRecord, product.id)
         record.is_active = False
         await self.session.flush()
+
+    async def discount_candidates(self, business_id: UUID, *, days: int) -> list[DiscountCandidate]:
+        # Unidades por sale_date (no por fecha de inserción: los CSV históricos se cargan hoy). Las ventas de
+        # un compuesto cuentan como salida de sus componentes, igual que el trigger de inventario (010).
+        rows = (
+            await self.session.execute(
+                text(
+                    "WITH moved AS ("
+                    " SELECT COALESCE(pc.component_id, s.product_id) AS product_id,"
+                    "  SUM(s.quantity * COALESCE(pc.quantity, 1)) FILTER ("
+                    "   WHERE s.sale_date > CURRENT_DATE - CAST(:days AS int)) AS units,"
+                    "  MIN(s.sale_date) AS first_sale, MAX(s.sale_date) AS last_sale"
+                    " FROM sales s"
+                    " LEFT JOIN product_components pc ON pc.business_id = s.business_id AND pc.product_id = s.product_id"
+                    "  AND (SELECT composites_enabled FROM businesses WHERE id = :b)"
+                    " WHERE s.business_id = :b GROUP BY 1"
+                    ") "
+                    "SELECT p.id, p.name, c.name AS category, p.price, p.stock_quantity AS stock,"
+                    " COALESCE(o.units, 0)::int AS units, o.last_sale,"
+                    " (p.price_before_discount > p.price"
+                    "  OR COALESCE(p.last_discount_at > now() - make_interval(days => CAST(:days AS int)), false))"
+                    "  AS recently_discounted "
+                    "FROM products p "
+                    "LEFT JOIN categories c ON c.id = p.category_id "
+                    "LEFT JOIN moved o ON o.product_id = p.id "
+                    "WHERE p.business_id = :b AND p.is_active AND NOT p.is_composite"
+                    " AND LEAST(p.created_at::date, o.first_sale) <= CURRENT_DATE - CAST(:days AS int)"
+                ),
+                {"b": business_id, "days": days},
+            )
+        ).mappings().all()
+        return [
+            DiscountCandidate(
+                product_id=r["id"], name=r["name"], category=r["category"], price=r["price"], stock=r["stock"],
+                units=r["units"], last_sale=r["last_sale"], recently_discounted=r["recently_discounted"],
+            )
+            for r in rows
+        ]
+
+    async def active_discounts(self, business_id: UUID) -> list[ActiveDiscount]:
+        rows = (
+            await self.session.execute(
+                text(
+                    "SELECT id, price, price_before_discount, last_discount_at FROM products "
+                    "WHERE business_id = :b AND price_before_discount > price"
+                ),
+                {"b": business_id},
+            )
+        ).mappings().all()
+        return [
+            ActiveDiscount(
+                product_id=r["id"],
+                price_before=r["price_before_discount"],
+                percent=discount_percent(r["price_before_discount"], r["price"]),
+                discounted_at=r["last_discount_at"],
+            )
+            for r in rows
+        ]
+
+    async def list_price(self, product: Product) -> Decimal:
+        """Precio sin descuento: el guardado si hay un descuento activo, si no el actual."""
+        before = (
+            await self.session.execute(
+                # Si el precio se editó a mano por encima del de lista, el guardado ya no aplica.
+                text(
+                    "SELECT price_before_discount FROM products "
+                    "WHERE business_id = :b AND id = :p AND price_before_discount > price"
+                ),
+                {"b": product.business_id, "p": product.id},
+            )
+        ).scalar_one_or_none()
+        return before if before is not None else product.price
+
+    async def apply_discount(self, product: Product, new_price: Decimal) -> Product:
+        # GREATEST (ignora NULL): un segundo descuento conserva el precio de lista original.
+        await self.session.execute(
+            text(
+                "UPDATE products SET price_before_discount = GREATEST(price_before_discount, price), "
+                "price = :price, last_discount_at = now() WHERE business_id = :b AND id = :p"
+            ),
+            {"price": new_price, "b": product.business_id, "p": product.id},
+        )
+        self.session.expire_all()  # el ORM no ve el UPDATE por SQL
+        return await self.get(product.business_id, product.id)
+
+    async def remove_discount(self, product: Product) -> Product | None:
+        """Vuelve al precio de lista. None si el producto no tenía descuento activo."""
+        restored = (
+            await self.session.execute(
+                text(
+                    "UPDATE products SET price = price_before_discount, price_before_discount = NULL "
+                    "WHERE business_id = :b AND id = :p AND price_before_discount > price RETURNING id"
+                ),
+                {"b": product.business_id, "p": product.id},
+            )
+        ).scalar_one_or_none()
+        if restored is None:
+            return None
+        self.session.expire_all()
+        return await self.get(product.business_id, product.id)
 
     async def composites_enabled(self, business_id: UUID) -> bool:
         return bool(

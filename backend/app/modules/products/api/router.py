@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from app.core.exceptions import UnprocessableError
 from app.modules.products.api.schemas import (
     CompositeCreate,
+    ActiveDiscountOut,
     CompositeOut,
+    DiscountIn,
+    DiscountSuggestionOut,
+    DiscountSuggestionsOut,
     ProductCreate,
     ProductImportOut,
     ProductListOut,
@@ -92,6 +96,44 @@ async def import_products(
         )
     )
     return ProductImportOut(**summary.__dict__)
+
+
+# Antes de /{product_id} para que «discounts» no se lea como id.
+@router.get("/discounts", response_model=DiscountSuggestionsOut)
+async def discount_suggestions(
+    days: int = Query(30, ge=7, le=180),
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    facade = ProductsFacade(uow)
+    items = await facade.discount_suggestions(user.business_id, days)
+    active = await facade.active_discounts(user.business_id)
+    return DiscountSuggestionsOut(
+        days=days,
+        items=[DiscountSuggestionOut(**i.__dict__) for i in items],
+        active=[ActiveDiscountOut(**a.__dict__) for a in active],
+    )
+
+
+@router.post("/{product_id}/discount", response_model=ProductOut)
+async def apply_discount(
+    product_id: UUID,
+    body: DiscountIn,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    product = await ProductsFacade(uow).apply_discount(user.business_id, product_id, body.percent)
+    return ProductOut(**product.__dict__)
+
+
+@router.delete("/{product_id}/discount", response_model=ProductOut)
+async def remove_discount(
+    product_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+    uow: SqlAlchemyUnitOfWork = Depends(get_uow),
+):
+    """Vuelve al precio de lista guardado al aplicar el descuento."""
+    return ProductOut(**(await ProductsFacade(uow).remove_discount(user.business_id, product_id)).__dict__)
 
 
 @router.get("/composites", response_model=list[CompositeOut])

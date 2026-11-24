@@ -10,6 +10,7 @@ from app.modules.products.application.commands import (
 )
 from app.modules.products.application.csv_parser import parse_products_csv
 from app.modules.products.application.queries import GetProductQuery, ListProductsQuery
+from app.modules.products.domain.discounts import DiscountSuggestion, discounted_price, suggest_discounts
 from app.modules.products.domain.entities import Product, ProductImport
 from app.modules.products.domain.repository import ProductRepository
 from app.shared.domain.repository import Page
@@ -68,6 +69,28 @@ async def import_products(
 async def update_product(products: ProductRepository, command: UpdateProductCommand) -> Product:
     product = await _require(products, command.business_id, command.product_id)
     return await products.update(product, command.changes)
+
+
+async def discount_suggestions(products: ProductRepository, business_id, days: int) -> list[DiscountSuggestion]:
+    return suggest_discounts(await products.discount_candidates(business_id, days=days), window_days=days)
+
+
+async def apply_discount(products: ProductRepository, business_id, product_id, percent: int) -> Product:
+    product = await _require(products, business_id, product_id)
+    # El porcentaje se aplica sobre el precio de lista: −20 % sobre uno de −10 % deja −20 %, no −28 %.
+    list_price = await products.list_price(product)
+    new_price = discounted_price(list_price, percent)
+    if new_price >= list_price:
+        raise UnprocessableError("Con ese porcentaje el precio no baja (se redondea a múltiplos de 50)")
+    return await products.apply_discount(product, new_price)
+
+
+async def remove_discount(products: ProductRepository, business_id, product_id) -> Product:
+    product = await _require(products, business_id, product_id)
+    restored = await products.remove_discount(product)
+    if restored is None:
+        raise UnprocessableError("El producto no tiene un descuento activo")
+    return restored
 
 
 async def deactivate_product(products: ProductRepository, business_id, product_id) -> None:

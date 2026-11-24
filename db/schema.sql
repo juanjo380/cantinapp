@@ -182,6 +182,8 @@ CREATE TABLE products (
     is_active       boolean       NOT NULL DEFAULT true,
     is_demo         boolean       NOT NULL DEFAULT false,      -- migracion 008: datos de ejemplo (DELETE /api/demo)
     is_composite    boolean       NOT NULL DEFAULT false,      -- migracion 011: stock calculado de su receta
+    last_discount_at timestamptz,                              -- migracion 012: ultimo descuento aplicado
+    price_before_discount numeric(12,2) CHECK (price_before_discount >= 0), -- migracion 012: precio de lista; NULL = sin descuento
     created_at      timestamptz   NOT NULL DEFAULT now(),
     updated_at      timestamptz   NOT NULL DEFAULT now(),
     CONSTRAINT products_stock_nonnegative CHECK (stock_quantity >= 0),

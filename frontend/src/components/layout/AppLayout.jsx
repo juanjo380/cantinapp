@@ -1,6 +1,7 @@
 import DarkModeIcon from "@mui/icons-material/DarkModeOutlined";
 import DashboardIcon from "@mui/icons-material/SpaceDashboardOutlined";
 import LunchDiningIcon from "@mui/icons-material/LunchDiningOutlined";
+import Badge from "@mui/material/Badge";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -16,9 +17,11 @@ import PointOfSaleIcon from "@mui/icons-material/ShoppingCartOutlined";
 import StorefrontIcon from "@mui/icons-material/StorefrontOutlined";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import WarehouseIcon from "@mui/icons-material/ArchiveOutlined";
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { DISCOUNTS_EVENT, productsApi } from "../../api/helper";
 import { useAuth } from "../../auth/context";
+import { useApi } from "../../hooks/useApi";
 import { useColorMode } from "../../theme/color-mode";
 import { ROLE_LABELS } from "../../utils/format";
 import Logo from "../ui/Logo";
@@ -28,7 +31,8 @@ import OnboardingDialog from "./OnboardingDialog";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: DashboardIcon, end: true },
-  { to: "/productos", label: "Productos", icon: Inventory2Icon },
+  // badge: descuentos sugeridos (productos con ventas muy por debajo del promedio).
+  { to: "/productos", label: "Productos", icon: Inventory2Icon, badge: "discounts" },
   { to: "/inventario", label: "Inventario", icon: WarehouseIcon },
   // Solo si el negocio la activó en Perfil -> Negocio.
   { to: "/compuestos", label: "Compuestos", icon: LunchDiningIcon, composites: true },
@@ -42,11 +46,11 @@ const NAV = [
   { to: "/alertas", label: "Alertas", icon: NotificationsActiveIcon },
 ];
 
-function NavList({ onNavigate }) {
+function NavList({ onNavigate, badges = {} }) {
   const { compositesEnabled } = useAuth();
   return (
     <nav className="flex flex-col gap-2" aria-label="Secciones">
-      {NAV.filter((item) => compositesEnabled || !item.composites).map(({ to, label, icon: Icon, end }) => (
+      {NAV.filter((item) => compositesEnabled || !item.composites).map(({ to, label, icon: Icon, end, badge }) => (
         <NavLink
           key={to}
           to={to}
@@ -62,6 +66,15 @@ function NavList({ onNavigate }) {
         >
           <Icon fontSize="small" />
           {label}
+          {badges[badge] > 0 && (
+            <span
+              className="ml-auto min-w-6 rounded-full bg-brand px-1.5 text-center font-mono text-xs font-bold leading-6 text-brand-contrast"
+              aria-label={`${badges[badge]} descuentos sugeridos`}
+              title="Descuentos sugeridos"
+            >
+              {badges[badge]}
+            </span>
+          )}
         </NavLink>
       ))}
     </nav>
@@ -183,6 +196,17 @@ export default function AppLayout() {
   const menuRef = useRef(null);
   const hasBusiness = Boolean(session?.business_id);
   const onboarding = Boolean(location.state?.onboarding) && hasBusiness;
+  // Falla en silencio: el contador es un extra (p. ej. si la migración 012 aún no corrió).
+  const discounts = useApi(
+    () => (hasBusiness ? productsApi.discounts().catch(() => null) : null),
+    [session?.business_id, hasBusiness, location.pathname], // al navegar: ventas nuevas cambian el cálculo
+  );
+  const reloadDiscounts = discounts.reload;
+  useEffect(() => {
+    window.addEventListener(DISCOUNTS_EVENT, reloadDiscounts);
+    return () => window.removeEventListener(DISCOUNTS_EVENT, reloadDiscounts);
+  }, [reloadDiscounts]);
+  const badges = { discounts: discounts.data?.items.length ?? 0 };
 
   // En escritorio la flecha apunta al bloque «Negocio»; en móvil (barra oculta), al botón de menú.
   const getTarget = useCallback(
@@ -203,7 +227,7 @@ export default function AppLayout() {
       <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-8 overflow-y-auto border-r-2 border-edge p-6 md:flex">
         <Logo />
         <BusinessSwitcher onOpen={() => setPicking(true)} />
-        <NavList />
+        <NavList badges={badges} />
         <RailFooter profileRef={profileRef} />
       </aside>
 
@@ -211,9 +235,11 @@ export default function AppLayout() {
         <IconButton
           ref={menuRef}
           onClick={() => setOpen(true)}
-          aria-label="Abrir menú"
+          aria-label={badges.discounts ? `Abrir menú (${badges.discounts} descuentos sugeridos)` : "Abrir menú"}
         >
-          <MenuIcon />
+          <Badge color="primary" variant="dot" invisible={!badges.discounts}>
+            <MenuIcon />
+          </Badge>
         </IconButton>
         <Logo size="sm" />
         <div className="ml-auto flex min-w-0 flex-1 justify-end">
@@ -227,7 +253,7 @@ export default function AppLayout() {
         slotProps={{ paper: { className: "flex w-64 flex-col gap-8 p-6" } }}
       >
         <Logo />
-        <NavList onNavigate={() => setOpen(false)} />
+        <NavList badges={badges} onNavigate={() => setOpen(false)} />
         <RailFooter onNavigate={() => setOpen(false)} />
       </Drawer>
 

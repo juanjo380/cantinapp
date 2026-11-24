@@ -1,4 +1,5 @@
 """Esquemas HTTP del módulo de productos (7 campos de HU02)."""
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -96,3 +97,34 @@ class ProductImportOut(BaseModel):
     error_rows: int
     status: str
     errors: list[ProductImportErrorOut] = []
+
+
+class DiscountSuggestionOut(BaseModel):
+    product_id: UUID
+    name: str
+    category: str | None
+    price: Decimal
+    suggested_price: Decimal
+    percent: int
+    stock: int
+    units: int  # vendidas en la ventana
+    business_avg: float  # promedio de unidades por producto del negocio en la ventana
+    coverage_days: float | None
+    last_sale: date | None
+
+
+class ActiveDiscountOut(BaseModel):
+    product_id: UUID
+    price_before: Decimal  # precio de lista
+    percent: int
+    discounted_at: datetime | None
+
+
+class DiscountSuggestionsOut(BaseModel):
+    days: int
+    items: list[DiscountSuggestionOut]
+    active: list[ActiveDiscountOut] = []  # descuentos vigentes, para la viñeta en el precio
+
+
+class DiscountIn(BaseModel):
+    percent: int = Field(ge=1, le=90)

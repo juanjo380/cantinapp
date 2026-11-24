@@ -62,7 +62,15 @@ export const productsApi = {
   createComposite: (body) => request('/products/composites', { method: 'POST', body }),
   // components: [{ component_id, quantity }], al menos uno.
   setRecipe: (id, components) => request(`/products/${id}/components`, { method: 'PUT', body: { components } }),
+  // { days, items: [{ product_id, name, price, suggested_price, percent, stock, units, business_avg, coverage_days, last_sale }],
+  //   active: [{ product_id, price_before, percent, discounted_at }] }
+  discounts: (params) => request(`/products/discounts${qs(params)}`),
+  applyDiscount: (id, percent) => request(`/products/${id}/discount`, { method: 'POST', body: { percent } }),
+  removeDiscount: (id) => request(`/products/${id}/discount`, { method: 'DELETE' }),
 }
+
+// Avisa al menú lateral que recalcule el contador de descuentos sugeridos.
+export const DISCOUNTS_EVENT = 'cantinapp:discounts'
 
 export const inventoryApi = {
   list: (params) => request(`/inventory${qs(params)}`),
