@@ -34,6 +34,22 @@ class ProductsFacade:
         await handlers.deactivate_product(self.products, business_id, product_id)
         await self.uow.commit()
 
+    async def discount_suggestions(self, business_id, days: int):
+        return await handlers.discount_suggestions(self.products, business_id, days)
+
+    async def active_discounts(self, business_id):
+        return await self.products.active_discounts(business_id)
+
+    async def remove_discount(self, business_id, product_id):
+        product = await handlers.remove_discount(self.products, business_id, product_id)
+        await self.uow.commit()
+        return product
+
+    async def apply_discount(self, business_id, product_id, percent: int):
+        product = await handlers.apply_discount(self.products, business_id, product_id, percent)
+        await self.uow.commit()
+        return product
+
     async def composites(self, business_id):
         return await self.products.list_composites(business_id)
 

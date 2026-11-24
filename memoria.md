@@ -112,6 +112,7 @@ que ya tiene `schema.sql`; `schema.sql` incluye las tablas para instalaciones nu
 | `008_demo_data.sql` | CHECK de `sales.source` con `DEMO`; `products.is_demo` | **PENDIENTE** (sin ella `/api/demo` da 500) |
 | `009_sedes_ventas_equipo.sql` | `user_consents.business_id` admite NULL (cuentas sin negocio); `location_id` en `sales`, `business_members` y `business_invitations` con FK compuesta `(business_id, location_id)` → `business_locations` (en invitaciones `ON DELETE CASCADE`); índice parcial de ventas por sede | **PENDIENTE** (antes del backend: `get_current_user` lee `business_members.location_id`, sin ella todo da 500). **No** es idempotente: correrla dos veces falla (sin efectos, va en una transacción) |
 | `011_productos_compuestos.sql` | `products.is_composite` (default false; se marca en los que ya tenían receta); `v_inventory` agrega `is_composite` al final | **PENDIENTE** (después de 010, antes del backend: el ORM de productos lee `is_composite`) |
+| `012_descuentos.sql` | `products.last_discount_at` y `products.price_before_discount` (precio de lista; NULL = sin descuento) | **PENDIENTE** (después de 011; solo la leen `/api/products/discounts*`, el resto funciona sin ella) |
 | `010_compuestos.sql` | `businesses.composites_enabled` (default false); tabla `product_components` (receta: `product_id`, `component_id`, `quantity` entero > 0, FK compuestas `ON DELETE CASCADE`, RLS + `REVOKE`); reemplaza `fn_sale_inventory` y `fn_sale_restore_inventory` (descuentan/devuelven componentes si el negocio lo activó) y `v_inventory` (stock de un compuesto = cuántos se pueden armar) | **PENDIENTE** (después de 009, antes del backend: login y `/auth/me` leen `businesses.composites_enabled`, sin ella dan 500). **No** es idempotente |
 
 Todas las migraciones 005–008 son idempotentes (`IF NOT EXISTS`, `DROP CONSTRAINT IF EXISTS`).
@@ -298,6 +299,9 @@ Leyenda: 🔓 público · 🔒 requiere `Authorization: Bearer`.
 | GET | `/import/template` 🔓 | — | `plantilla-productos.csv` (UTF-8 con BOM, `;`, 3 filas de ejemplo) |
 | GET | `/composites` | — | CompositeOut[] `{ product_id, name, price, available, components[{ component_id, name, quantity, stock_quantity }] }` |
 | POST | `/composites` | `{ name, price>=0, category?, min_stock?, components[1..50] }` (desde 011) | 201 ProductOut con `is_composite=true`, stock propio 0; producto y receta en una transacción |
+| GET | `/discounts` | `days=30 (7-180)` | `{ days, items[{ product_id, name, category, price, suggested_price, percent, stock, units, business_avg, coverage_days, last_sale }], active[{ product_id, price_before, percent, discounted_at }] }` (desde 012) |
+| POST | `/{product_id}/discount` | `{ percent: 1..90 }` | ProductOut; el % se aplica sobre el precio de lista (redondeo a múltiplos de 50); guarda `price_before_discount` y `last_discount_at` (desde 012) |
+| DELETE | `/{product_id}/discount` | — | ProductOut con el precio de lista restaurado; 422 si no hay descuento activo (desde 012) |
 | PUT | `/{product_id}/components` | `{ components: [{ component_id, quantity>=1 }] }` (1–50, sin repetidos) | 204; 422 si la sección está apagada, la receta está vacía o un componente es compuesto; 404 si el producto no es un compuesto activo o un componente no existe/está inactivo |
 
 - **CSV de productos:** `nombre`/`name` y `precio`/`price` obligatorias; opcionales `categoria`, `proveedor`, `stock_inicial`/`quantity`, `stock_minimo`/`min_stock`, `dias_abastecimiento`/`lead_time_days`. Nombres ya activos o repetidos en el archivo se reportan como error de fila (no se actualizan).
@@ -1034,10 +1038,32 @@ alertas y co-ocurrencias referencian `products.id`.
 la migración 011 contra Postgres y las pantallas en el navegador.
 **Pendiente:** Inventario sigue mostrando «Registrar compra» en compuestos (el backend responde 422).
 
+### 2026-11-24 — Descuentos sugeridos por baja rotación (rama DM, sin commit)
+
+Regla (`products/domain/discounts.py`, lógica pura): en la ventana (30 días por defecto) un producto activo,
+simple, con stock y con al menos esa antigüedad (`LEAST(created_at, primera venta)`) es candidato si vendió
+**< 30 % del promedio de unidades por producto** del negocio. Descuento: sin ventas −30 %, < 15 % del promedio
+−20 %, resto −10 %; precio redondeado a múltiplos de 50 COP. Las unidades salen de `sales.sale_date` y las
+ventas de compuestos cuentan como salida de sus componentes. No se vuelve a sugerir si `last_discount_at`
+cae dentro de la ventana. Orden: mayor dinero inmovilizado (`price × stock`) primero.
+
+| Capa | Cambio |
+|---|---|
+| BD | `012_descuentos.sql` + `schema.sql` (`last_discount_at` fuera del ORM: sin 012 solo fallan los endpoints nuevos) |
+| Productos | `GET /discounts`, `POST /{id}/discount`; `tests/test_discounts.py` |
+| Frontend | Contador en «Productos» del menú (punto en el botón de menú móvil); en Productos: aviso «Revisar» con la lista de sugerencias, sello «Sugerido −N%» y acción de fila «Descuento» con vista previa del precio |
+
+**Verificación:** 95 tests de pytest, eslint y `vite build` en verde. **No verificado:** el SQL contra
+Postgres ni las pantallas en el navegador. **Viñeta y reversión (misma sesión):** `price_before_discount` guarda el precio de lista; un descuento
+es activo si `price_before_discount > price` (si se edita el precio a mano por encima, deja de serlo). En
+Productos el precio muestra una etiqueta «−N%» con el de lista tachado y el diálogo «Descuento» ofrece
+«Quitar descuento». Los productos con descuento activo no se vuelven a sugerir. **Limitación:** no distingue sedes;
+la etiqueta solo aparece en Productos (no en Ventas, Inventario ni Compuestos).
+
 ### Próxima sesión — pendientes
 
 1. **Desplegar en orden:**
-   1. Supabase: migraciones `001` → … → `008` (reportadas como ejecutadas el 2026-11-08), **`009`**, **`010`** y **`011`**.
+   1. Supabase: migraciones `001` → … → `008` (reportadas como ejecutadas el 2026-11-08), **`009`**, **`010`**, **`011`** y **`012`**.
    2. Render: `CRON_SECRET` (≥ 32, **antes** del deploy), variables de correo y `FRONTEND_URL`.
    3. GitHub: secrets `CANTINAPP_API_URL` y `CRON_SECRET`.
    4. Merge a `main` (Render + Vercel). Ejecutar el workflow «Trabajo diario» a mano (*Run workflow*) y
